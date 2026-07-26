@@ -65,6 +65,22 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.RudelTests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Smoke-Test, der die Screens tatsächlich ausführt. Der Compiler prüft nur,
+  # ob SwiftUI-Code übersetzt — er fängt keinen Force-Unwrap und kein
+  # #Predicate, das erst zur Laufzeit crasht. Genau diese Klasse Fehler ist bei
+  # generiertem UI-Code die wahrscheinlichste.
+  RudelUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/RudelUITests
+    dependencies:
+      - target: Rudel
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.RudelUITests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Rudel:
     build:
@@ -77,3 +93,4 @@ schemes:
       gatherCoverageData: true
       targets:
         - RudelTests
+        - RudelUITests
