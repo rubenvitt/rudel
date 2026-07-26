@@ -507,7 +507,7 @@ private struct NextHeatHeaderRow: View {
             Text(Format.dateRange(prediction.range))
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
-            Text("\(CycleLabel.predictionTiming(days: daysUntil)) · ± \(Format.dayCount(Int(prediction.bandHalfWidthDays.rounded())))")
+            Text("\(CycleLabel.predictionTiming(days: daysUntil)) · \(Format.bandWidth(prediction))")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             ConfidenceLabel(confidence: prediction.confidence, detail: CycleLabel.basis(prediction.basis))

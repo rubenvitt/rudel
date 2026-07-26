@@ -86,6 +86,60 @@ struct FertileWindowEstimatorTests {
         #expect(result.window == cycleDay(14)...cycleDay(16))
     }
 
+    @Test("Zu spät begonnener Test: erster Messwert schon über der Ovulationsschwelle")
+    func progesteroneStartedTooLateIsNotTreatedAsPeak() throws {
+        // Es wurde erst an Tag 14 gemessen, und da lag der Wert bereits bei
+        // 9 ng/ml — über der Ovulationsschwelle (6,0). Der LH-Peak war zu dem
+        // Zeitpunkt längst vorbei. Diesen Wert als Peak zu lesen hieße, den
+        // Eisprung zwei Tage nach hinten zu schieben und das mit `.high` und
+        // einem ±1-Tage-Fenster zu behaupten — die Aussage wäre komplett daneben,
+        // und zwar mit der höchsten Konfidenz, die die App vergibt.
+        let result = try #require(
+            estimator.estimate(
+                day1: day1,
+                signals: [
+                    signal(dayInCycle: 14, progesterone: 9.0),
+                    signal(dayInCycle: 16, progesterone: 18.0),
+                ],
+                asOf: cycleDay(16)
+            )
+        )
+
+        #expect(result.source == .clinicalSignals)
+        #expect(result.confidence == .moderate)
+        #expect(result.caveat == FertileWindowEstimator.lateProgesteroneCaveat)
+        #expect(!result.caveat.isEmpty)
+
+        // Eisprung am Messtag selbst, nicht `ovulationDaysAfterLHPeak` danach.
+        let expectedOptimal = cycleDay(14 + StudyConstants.optimalBreedingDaysAfterOvulation)
+        #expect(result.optimalDate == expectedOptimal)
+
+        // Und das Fenster ist breiter als im sauberen Progesteron-Fall.
+        #expect(widthInDays(result) > 2)
+    }
+
+    @Test("Erster Wert zwischen LH- und Ovulationsschwelle bleibt der saubere Fall")
+    func progesteroneStartedInTimeKeepsHighConfidence() throws {
+        // Genau die Gegenprobe: der erste Messwert liegt über der LH-Schwelle,
+        // aber noch unter der Ovulationsschwelle — der Peak wurde also erwischt.
+        let result = try #require(
+            estimator.estimate(
+                day1: day1,
+                signals: [signal(dayInCycle: 12, progesterone: 4.0)],
+                asOf: cycleDay(13)
+            )
+        )
+
+        #expect(result.confidence == .high)
+        #expect(result.caveat == FertileWindowEstimator.progesteroneCaveat)
+        #expect(
+            result.optimalDate == cycleDay(
+                12 + StudyConstants.ovulationDaysAfterLHPeak
+                    + StudyConstants.optimalBreedingDaysAfterOvulation
+            )
+        )
+    }
+
     @Test("Ein späterer, höherer Wert verschiebt den Peak nicht nach hinten")
     func progesteroneLaterHigherValueDoesNotMovePeak() throws {
         let early = try #require(

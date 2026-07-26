@@ -333,7 +333,7 @@ private struct DashboardContent: View {
                         // ohne Konfidenzangabe darf nicht angezeigt werden (PRD §6).
                         ConfidenceLabel(
                             confidence: prediction.confidence,
-                            detail: "± \(Format.dayCount(Int(prediction.bandHalfWidthDays.rounded()))) · \(basisLabel(prediction.basis))"
+                            detail: "\(Format.bandWidth(prediction)) · \(basisLabel(prediction.basis))"
                         )
                     }
 

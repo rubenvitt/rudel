@@ -27,6 +27,8 @@ public struct FertileWindowEstimator: Sendable {
     /// Text, den die UI bei jeder Anzeige mitführen muss.
     public static let progesteroneCaveat =
         "Aus Progesteronwerten geschätzt. Für eine Deckplanung den Verlauf tierärztlich begleiten lassen."
+    public static let lateProgesteroneCaveat =
+        "Der erste Messwert lag bereits über der Ovulationsschwelle — der LH-Peak war vor Messbeginn. Der Eisprung lässt sich damit nur grob eingrenzen."
     public static let behaviourCaveat =
         "Nur aus dem Verhalten geschätzt — mehrere Tage Unsicherheit. Zuverlässig ist allein ein Progesterontest."
     public static let populationCaveat =
@@ -67,18 +69,44 @@ public struct FertileWindowEstimator: Sendable {
 
         // 1. Progesteron. Der *erste* Wert über der Schwelle markiert den Peak:
         //    spätere, höhere Werte liegen schon dahinter und würden das Fenster
-        //    nach hinten verschieben. `min()` statt Sortieren, damit mehrere
-        //    Messungen am selben Tag zum selben Ergebnis führen.
-        let lhPeak = inCycle.compactMap { signal -> Date? in
-            guard let value = signal.progesteroneNgPerMl,
-                  value >= StudyConstants.progesteroneLHPeakThresholdNgPerMl
-            else { return nil }
-            return dayMath.startOfDay(signal.date)
-        }.min()
+        //    nach hinten verschieben.
+        let readings = inCycle
+            .compactMap { signal -> (day: Date, value: Double)? in
+                guard let value = signal.progesteroneNgPerMl else { return nil }
+                return (dayMath.startOfDay(signal.date), value)
+            }
+            .sorted { $0.day < $1.day }
 
-        if let lhPeak {
+        if let peak = readings.first(where: {
+            $0.value >= StudyConstants.progesteroneLHPeakThresholdNgPerMl
+        }) {
+            // Liegt bereits der **allererste gemessene** Wert über der
+            // Ovulationsschwelle, wurde zu spät mit dem Testen begonnen: der
+            // LH-Peak lag vor Messbeginn, und dieser Wert markiert nicht ihn,
+            // sondern einen Punkt dahinter. Ihn trotzdem als Peak zu nehmen
+            // verschiebt das Fenster um rund zwei Tage nach hinten — und das
+            // bei `.high` und einer Breite von nur ±1 Tag, also vollständig
+            // daneben. Eine falsche Aussage mit hoher Konfidenz ist der
+            // schlechteste Ausgang, den dieses Feature haben kann.
+            let startedTooLate = readings.first.map {
+                $0.value >= StudyConstants.progesteroneOvulationThresholdNgPerMl
+            } ?? false
+
+            if startedTooLate {
+                // Der Eisprung liegt dann um den ersten Messtag herum oder
+                // knapp davor — mehr gibt die Kurve nicht her. Keine
+                // Verschiebung nach hinten, und ein Fenster, das den
+                // Unsicherheitsbereich tatsächlich abdeckt.
+                return makeEstimate(
+                    ovulation: peak.day,
+                    confidence: .moderate,
+                    source: .clinicalSignals,
+                    caveat: Self.lateProgesteroneCaveat
+                )
+            }
+
             return makeEstimate(
-                ovulation: dayMath.adding(days: StudyConstants.ovulationDaysAfterLHPeak, to: lhPeak),
+                ovulation: dayMath.adding(days: StudyConstants.ovulationDaysAfterLHPeak, to: peak.day),
                 confidence: .high,
                 source: .clinicalSignals,
                 caveat: Self.progesteroneCaveat

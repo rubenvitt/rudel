@@ -68,6 +68,24 @@ enum Format {
         "\(days) \(abs(days) == 1 ? "Tag" : "Tage")"
     }
 
+    /// Breite des Prognosebandes als Text.
+    ///
+    /// Ohne eigene Intervalle ist das Band die publizierte Populationsspanne
+    /// (135–300 Tage ab dem Anker) und liegt damit **asymmetrisch** um die
+    /// Punktschätzung — 210 ist nicht die Mitte von 135 und 300, und der
+    /// Größenklassen-Bias verschiebt sie zusätzlich. Ein „± 83 Tage" wäre dort
+    /// nicht nur ungenau, es widerspräche der direkt daneben angezeigten
+    /// Spanne. Deshalb wird in dem Fall die Herkunft benannt statt eine
+    /// Halbbreite behauptet.
+    static func bandWidth(_ prediction: CyclePrediction) -> String {
+        switch prediction.basis {
+        case .population:
+            return "Populationsspanne"
+        case .blended:
+            return "± " + dayCount(Int(prediction.bandHalfWidthDays.rounded()))
+        }
+    }
+
     // MARK: Werte
 
     static func weight(_ kg: Double) -> String {
