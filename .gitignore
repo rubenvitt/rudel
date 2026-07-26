@@ -1,0 +1,12 @@
+# Von xcodegen generiert — project.yml ist die Quelle der Wahrheit.
+Rudel.xcodeproj/
+
+# Build-Artefakte
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+
+# macOS
+.DS_Store
