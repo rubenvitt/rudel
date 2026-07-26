@@ -187,3 +187,14 @@ Phasenschätzung Richtung Anöstrus ziehen.
   die SD berichten.
 - Der Größenklassen-Bias ist eine Heuristik ohne publizierte Punktwerte (§4.4).
 - Symptom-Muster-Erkennung fehlt (PRD selbst: v1.1).
+- **Zwei Quellen für dieselben deutschen Begriffe.** `DueItem.title` entsteht in
+  der Engine („Wurmkur", „Zeckenschutz", …), `Format.label(_:)` in der App
+  liefert dieselben Wörter. Das ist strukturell, nicht nachlässig: die Engine
+  darf `Rudel/Support` nicht importieren (§2). Wer einen dieser Begriffe
+  umbenennt, muss beide Stellen anfassen — sonst zeigt das Dashboard eine
+  andere Bezeichnung als die Benachrichtigung zur selben Sache.
+- `usesFecalSampleInstead` reicht nicht bis in die Engine: `MedicationInput`
+  trägt das Feld nicht, deshalb formuliert die Engine „Wurmkur", und die
+  Umbenennung in „Kotprobe" macht die UI (`MedicationDisplay`, `DashboardView`).
+  In einer Benachrichtigung steht daher „Wurmkur fällig", auch wenn der Plan auf
+  Kotprobe steht.

@@ -61,18 +61,18 @@ extension AppSettings {
         let descriptor = FetchDescriptor<AppSettings>()
         let existing = (try? context.fetch(descriptor)) ?? []
 
-        if let first = existing.first {
-            // Deterministisch die älteste behalten, damit zwei Geräte zum
-            // gleichen Ergebnis kommen.
-            let sorted = existing.sorted { $0.id.uuidString < $1.id.uuidString }
-            let keeper = sorted[0]
+        // Nach ID sortieren, nicht nach Fetch-Reihenfolge: legten zwei Geräte
+        // je eine Instanz an, müssen beide dieselbe behalten, sonst löscht jedes
+        // die des anderen.
+        let sorted = existing.sorted { $0.id.uuidString < $1.id.uuidString }
+        if let keeper = sorted.first {
             for duplicate in sorted.dropFirst() {
                 context.delete(duplicate)
             }
-            if existing.count > 1 {
+            if sorted.count > 1 {
                 try? context.save()
             }
-            return existing.count > 1 ? keeper : first
+            return keeper
         }
 
         let settings = AppSettings()
