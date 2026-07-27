@@ -320,6 +320,47 @@ struct NotificationChainTests {
         )
     }
 
+    /// Der Zeitraum der kritischen Tage (bis Tag 33) ist länger als das
+    /// Benachrichtigungs-Fenster (14 Tage). Die späteren Tage existieren nur,
+    /// wenn zwischendurch neu geplant wird — sonst bekommt der Nutzer Hinweise
+    /// für die ersten zwei Wochen und danach Schweigen, ausgerechnet in der
+    /// Phase mit der höchsten Priorität.
+    ///
+    /// `RootView` löst das bei Vordergrund und nach jedem Log aus; hier wird
+    /// geprüft, dass die Planung mit fortgeschrittenem `asOf` tatsächlich die
+    /// späteren Tage liefert.
+    @Test("Das Fenster rückt vor: eine späte Neuplanung liefert die späteren Tage")
+    func rollingWindowAdvancesIntoLaterCriticalDays() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 1)
+
+        let firstRun = Set(
+            service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+                .filter { $0.category == .criticalDays }
+                .map(\.id)
+        )
+
+        // Zwei Wochen später, ohne dass sich an den Daten etwas geändert hat.
+        let laterRun = Set(
+            service.plannedNotifications(
+                context: context,
+                settings: settings,
+                asOf: DayMath.utc.adding(days: 14, to: asOf)
+            )
+            .filter { $0.category == .criticalDays }
+            .map(\.id)
+        )
+
+        #expect(!firstRun.isEmpty)
+        #expect(!laterRun.isEmpty)
+        #expect(
+            !laterRun.subtracting(firstRun).isEmpty,
+            """
+            Die spätere Planung bringt keine neuen Tage. Damit wären die Tage \
+            jenseits des ersten Fensters nie erreichbar.
+            """
+        )
+    }
+
     @Test("Ein lange vergangener Zyklus erzeugt keine Hinweise mehr")
     func longPastCycleIsSilent() throws {
         // Tag 150: tief im Anöstrus.

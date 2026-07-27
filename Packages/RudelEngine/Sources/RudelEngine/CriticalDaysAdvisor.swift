@@ -36,7 +36,18 @@ public struct CriticalDayNotice: Sendable, Equatable, Hashable, Identifiable {
     public var date: Date
     /// Tag im Zyklus, 1-basiert.
     public var dayInCycle: Int
+
+    /// Phase **allein aus dem Kalender** (`phaseFromDayInCycle`), nicht die
+    /// Phasenschätzung der App.
+    ///
+    /// Bewusst so: die Hinweise gelten auch für künftige Tage, für die es keine
+    /// Beobachtungen geben kann. Dadurch kann `phase` von dem abweichen, was der
+    /// Zyklus-Tab für denselben Tag zeigt — eine an Tag 6 dokumentierte
+    /// Standhitze ergibt hier `risk == .critical` bei `phase == .proestrus`.
+    /// `risk` ist die Aussage, auf die es ankommt; `phase` ist Kontext.
+    /// **Nicht** als Phasenanzeige rendern, dafür ist `CyclePhaseEstimator` da.
     public var phase: CyclePhase
+
     public var risk: HeatRiskLevel
     /// Erster Tag dieser Stufe — verdient eine eigene, deutlichere Meldung als
     /// der fünfte Tag in derselben Lage.

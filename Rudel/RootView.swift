@@ -8,8 +8,19 @@ import SwiftUI
 /// hier — so bleibt er dort sichtbar, wo gerade gearbeitet wird.
 struct RootView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
 
     @Query(sort: \Pet.createdAt) private var pets: [Pet]
+
+    // Für die Neuplanung der Benachrichtigungen, siehe `notificationFingerprint`.
+    @Query private var medicationPlans: [MedicationPlan]
+    @Query private var medicationEvents: [MedicationEvent]
+    @Query private var doseLogs: [DoseLogEntry]
+    @Query private var cyclePeriods: [CyclePeriod]
+    @Query private var cycleObservations: [CycleObservation]
+
+    private let notificationService = NotificationService()
 
     var body: some View {
         Group {
@@ -21,9 +32,59 @@ struct RootView: View {
         }
         .task { syncSelection() }
         .onChange(of: pets.count) { syncSelection() }
+        // Zwei Auslöser, weil das Benachrichtigungs-Fenster rollierend ist
+        // (siehe `NotificationPlanner`): beim Wechsel in den Vordergrund rückt es
+        // vor, nach einem Log ändert sich sein Inhalt.
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            await refreshNotifications()
+        }
+        .task(id: notificationFingerprint) {
+            await refreshNotifications()
+        }
         .sheet(item: sheetBinding) { sheet in
             SheetPresenter(sheet: sheet)
         }
+    }
+
+    /// Ändert sich genau dann, wenn sich am geplanten Benachrichtigungs-Satz
+    /// etwas ändern kann.
+    ///
+    /// Die Zähler decken jeden Log ab: das Journal ist append-only (PRD §8), eine
+    /// neue Gabe oder Beobachtung ist also immer ein neuer Datensatz. Für die
+    /// wenigen Felder, die Erinnerungen beeinflussen **ohne** einen Datensatz
+    /// anzulegen — abgesetzter Plan, geändertes Dosierschema, erfasstes Ende der
+    /// sichtbaren Hitze — fließen die Werte selbst ein.
+    private var notificationFingerprint: Int {
+        var hasher = Hasher()
+        hasher.combine(medicationEvents.count)
+        hasher.combine(doseLogs.count)
+        hasher.combine(cycleObservations.count)
+        for plan in medicationPlans {
+            hasher.combine(plan.isActive)
+            hasher.combine(plan.intervalDays)
+            hasher.combine(plan.effectiveDays)
+            hasher.combine(plan.doseTimesMinutes)
+            hasher.combine(plan.doseEveryNDays)
+            hasher.combine(plan.doseEndDate)
+        }
+        for period in cyclePeriods {
+            hasher.combine(period.day1Date)
+            hasher.combine(period.visibleHeatEndDate)
+        }
+        return hasher.finalize()
+    }
+
+    /// Setzt die Benachrichtigungen neu.
+    ///
+    /// Ohne diesen Aufruf lieferte die App nur Erinnerungen für das Fenster, das
+    /// beim letzten Öffnen der Einstellungen geplant wurde — bei einer laufenden
+    /// Läufigkeit hieße das Hinweise für die ersten zwei Wochen und danach
+    /// Schweigen, ausgerechnet in der Phase mit der höchsten Priorität.
+    private func refreshNotifications() async {
+        guard !pets.isEmpty else { return }
+        let settings = AppSettings.loadOrCreate(in: modelContext)
+        await notificationService.reschedule(context: modelContext, settings: settings)
     }
 
     private var tabs: some View {

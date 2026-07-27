@@ -157,6 +157,19 @@ unschärfste Kategorie). Neuplanung bei App-Vordergrund und nach jedem Log.
 Als Test festgeschrieben: ein überfälliges Item wird nie von Dosis-Erinnerungen
 verdrängt, auch nicht bei 20 Dauermedikamenten.
 
+**Wer die Neuplanung auslöst.** Ein rollierendes Fenster ist nur so gut wie das,
+was es vorrückt. `RootView` plant bei `scenePhase == .active` neu und außerdem,
+sobald sich `notificationFingerprint` ändert — Zähler über die append-only
+Journal-Typen plus die wenigen Felder, die Erinnerungen beeinflussen, ohne einen
+Datensatz anzulegen (abgesetzter Plan, geändertes Dosierschema, erfasstes Ende
+der sichtbaren Hitze).
+
+Das ist keine Feinheit: bis zum 27. Juli lief `reschedule` **ausschließlich** aus
+dem Einstellungs-Sheet. Die App hätte nur Erinnerungen gesetzt, wenn der Nutzer
+die Einstellungen öffnet — §10.1 war damit nicht erfüllt, obwohl alle Tests grün
+waren, weil sie sämtlich die reine Funktion `plannedNotifications` prüften und
+nie die Frage, wer sie aufruft.
+
 ## 5a. Kritische Tage (Nachtrag, 27. Juli 2026)
 
 Nachträglich beauftragt: Benachrichtigungen für die Tage einer Läufigkeit, an
