@@ -252,10 +252,12 @@ final class NotificationService {
 
         let calculator = MedicationCalculator(dayMath: dayMath)
         let predictor = CycleIntervalPredictor(dayMath: dayMath)
+        let criticalDaysAdvisor = CriticalDaysAdvisor(dayMath: dayMath)
 
         var medications: [DueItemBuilder.MedicationInput] = []
         var cycles: [DueItemBuilder.CycleInput] = []
         var doseOccurrences: [String: [Date]] = [:]
+        var criticalDays: [String: [CriticalDayNotice]] = [:]
 
         for pet in pets {
             for plan in pet.medicationPlans {
@@ -295,6 +297,26 @@ final class NotificationService {
                     prediction: prediction
                 )
             )
+
+            // Tageshinweise für die kritischen Tage der letzten Läufigkeit.
+            //
+            // Immer die neueste `CyclePeriod`: ob sie überhaupt noch relevant ist,
+            // entscheidet der Advisor selbst — im Anöstrus gibt er nichts zurück.
+            // Hier zu prüfen, ob die Hitze „noch läuft", würde diese Grenze an
+            // zwei Stellen definieren, und die App-Schicht kennt sie schlechter.
+            guard settings.criticalDayRemindersEnabled, let latest else { continue }
+            let notices = criticalDaysAdvisor.notices(
+                day1: latest.day1Date,
+                signals: latest.phaseSignals,
+                visibleHeatEnd: latest.visibleHeatEndDate,
+                petName: pet.name,
+                sourceID: latest.engineID,
+                from: asOf,
+                through: window.upperBound
+            )
+            if !notices.isEmpty {
+                criticalDays[pet.engineID] = notices
+            }
         }
 
         let dueItems = DueItemBuilder(dayMath: dayMath).build(
@@ -306,6 +328,7 @@ final class NotificationService {
         return NotificationPlanner(dayMath: dayMath).plan(
             dueItems: dueItems,
             doseOccurrences: doseOccurrences,
+            criticalDays: criticalDays,
             settings: plannerSettings,
             asOf: asOf
         )

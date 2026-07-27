@@ -17,6 +17,10 @@ struct SettingsSheet: View {
 
     private let service = NotificationService()
 
+    /// Nur um zu entscheiden, ob der Abschnitt zu den kritischen Tagen überhaupt
+    /// Sinn hat: bei einem Kater oder einer kastrierten Hündin wäre er Ballast.
+    @Query private var pets: [Pet]
+
     @State private var settings: AppSettings?
     @State private var authorization: UNAuthorizationStatus = .notDetermined
     @State private var pendingCount = 0
@@ -68,6 +72,9 @@ struct SettingsSheet: View {
                 leadDaysSection(settings)
                 timeSection(settings)
                 windowSection(settings)
+                if pets.contains(where: { $0.tracksCycle }) {
+                    criticalDaysSection(settings)
+                }
             }
             diagnosticsSection(settings)
             if !failures.isEmpty {
@@ -139,6 +146,41 @@ struct SettingsSheet: View {
     }
 
     // MARK: - Vorwarnzeiten
+
+    // MARK: - Kritische Tage
+
+    @ViewBuilder
+    private func criticalDaysSection(_ settings: AppSettings) -> some View {
+        @Bindable var bound = settings
+
+        Section {
+            Toggle("Kritische Tage", isOn: $bound.criticalDayRemindersEnabled)
+                .onChange(of: settings.criticalDayRemindersEnabled) { needsReschedule = true }
+        } header: {
+            Text("Läufigkeit")
+        } footer: {
+            Text(
+                settings.criticalDayRemindersEnabled
+                    ? """
+                    Während einer Läufigkeit kommt täglich ein Hinweis mit dem Tag im \
+                    Zyklus. Ab dem Tag, an dem eine Deckung möglich wird, deutlicher \
+                    formuliert — und mit Vorrang vor allen anderen Erinnerungen, weil \
+                    sich dieser Tag nicht nachholen lässt.
+
+                    Der Beginn ist bewusst früh angesetzt: der Übergang zur \
+                    fruchtbaren Phase liegt im Mittel bei Tag 10, kann aber schon an \
+                    Tag 4 einsetzen. Wer Beobachtungen erfasst, bekommt eine genauere \
+                    Einschätzung; wer das Ende der Hitze einträgt, beendet die \
+                    Hinweise früher.
+                    """
+                    : """
+                    Während einer Läufigkeit kommen keine täglichen Hinweise. Die \
+                    Prognose der nächsten Läufigkeit und die Phasenanzeige im \
+                    Zyklus-Tab bleiben davon unberührt.
+                    """
+            )
+        }
+    }
 
     @ViewBuilder
     private func leadDaysSection(_ settings: AppSettings) -> some View {

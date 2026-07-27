@@ -194,6 +194,167 @@ struct NotificationChainTests {
         #expect(planned.count <= NotificationPlanner.budget)
     }
 
+    // MARK: - Kritische Tage über die echte Kette
+
+    /// Tier mit laufender Läufigkeit. `dayInCycleToday` bestimmt, wie weit der
+    /// Zyklus am Stichtag ist.
+    private func makeStoreWithActiveHeat(
+        dayInCycleToday: Int,
+        visibleHeatEnd: Date? = nil,
+        isNeutered: Bool = false,
+        species: Species = .dog
+    ) throws -> (ModelContext, AppSettings) {
+        let context = try makeContext()
+        let dayMath = DayMath.utc
+
+        let pet = Pet(
+            name: "Zola",
+            species: species,
+            isFemale: true,
+            isNeutered: isNeutered,
+            createdAt: Fixture.logged
+        )
+        context.insert(pet)
+
+        let period = CyclePeriod(
+            day1Date: dayMath.adding(days: -(dayInCycleToday - 1), to: asOf),
+            visibleHeatEndDate: visibleHeatEnd,
+            createdAt: Fixture.logged
+        )
+        period.pet = pet
+        context.insert(period)
+
+        try context.save()
+        return (context, AppSettings.loadOrCreate(in: context))
+    }
+
+    @Test("Eine laufende Läufigkeit erzeugt Hinweise für die kritischen Tage")
+    func activeHeatProducesCriticalDayNotifications() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        let critical = planned.filter { $0.category == .criticalDays }
+        #expect(
+            !critical.isEmpty,
+            "Kein Hinweis für die kritischen Tage — die Verdrahtung zwischen CriticalDaysAdvisor und Planner greift nicht"
+        )
+        #expect(critical.allSatisfy { !$0.title.isEmpty && !$0.body.isEmpty })
+    }
+
+    @Test("Die Hinweise decken mehrere Tage ab, nicht nur heute")
+    func criticalDayNotificationsCoverMultipleDays() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        let days = Set(
+            planned
+                .filter { $0.category == .criticalDays }
+                .map { DayMath.utc.startOfDay($0.fireDate) }
+        )
+        #expect(days.count > 1)
+    }
+
+    @Test("Der Hinweis benennt den Tag im Zyklus")
+    func criticalDayNotificationNamesTheCycleDay() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        // Der heutige Slot (09:00) liegt nach `asOf` (Mitternacht), also ist
+        // Tag 10 dabei.
+        #expect(
+            planned.contains { $0.category == .criticalDays && $0.body.contains("Tag 10") },
+            "Die Frage am Morgen ist, welcher Zyklustag heute ist — die muss die Meldung beantworten"
+        )
+    }
+
+    @Test("Abgeschaltet kommen keine Hinweise, der Rest bleibt")
+    func disablingCriticalDaysKeepsEverythingElse() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+
+        settings.criticalDayRemindersEnabled = false
+        try context.save()
+
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+        #expect(planned.filter { $0.category == .criticalDays }.isEmpty)
+        // Die Zyklus-Prognose hängt nicht am Schalter für die Tageshinweise.
+        #expect(planned.allSatisfy { $0.category != .criticalDays })
+    }
+
+    @Test("Für eine kastrierte Hündin gibt es keine kritischen Tage")
+    func neuteredPetGetsNoCriticalDays() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10, isNeutered: true)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        #expect(planned.filter { $0.category == .criticalDays }.isEmpty)
+    }
+
+    @Test("Für eine Katze gibt es keine kritischen Tage")
+    func catGetsNoCriticalDays() throws {
+        // Katzen sind saisonal polyöstrisch mit induzierter Ovulation — die
+        // Engine modelliert das nicht, also darf sie auch nicht so warnen.
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10, species: .cat)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        #expect(planned.filter { $0.category == .criticalDays }.isEmpty)
+    }
+
+    @Test("Ein erfasstes Hitze-Ende verkürzt die Hinweise")
+    func recordedHeatEndShortensNotifications() throws {
+        let (longContext, longSettings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+        let withoutEnd = service
+            .plannedNotifications(context: longContext, settings: longSettings, asOf: asOf)
+            .filter { $0.category == .criticalDays }
+
+        // Hitze endete gestern (Tag 9 von 10).
+        let (shortContext, shortSettings) = try makeStoreWithActiveHeat(
+            dayInCycleToday: 10,
+            visibleHeatEnd: DayMath.utc.adding(days: -1, to: asOf)
+        )
+        let withEnd = service
+            .plannedNotifications(context: shortContext, settings: shortSettings, asOf: asOf)
+            .filter { $0.category == .criticalDays }
+
+        #expect(
+            withEnd.count < withoutEnd.count,
+            "Das Ende zu erfassen muss die Erinnerungen verkürzen — sonst lohnt sich das Loggen nicht"
+        )
+    }
+
+    @Test("Ein lange vergangener Zyklus erzeugt keine Hinweise mehr")
+    func longPastCycleIsSilent() throws {
+        // Tag 150: tief im Anöstrus.
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 150)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        #expect(planned.filter { $0.category == .criticalDays }.isEmpty)
+    }
+
+    @Test("Kritische Tage verdrängen die überfällige Wurmkur nicht und umgekehrt")
+    func criticalDaysCoexistWithOverdueMedication() throws {
+        let (context, settings) = try makeStoreWithActiveHeat(dayInCycleToday: 10)
+
+        let pet = try #require(try context.fetch(FetchDescriptor<Pet>()).first)
+        let dewormer = MedicationPlan(
+            kind: .dewormer,
+            productName: "Milbemax",
+            intervalDays: 90,
+            createdAt: Fixture.logged
+        )
+        dewormer.pet = pet
+        context.insert(dewormer)
+        let dose = MedicationEvent(givenOn: Fixture.day(2026, 1, 1), loggedAt: Fixture.logged)
+        dose.plan = dewormer
+        context.insert(dose)
+        try context.save()
+
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf)
+
+        #expect(planned.contains { $0.category == .criticalDays })
+        #expect(planned.contains { $0.title.contains("Wurmkur") || $0.body.contains("Wurmkur") })
+        #expect(Set(planned.map(\.id)).count == planned.count)
+        #expect(planned.count <= NotificationPlanner.budget)
+    }
+
     @Test("Ein abgesetztes Dauermedikament erinnert nicht weiter")
     func inactivePlanStopsReminding() throws {
         let (context, settings) = try makeStore()

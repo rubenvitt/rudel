@@ -157,6 +157,63 @@ unschärfste Kategorie). Neuplanung bei App-Vordergrund und nach jedem Log.
 Als Test festgeschrieben: ein überfälliges Item wird nie von Dosis-Erinnerungen
 verdrängt, auch nicht bei 20 Dauermedikamenten.
 
+## 5a. Kritische Tage (Nachtrag, 27. Juli 2026)
+
+Nachträglich beauftragt: Benachrichtigungen für die Tage einer Läufigkeit, an
+denen aufgepasst werden muss. `CyclePhaseEstimator` und `FertileWindowEstimator`
+liefen bis dahin **nur in die UI** — während einer laufenden Läufigkeit gab es
+keine einzige Benachrichtigung.
+
+`CriticalDaysAdvisor` erzeugt einen Hinweis pro Kalendertag, in drei Stufen:
+
+| Stufe | Zeitraum | Aussage |
+|---|---|---|
+| `.elevated` | Tag 1 bis kritischer Beginn | Rüden zeigen Interesse, Deckung noch nicht möglich |
+| `.critical` | ab Tag 9 (bzw. früher, s. u.) bis Ende sichtbare Hitze | Deckung möglich |
+| `.subsiding` | 3 Tage danach | Duldung klingt ab, Restrisiko |
+
+Drei Stufen statt einer, weil eine einzige Warnung über drei Wochen stumpf wird
+und dann ignoriert. Danach ist Ruhe — im Anöstrus gibt es nichts zu warnen.
+
+**Der Beginn ist konservativ nach vorn gesetzt.** Der Median-Übergang Proöstrus →
+Östrus liegt bei Tag 10, die Spanne reicht von Tag 4 bis 18. Eine Warnung, die
+dem Median folgt, kommt in einem von zwei Fällen zu spät — und „zu spät" heißt
+hier ein Deckakt, der nicht rückgängig zu machen ist. Also beginnt `.critical`
+bereits an Tag 9, und Beobachtungen (Standhitze, Flagging, strohfarbener oder
+rosa Ausfluss, weich werdende Vulva, Progesteron über der LH-Schwelle) ziehen ihn
+weiter nach vorn — **nie nach hinten**. Eine erst an Tag 14 dokumentierte
+Standhitze darf den kritischen Beginn nicht auf Tag 14 verschieben: bis dahin war
+die Hündin genauso gefährdet, nur hat niemand hingesehen.
+
+**Das Ende ist großzügig.** Ohne erfasstes Hitze-Ende läuft `.critical` bis
+Tag 30 (Proöstrus-Median + maximale Östrus-Dauer). Wer das sichtbare Ende
+einträgt, beendet die Hinweise früher — ein Anreiz zum Loggen, der in die
+richtige Richtung zeigt. Der Puffer von 3 Tagen danach steht, weil die
+Duldungsbereitschaft nicht schlagartig endet und Spermien im Genitaltrakt
+mehrere Tage befruchtungsfähig bleiben.
+
+**Priorität über allem.** `.critical` rangiert im `NotificationPlanner` über
+überfälligen Fälligkeiten (55 gegen 50). Begründung: jede andere Kategorie ist
+nachholbar — eine Wurmkur kann man einen Tag später geben. Ein verpasster
+kritischer Tag ist die einzige Kategorie mit irreversibler Folge. Als Invariante 5
+festgeschrieben: bei 20 Dauermedikamenten mit je 3 Gaben täglich plus 30
+überfälligen Behandlungen bleibt der kritische Tag im Ergebnis. `.elevated` und
+`.subsiding` rangieren dagegen unter den überfälligen Fälligkeiten.
+
+**Geschlüsselt nach `petID`, nicht nach `sourceID`.** Anders als
+`doseOccurrences`: eine `CriticalDayNotice` bringt Titel und Text schon mit, ihr
+fehlt nur die `petID` — die kommt über den Schlüssel herein. Damit entfällt die
+Abhängigkeit von einem passenden `DueItem`, an der Dosis-Termine ohne Gegenstück
+verworfen werden müssen.
+
+**Nur für unkastrierte Hündinnen**, über `Pet.tracksCycle`. Abschaltbar über
+`AppSettings.criticalDayRemindersEnabled`, standardmäßig an.
+
+Beim Bau gefunden: ein erfasstes Hitze-Ende vor dem geschätzten kritischen
+Beginn (kurzer Proöstrus oder Tippfehler) erzeugte eine invertierte
+`ClosedRange` und **stürzte ab**. Die Stufen-Einteilung arbeitet deshalb mit
+Vergleichen statt Ranges, und der Beginn wird bei Bedarf mitgezogen.
+
 ## 6. Persistenz-Entscheidungen
 
 **Plan getrennt von Gabe.** `MedicationPlan` hält die veränderliche

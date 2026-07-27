@@ -750,7 +750,7 @@ struct DueItemBuilderTests {
             switch item.category {
             case .protectionExpiry:
                 #expect(item.remainingFraction != nil)
-            case .medication, .dose, .cycleForecast:
+            case .medication, .dose, .cycleForecast, .criticalDays:
                 #expect(item.remainingFraction == nil)
             }
         }

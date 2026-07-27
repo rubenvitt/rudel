@@ -92,17 +92,29 @@ public struct NotificationPlanner: Sendable {
     ///   - doseOccurrences: Einzelgaben-Termine je Medikament, Schlüssel ist
     ///     `MedicationInput.sourceID`. Werden von der App aus
     ///     `MedicationCalculator.doseOccurrences(schedule:in:)` befüllt.
+    ///   - criticalDays: Tageshinweise einer laufenden Läufigkeit aus
+    ///     `CriticalDaysAdvisor`, geschlüsselt nach **`petID`**.
+    ///
+    ///     Anders als `doseOccurrences` bewusst nach dem Tier und nicht nach der
+    ///     Quelle geschlüsselt: eine `CriticalDayNotice` bringt Titel und Text
+    ///     schon mit, ihr fehlt nur die `petID`. Über den Schlüssel kommt sie
+    ///     direkt herein, statt aus einem passenden `DueItem` erschlossen werden
+    ///     zu müssen — genau die Abhängigkeit, an der Dosis-Termine ohne
+    ///     Gegenstück verworfen werden müssen.
     ///   - settings: Vorwarnzeiten und Fensterlänge.
     ///   - asOf: „jetzt". Termine in der Vergangenheit werden verworfen — iOS
     ///     würde sie sofort feuern.
     ///
     /// ## Priorisierung beim Kürzen auf `budget`
     ///
-    /// 1. Überfällige und heute fällige Fälligkeiten (höchste Priorität)
-    /// 2. Heutige Einzelgaben
-    /// 3. Fälligkeiten innerhalb der Vorwarnzeit, näher = wichtiger
-    /// 4. Künftige Einzelgaben, chronologisch
-    /// 5. Zyklus-Prognosen (unscharf, deshalb zuletzt)
+    /// 1. Tage, an denen eine Deckung möglich ist (höchste Priorität — die
+    ///    einzige Kategorie, deren Versäumnis irreversibel ist)
+    /// 2. Überfällige und heute fällige Fälligkeiten
+    /// 3. Heutige Einzelgaben
+    /// 4. Läufigkeit läuft, Deckung aber noch nicht bzw. nicht mehr zu erwarten
+    /// 5. Fälligkeiten innerhalb der Vorwarnzeit, näher = wichtiger
+    /// 6. Künftige Einzelgaben, chronologisch
+    /// 7. Zyklus-Prognosen (unscharf, deshalb zuletzt)
     ///
     /// Innerhalb gleicher Priorität gewinnt der frühere Termin. Die Rückgabe
     /// ist chronologisch sortiert und enthält höchstens `budget` Einträge.
@@ -114,9 +126,11 @@ public struct NotificationPlanner: Sendable {
     /// 3. IDs sind eindeutig.
     /// 4. Ein überfälliges Item wird niemals von Dosis-Erinnerungen verdrängt —
     ///    auch nicht bei 20 Dauermedikamenten.
+    /// 5. Ein kritischer Tag wird von nichts verdrängt.
     public func plan(
         dueItems: [DueItem],
         doseOccurrences: [String: [Date]],
+        criticalDays: [String: [CriticalDayNotice]] = [:],
         settings: Settings,
         asOf: Date
     ) -> [PlannedNotification] {
@@ -146,6 +160,18 @@ public struct NotificationPlanner: Sendable {
                 guard let planned = doseNotification(
                     source: meta,
                     fireDate: date,
+                    settings: settings,
+                    asOf: asOf
+                ) else { continue }
+                candidates.append(planned)
+            }
+        }
+
+        for (petID, notices) in criticalDays {
+            for notice in notices {
+                guard let planned = criticalDayNotification(
+                    notice,
+                    petID: petID,
                     settings: settings,
                     asOf: asOf
                 ) else { continue }
@@ -189,10 +215,19 @@ public struct NotificationPlanner: Sendable {
     // Nur die Ordnung zählt; die Lücken lassen Platz für Zwischenstufen, ohne
     // alles umzunummerieren.
 
+    /// Ein Tag, an dem eine Deckung möglich ist.
+    ///
+    /// Steht bewusst **über** allen Fälligkeiten. Jede andere Kategorie ist
+    /// nachholbar: eine Wurmkur kann man einen Tag später geben, ein
+    /// Zeckenschutz-Fenster einen Tag später schließen. Ein verpasster kritischer
+    /// Tag ist die einzige Kategorie mit irreversibler Folge.
+    private static let priorityCriticalDay = 55
     /// Überfällig oder heute fällig.
     private static let priorityDueNow = 50
     /// Einzelgabe heute.
     private static let priorityDoseToday = 40
+    /// Läufigkeit läuft, Deckung aber noch nicht bzw. nicht mehr zu erwarten.
+    private static let priorityHeatWatch = 35
     /// Fälligkeit innerhalb der Vorwarnzeit.
     private static let priorityDueUpcoming = 30
     /// Einzelgabe in der Zukunft.
@@ -280,6 +315,38 @@ public struct NotificationPlanner: Sendable {
         )
     }
 
+    /// Übersetzt einen Tageshinweis in eine geplante Benachrichtigung.
+    ///
+    /// Titel und Text kommen fertig aus `CriticalDaysAdvisor` — hier wird nur
+    /// noch über Zeitpunkt, Priorität und Fenstergrenze entschieden. Die Trennung
+    /// hält die fachliche Beurteilung („ab wann ist eine Deckung möglich") von
+    /// der Zustellfrage getrennt.
+    ///
+    /// Ein Hinweis für heute, dessen Erinnerungszeit schon verstrichen ist, wird
+    /// verworfen und nicht sofort gefeuert: die App zeigt den Zustand ohnehin auf
+    /// dem Dashboard, und eine Benachrichtigung, die in der Sekunde eintrifft, in
+    /// der man die App öffnet, ist nur Lärm.
+    private func criticalDayNotification(
+        _ notice: CriticalDayNotice,
+        petID: String,
+        settings: Settings,
+        asOf: Date
+    ) -> PlannedNotification? {
+        let fireDate = at(settings.reminderTime, on: notice.date)
+        guard fireDate >= asOf else { return nil }
+        guard dayMath.days(from: asOf, to: fireDate) <= settings.horizonDays else { return nil }
+
+        return PlannedNotification(
+            id: notice.id,
+            fireDate: fireDate,
+            title: notice.title,
+            body: notice.body,
+            petID: petID,
+            category: .criticalDays,
+            priority: notice.risk == .critical ? Self.priorityCriticalDay : Self.priorityHeatWatch
+        )
+    }
+
     private func priority(for item: DueItem) -> Int {
         // Prognosen sind die unschärfste Kategorie und fliegen zuerst raus,
         // egal wie dringend das Datum aussieht.
@@ -293,6 +360,11 @@ public struct NotificationPlanner: Sendable {
             return item.urgency >= .dueToday ? Self.priorityDueNow : Self.priorityDueUpcoming
         case .cycleForecast:
             return Self.priorityCycleForecast
+        case .criticalDays:
+            // Erreichbar nur, wenn irgendwann ein `DueItem` mit dieser Kategorie
+            // gebaut wird — Tageshinweise laufen über `criticalDayNotification`.
+            // Dieselbe Einstufung wie dort, damit beide Wege nicht auseinanderlaufen.
+            return Self.priorityCriticalDay
         }
     }
 
@@ -350,6 +422,7 @@ public struct NotificationPlanner: Sendable {
         case .protectionExpiry: return "Schutz"
         case .dose: return "Medikament"
         case .cycleForecast: return "Läufigkeit"
+        case .criticalDays: return "Kritische Tage"
         }
     }
 
@@ -360,6 +433,8 @@ public struct NotificationPlanner: Sendable {
         case .protectionExpiry: return appending("läuft ab", to: base)
         case .dose: return appending("geben", to: base)
         case .cycleForecast: return appending("erwartet", to: base)
+        // Kein Verb: „Kritische Tage" beschreibt einen Zustand, keine Fälligkeit.
+        case .criticalDays: return base
         }
     }
 
@@ -386,6 +461,10 @@ public struct NotificationPlanner: Sendable {
             switch item.category {
             case .protectionExpiry:
                 text = "\(base): \(protectionPhrase(days: days, expiresOn: item.dueOn))"
+            case .criticalDays:
+                // Zustand statt Termin — `duenessPhrase` („in 3 Tagen fällig")
+                // wäre hier sprachlich falsch.
+                text = "\(base): \(relativeDayText(days))"
             case .medication, .dose, .cycleForecast:
                 text = "\(base) \(duenessPhrase(days: days, dueOn: item.dueOn))"
             }

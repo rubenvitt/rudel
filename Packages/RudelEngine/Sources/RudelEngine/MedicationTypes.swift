@@ -142,6 +142,10 @@ public struct DueItem: Sendable, Equatable, Hashable, Identifiable {
         case protectionExpiry
         case dose
         case cycleForecast
+        /// Tageshinweis während einer laufenden Läufigkeit — siehe
+        /// `CriticalDaysAdvisor`. Kein Fälligkeitstermin, sondern ein Zustand,
+        /// der über Wochen anhält.
+        case criticalDays
     }
 
     public var id: String

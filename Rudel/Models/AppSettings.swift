@@ -24,6 +24,14 @@ final class AppSettings {
     /// deshalb wird nicht der ganze Horizont geplant.
     var notificationHorizonDays: Int = 14
 
+    /// Tägliche Hinweise während einer laufenden Läufigkeit (siehe
+    /// `CriticalDaysAdvisor`).
+    ///
+    /// Standardmäßig an: die Erinnerung nützt nur, wenn sie kommt, ohne dass man
+    /// sie erst sucht. Abschaltbar, weil sie über Wochen täglich auftritt und das
+    /// bei einem kastrierten oder nicht gefährdeten Tier nur Lärm wäre.
+    var criticalDayRemindersEnabled: Bool = true
+
     /// Zuletzt gewähltes Tier, damit die App dort weitermacht, wo sie war.
     var selectedPetID: UUID?
 

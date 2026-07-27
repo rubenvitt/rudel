@@ -416,11 +416,12 @@ private struct DashboardContent: View {
     }
 
     /// Abhakbar sind nur Gaben. Eine Zyklus-Prognose ist keine Aufgabe, die man
-    /// erledigt — sie tritt ein.
+    /// erledigt — sie tritt ein. Ein kritischer Tag genauso wenig: er ist ein
+    /// Zustand, den man zur Kenntnis nimmt, nicht abhakt.
     private func canLog(_ item: DueItem) -> Bool {
         switch item.category {
         case .medication, .protectionExpiry: return plan(for: item) != nil
-        case .dose, .cycleForecast: return false
+        case .dose, .cycleForecast, .criticalDays: return false
         }
     }
 
