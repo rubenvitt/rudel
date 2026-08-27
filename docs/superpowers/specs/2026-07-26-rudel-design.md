@@ -268,3 +268,46 @@ Phasenschätzung Richtung Anöstrus ziehen.
   Umbenennung in „Kotprobe" macht die UI (`MedicationDisplay`, `DashboardView`).
   In einer Benachrichtigung steht daher „Wurmkur fällig", auch wenn der Plan auf
   Kotprobe steht.
+
+## 8. App-Icon (Nachtrag, 27. Juli 2026)
+
+Generiert mit **fal.ai / `fal-ai/nano-banana-pro`** (Gemini 3 Pro Image), 2048 px
+PNG, auf 1024×1024 skaliert. Liegt als `AppIcon.appiconset` mit **einem**
+Single-Size-Slot in `Rudel/Resources/Assets.xcassets` — Xcode leitet die
+restlichen Größen ab. `ASSETCATALOG_COMPILER_APPICON_NAME` setzt xcodegen
+bereits selbst, `project.yml` musste dafür nicht angefasst werden.
+
+**Kein Icon Composer / `.icon`-Bundle.** Die geschichteten iOS-26-Icons sind
+opt-in und entstehen in einem GUI-Tool, das sich nicht skripten lässt.
+`.appiconset` baut unverändert; ein Wechsel wäre ein eigener, manueller Schritt.
+
+**Motiv: eine Hundekopf-Silhouette im Profil, anthrazit auf einem Verlauf von
+Pfirsich zu Altrosa.** Vier Kandidaten wurden bei 512, 180, 120 und 40 px
+gegeneinander geprüft. Zwei davon schieden an der Lesbarkeit aus, zwischen den
+verbliebenen entschied die Ästhetik:
+
+- Die naheliegende Kombination Hundekopf **plus** Zyklusring oder Kalender ist
+  gar nicht erst generiert worden. Zwei Motive werden bei 40 px zu Matsch.
+- Die Variante mit zwei überlappenden Köpfen („Rudel" wörtlich, passend zur
+  Mehrhund-Fähigkeit der App) hält bei 120 px noch, zerfällt bei 40 px aber: der
+  hintere Kopf wird zu einem hellgrauen Auswuchs an der Hauptsilhouette. Die
+  inhaltlich treffendere Idee verliert gegen die lesbarere.
+- Frontalansicht mit Augen/Nase als Negativform verliert bei 40 px genau diese
+  Details und wird zu einem beliebigen hellen Fleck.
+- Übrig blieben zwei tragfähige Silhouetten: cremeweiß auf Koralle→Bernstein und
+  die gewählte anthrazit auf Pfirsich→Altrosa. Die erste ist bei 40 px minimal
+  robuster, hat aber ein vom Kopf abgesetztes hinteres Ohr; die gewählte kommt
+  ohne freistehendes Element aus, hat die ruhigere Kontur und den weicheren
+  Farbverlauf. Der Unterschied in der Kleinlesbarkeit ist gering genug, dass die
+  Optik den Ausschlag geben darf — die dünn ausgesparte Ohrlinie verschwindet bei
+  40 px, die Silhouette bleibt.
+
+**Dunkle Wallpapers.** Der helle Verlauf hat gegen helle Hintergründe weniger
+Trennschärfe als ein dunkler. Falls das im Alltag stört, liegt die Alternative
+in Koralle vor und ist ein reiner Dateitausch.
+
+Der Prompt verbietet explizit runde Ecken, Rahmen, Schlagschatten und Mockups:
+Bildmodelle rendern bei „App Icon" gern ein fertig maskiertes Icon *auf* einem
+Hintergrund. iOS maskiert selbst zum Squircle — ein solches Bild ist unbrauchbar
+und lässt sich auch nicht wegcroppen. Das PNG ist deshalb randlos und **ohne
+Alpha-Kanal**; ein transparentes App-Icon wird vom App Store abgelehnt.
