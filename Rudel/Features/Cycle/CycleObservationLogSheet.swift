@@ -222,12 +222,7 @@ struct CycleObservationLogSheet: View {
 
             // MARK: Duldungsreflex
             Section {
-                CycleTriStatePicker(
-                    title: "Flagging",
-                    value: $flagging,
-                    yesLabel: "Legt den Schwanz zur Seite",
-                    noLabel: "Legt ihn nicht zur Seite"
-                )
+                CycleTriStatePicker(title: "Flagging", value: $flagging)
                 CycleTriStatePicker(
                     title: "Duldung",
                     value: $standingHeat,
@@ -237,52 +232,20 @@ struct CycleObservationLogSheet: View {
             } header: {
                 Text("Duldungsreflex")
             } footer: {
-                Text(
-                    "Beides ist ohne Rüden prüfbar, beim Streicheln über den Rücken.\n\n"
-                        + "Flagging: über Kruppe und Rutenansatz streichen. Legt sie den Schwanz zur "
-                        + "Seite, ist das der Teilreflex — er kommt früher als die volle Duldung und "
-                        + "kann schon im späten Proöstrus auftreten.\n\n"
-                        + "Duldung: mit flacher Hand festen Druck auf die Lendenpartie geben. Duldet "
-                        + "sie, bleibt sie stehen, stemmt sich fest, hebt die Hinterhand und legt den "
-                        + "Schwanz zur Seite. Weicht sie aus oder setzt sich, duldet sie nicht.\n\n"
-                        + "Die Duldung ist das eindeutigste Östrus-Signal und verschiebt die "
-                        + "Phasenschätzung stärker als jedes andere Zeichen. Das Flagging ist weniger "
-                        + "eindeutig, warnt dafür früher — beides zieht die kritischen Tage nach vorn."
-                )
+                // Die einzige Zeile, die hier stehen muss: dass es ohne Rüden
+                // geht und wie. Warum die beiden Signale unterschiedlich wiegen,
+                // gehört ins Design-Doc, nicht auf den Screen.
+                Text("Ohne Rüden prüfbar: Flagging beim Streichen über die Kruppe, Duldung bei festem Druck auf die Lenden.")
             }
 
             // MARK: Alltagszeichen
             Section {
-                CycleTriStatePicker(
-                    title: "Vulva sichtbar geschwollen",
-                    value: $vulvaSwellingVisible,
-                    yesLabel: "Geschwollen",
-                    noLabel: "Unauffällig"
-                )
-                CycleTriStatePicker(
-                    title: "Häufiges Urinieren",
-                    value: $frequentUrination,
-                    yesLabel: "Häufiger als sonst",
-                    noLabel: "Wie sonst"
-                )
-                CycleTriStatePicker(
-                    title: "Vermehrtes Belecken",
-                    value: $genitalLicking,
-                    yesLabel: "Vermehrt",
-                    noLabel: "Wie sonst"
-                )
+                CycleTriStatePicker(title: "Vulva sichtbar geschwollen", value: $vulvaSwellingVisible)
+                CycleTriStatePicker(title: "Häufiges Urinieren", value: $frequentUrination)
+                CycleTriStatePicker(title: "Vermehrtes Belecken", value: $genitalLicking)
                 CycleTriStatePicker(title: "Rüden interessiert", value: $attractsMales)
             } header: {
                 Text("Alltagszeichen")
-            } footer: {
-                Text(
-                    "Ohne Anfassen zu beobachten — deshalb die Felder, die sich am ehesten "
-                        + "lückenlos führen lassen.\n\n"
-                        + "Sie belegen, dass eine Läufigkeit läuft, sagen aber nicht, in welcher Phase: "
-                        + "alle vier setzen mit dem Proöstrus ein und halten über den Östrus an. "
-                        + "Sie verschieben die Phasenschätzung deshalb nicht und lösen für sich genommen "
-                        + "keine Warnung aus. Dafür sind Flagging und Duldung da."
-                )
             }
 
             // MARK: Genauer hinsehen
@@ -300,15 +263,6 @@ struct CycleObservationLogSheet: View {
                     }
                     CycleOptionalPicker(title: "Konsistenz der Vulva", value: $vulvaTurgor) { Format.label($0) }
                 }
-            } footer: {
-                Text(
-                    "Zugeklappt, weil es Hinsehen und Tasten verlangt — nichts davon ist Pflicht, "
-                        + "die App rechnet auch ohne.\n\n"
-                        + "Wenn es sich ergibt, sind es die schärfsten nicht-klinischen Zeichen: der "
-                        + "Farbwechsel blutig → strohfarben und das Weicherwerden der Vulva markieren "
-                        + "beide den Übergang Proöstrus → Östrus und ziehen die kritischen Tage nach vorn. "
-                        + "Die Farbe lässt sich auch am Liegeplatz oder an einem hellen Tuch beurteilen."
-                )
             }
 
             // MARK: Klinische Werte
@@ -334,7 +288,7 @@ struct CycleObservationLogSheet: View {
                     }
                 }
             } footer: {
-                Text("Nur eintragen, was tierärztlich bestimmt wurde. Diese Werte schlagen jede Verhaltensbeobachtung.")
+                Text("Nur eintragen, was tierärztlich bestimmt wurde.")
             }
 
             // MARK: Notiz

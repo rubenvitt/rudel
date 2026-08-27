@@ -130,11 +130,8 @@ struct CyclePeriodStartSheet: View {
                     Label("Was ist Tag 1?", systemImage: "info.circle")
                         .font(.subheadline.weight(.semibold))
                     Text(
-                        "Der erste Tag, an dem die Läufigkeit erkennbar war — was davon zuerst "
-                            + "aufgefallen ist, spielt keine Rolle: sichtbar geschwollene Vulva, "
-                            + "blutiger Ausfluss, vermehrtes Belecken, häufigeres Urinieren oder "
-                            + "auffälliges Rüden-Interesse. Von diesem Tag rechnen Phase, "
-                            + "Risikostufen und die Prognose der nächsten Läufigkeit."
+                        "Der erste Tag, an dem die Läufigkeit erkennbar war — Schwellung, Ausfluss, "
+                            + "vermehrtes Belecken oder häufigeres Urinieren, je nachdem was zuerst auffiel."
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -176,24 +173,9 @@ struct CyclePeriodStartSheet: View {
             }
 
             Section {
-                CycleTriStatePicker(
-                    title: "Vulva sichtbar geschwollen",
-                    value: $vulvaSwellingVisible,
-                    yesLabel: "Geschwollen",
-                    noLabel: "Unauffällig"
-                )
-                CycleTriStatePicker(
-                    title: "Häufiges Urinieren",
-                    value: $frequentUrination,
-                    yesLabel: "Häufiger als sonst",
-                    noLabel: "Wie sonst"
-                )
-                CycleTriStatePicker(
-                    title: "Vermehrtes Belecken",
-                    value: $genitalLicking,
-                    yesLabel: "Vermehrt",
-                    noLabel: "Wie sonst"
-                )
+                CycleTriStatePicker(title: "Vulva sichtbar geschwollen", value: $vulvaSwellingVisible)
+                CycleTriStatePicker(title: "Häufiges Urinieren", value: $frequentUrination)
+                CycleTriStatePicker(title: "Vermehrtes Belecken", value: $genitalLicking)
                 DisclosureGroup("Ausfluss und Vulva", isExpanded: $detailExpanded) {
                     CycleTriStatePicker(
                         title: "Ausfluss",
@@ -211,11 +193,8 @@ struct CyclePeriodStartSheet: View {
                 Text("Erste Beobachtung (optional)")
             } footer: {
                 Text(
-                    "Oben steht, was ohne Anfassen zu sehen ist; Ausfluss und Tastbefund liegen "
-                        + "eingeklappt darunter.\n\n"
-                        + "Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar "
-                        + "nicht gespeichert — nicht „nein“. Beobachtungen lassen sich jederzeit "
-                        + "nachtragen."
+                    "Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar nicht "
+                        + "gespeichert — nicht „nein“. Beobachtungen lassen sich jederzeit nachtragen."
                 )
             }
 

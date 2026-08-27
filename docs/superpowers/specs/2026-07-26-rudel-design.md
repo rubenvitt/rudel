@@ -338,7 +338,15 @@ gleich weit nach vorn.
 **Beide brauchen keinen Rüden.** Die UI behauptete das Gegenteil („wenn ein
 Rüde aufreitet") und machte damit das stärkste Signal des ganzen Modells für
 einen Einzelhund-Haushalt unerfüllbar. Der Handtest steht jetzt in der Fußzeile
-des Formulars und in der Schnellfrage der Übersicht.
+des Formulars und in der Schnellfrage der Übersicht — in je einer Zeile.
+
+**Die Begründungen aus diesem Abschnitt stehen bewusst *nicht* im Screen.** Ein
+erster Entwurf trug sie als Fußzeilen mit: warum Alltagszeichen keine Phase
+benennen, warum die kritischen Tage an Tag 9 beginnen, warum das fruchtbare
+Fenster schmaler ist. Das ist alles richtig und gehört hierher — auf dem Screen
+war es ein Aufsatz über einer Liste aus vier Schaltern. In der UI bleibt nur,
+was zum Handeln nötig ist: wie der Handtest geht, und dass Leerlassen erlaubt
+ist.
 
 ### 9.2 Drei Alltagszeichen, bewusst ohne Phasenwirkung
 
@@ -396,8 +404,8 @@ schon die Östrus-Grenze streut über 3 bis 21 Tage.
 Umbenannt stünde also eine **schmalere** Zahl auf dem Screen als die, die
 `CriticalDaysAdvisor` rechnet: zwei widersprüchliche Antworten auf dieselbe
 Frage, und die falsche sähe genauer aus. Die Mathematik bleibt deshalb
-unangetastet; die Sektion heißt „Deckplanung", ist zugeklappt und trägt in der
-Fußzeile ausdrücklich, dass sie kein Risikozeitraum ist.
+unangetastet; die Sektion heißt „Deckplanung", ist zugeklappt und sagt in einer
+Zeile, dass ihr Fenster enger ist als der Zeitraum, in dem eine Deckung aufgeht.
 
 ### 9.5 Tag 1 ist breiter definiert
 

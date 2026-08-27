@@ -167,10 +167,8 @@ private struct CycleOverviewContent: View {
             Label("Kein Zyklus erfasst", systemImage: "circle.hexagonpath")
         } description: {
             Text(
-                "Erfasse Tag 1 der Läufigkeit — den ersten Tag, an dem sie erkennbar war: "
-                    + "sichtbar geschwollene Vulva, blutiger Ausfluss, vermehrtes Belecken oder "
-                    + "häufigeres Urinieren. Er ist der Anker, auf dem jede Prognose und jede "
-                    + "Risikostufe beruht."
+                "Erfasse Tag 1 — den ersten Tag, an dem die Läufigkeit erkennbar war. "
+                    + "Er ist der Anker, auf dem jede Prognose und jede Risikostufe beruht."
             )
         } actions: {
             Button {
@@ -231,26 +229,7 @@ private struct CycleOverviewContent: View {
             }
         } header: {
             Text("Wie sehr aufpassen?")
-        } footer: {
-            Text(riskFooter(notice))
         }
-    }
-
-    /// Warum die Stufe so steht, wie sie steht — und was sie verschiebt.
-    private func riskFooter(_ notice: CriticalDayNotice) -> String {
-        var text =
-            "Der Übergang zum Östrus liegt im Mittel bei Tag 10, die Spanne reicht von Tag "
-            + "\(StudyConstants.proestrusMinDays + 1) bis Tag "
-            + "\(StudyConstants.proestrusMaxDays + 1). Die kritischen Tage beginnen deshalb schon an "
-            + "Tag \(StudyConstants.proestrusTypicalDays) — einen Tag vor dem Mittel, aber bewusst "
-            + "nicht am Anfang der Spanne: sonst wäre fast die ganze Läufigkeit kritisch und die "
-            + "Stufe sagte nichts mehr.\n\n"
-            + "Beobachtetes Flagging, Duldung, strohfarbener Ausfluss oder eine weicher werdende "
-            + "Vulva ziehen den Beginn weiter nach vorn — nie nach hinten."
-        if notice.risk != .subsiding, activePeriod?.visibleHeatEndDate == nil {
-            text += " Ist die sichtbare Hitze vorbei, beendet ein erfasstes Enddatum die Hinweise früher."
-        }
-        return text
     }
 
     // MARK: Laufende Läufigkeit
@@ -327,13 +306,7 @@ private struct CycleOverviewContent: View {
         } header: {
             Text("Deckplanung")
         } footer: {
-            Text(
-                "Nur für eine geplante Verpaarung. Ohne Progesteronverlauf ist der Eisprung nicht "
-                    + "bestimmbar.\n\n"
-                    + "Nicht als Risikozeitraum lesen: Dieses Fenster liegt um den besten "
-                    + "Deckzeitpunkt und ist enger als der Zeitraum, in dem eine Deckung aufgehen "
-                    + "kann. Wie sehr aufzupassen ist, steht oben."
-            )
+            Text("Liegt um den besten Deckzeitpunkt und ist enger als der Zeitraum, in dem eine Deckung aufgeht.")
         }
     }
 
@@ -605,11 +578,7 @@ private struct QuickStandingHeatRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Duldet sie heute?")
                 .font(.subheadline.weight(.semibold))
-            Text(
-                "Kein Rüde nötig: mit flacher Hand festen Druck auf die Lendenpartie geben. "
-                    + "Duldet sie, bleibt sie stehen, stemmt sich fest und legt den Schwanz zur Seite. "
-                    + "Das eindeutigste Östrus-Signal."
-            )
+            Text("Fester Druck auf die Lenden — bleibt sie stehen und legt den Schwanz zur Seite, duldet sie.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
