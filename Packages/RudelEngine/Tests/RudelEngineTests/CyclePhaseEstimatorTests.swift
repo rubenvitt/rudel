@@ -511,6 +511,63 @@ struct CyclePhaseEstimatorTests {
         }
     }
 
+    // MARK: - Alltagszeichen benennen keine Phase
+
+    @Test("Alltagszeichen überstimmen den Kalender nicht")
+    func everydaySignsDoNotNameAPhase() {
+        // Tag 14 ist kalendarisch Östrus. Ein Eintrag, der nur Alltagszeichen
+        // trägt, darf daran nichts ändern — weder nach vorn noch zurück.
+        let signals = [
+            PhaseSignals(
+                date: cycleDay(14),
+                frequentUrination: true,
+                genitalLicking: true,
+                vulvaSwellingVisible: true,
+                attractsMales: true
+            )
+        ]
+        let result = estimator.estimatePhase(day1: day1, signals: signals, asOf: cycleDay(14))
+
+        #expect(result.phase == .estrus)
+        #expect(result.source == .populationDefault)
+        #expect(result.confidence == .low)
+    }
+
+    @Test("Sichtbare Schwellung an Tag 12 macht daraus keinen Proöstrus")
+    func visibleSwellingDoesNotDragPhaseBackwards() {
+        // Die sichtbare Schwellung ist im Proöstrus maximal und nimmt zum Östrus
+        // hin eher ab. Als Phasenmarker gelesen zöge sie die Schätzung also in
+        // die falsche Richtung — genau deshalb hat sie keine Regel.
+        let signals = [PhaseSignals(date: cycleDay(12), vulvaSwellingVisible: true)]
+        let result = estimator.estimatePhase(day1: day1, signals: signals, asOf: cycleDay(12))
+
+        #expect(result.phase == .estrus)
+        #expect(result.source == .populationDefault)
+    }
+
+    @Test("Ein Alltagszeichen zählt trotzdem als Beobachtung, nicht als leerer Tag")
+    func everydaySignsAreNotEmpty() {
+        #expect(!PhaseSignals(date: cycleDay(3), frequentUrination: true).isEmpty)
+        #expect(!PhaseSignals(date: cycleDay(3), genitalLicking: false).isEmpty)
+        #expect(!PhaseSignals(date: cycleDay(3), vulvaSwellingVisible: true).isEmpty)
+        #expect(PhaseSignals(date: cycleDay(3)).isEmpty)
+    }
+
+    @Test("Alltagszeichen blockieren ein aussagekräftiges Signal desselben Zyklus nicht")
+    func everydaySignsDoNotShadowAStrongerSignal() {
+        // Der jüngere Eintrag trägt nur Alltagszeichen und benennt keine Phase;
+        // die Auswertung muss deshalb auf den älteren Eintrag durchfallen.
+        let signals = [
+            PhaseSignals(date: cycleDay(6), standingHeat: true),
+            PhaseSignals(date: cycleDay(7), frequentUrination: true)
+        ]
+        let result = estimator.estimatePhase(day1: day1, signals: signals, asOf: cycleDay(7))
+
+        #expect(result.phase == .estrus)
+        #expect(result.source == .observedSignals)
+        #expect(result.confidence == .high)
+    }
+
     @Test("Bezugsdatum vor Tag 1: Tag 1, Proöstrus, gültige Spanne")
     func asOfBeforeDay1() {
         let asOf = day(2026, 2, 20)

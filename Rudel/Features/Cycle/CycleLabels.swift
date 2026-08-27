@@ -71,6 +71,43 @@ enum CycleLabel {
             + " (\(StudyConstants.day1ToDay1IntervalMinDays)–\(StudyConstants.day1ToDay1IntervalMaxDays))"
     }
 
+    // MARK: Risikostufe
+
+    /// Kurzname der Stufe. Bewusst ohne Phasenbegriffe — die Stufe beantwortet
+    /// „wie sehr aufpassen?", nicht „welche Phase?".
+    static func riskTitle(_ risk: HeatRiskLevel) -> String {
+        switch risk {
+        case .elevated: return "Erhöhte Aufmerksamkeit"
+        case .critical: return "Kritische Tage"
+        case .subsiding: return "Klingt ab"
+        }
+    }
+
+    /// Die Antwort auf die Frage, die man morgens hat, in einem Halbsatz.
+    static func riskHeadline(_ risk: HeatRiskLevel) -> String {
+        switch risk {
+        case .elevated: return "Deckung noch nicht möglich"
+        case .critical: return "Deckung möglich"
+        case .subsiding: return "Restrisiko"
+        }
+    }
+
+    static func riskSymbolName(_ risk: HeatRiskLevel) -> String {
+        switch risk {
+        case .elevated: return "exclamationmark.circle.fill"
+        case .critical: return "exclamationmark.octagon.fill"
+        case .subsiding: return "arrow.down.circle.fill"
+        }
+    }
+
+    static func riskTint(_ risk: HeatRiskLevel) -> Color {
+        switch risk {
+        case .elevated: return .orange
+        case .critical: return .red
+        case .subsiding: return .yellow
+        }
+    }
+
     // MARK: Beobachtungen
 
     /// Die **gesetzten** Felder einer Beobachtung als kurze Textbausteine.
@@ -92,6 +129,15 @@ enum CycleLabel {
         }
         if let turgor = observation.vulvaTurgorValue {
             parts.append("Vulva: \(Format.label(turgor))")
+        }
+        if let swollen = observation.vulvaSwellingVisible {
+            parts.append(swollen ? "sichtbar geschwollen" : "keine sichtbare Schwellung")
+        }
+        if let urination = observation.frequentUrination {
+            parts.append(urination ? "häufiges Urinieren" : "Urinieren unauffällig")
+        }
+        if let licking = observation.genitalLicking {
+            parts.append(licking ? "vermehrtes Belecken" : "kein vermehrtes Belecken")
         }
         if let standingHeat = observation.standingHeat {
             parts.append(standingHeat ? "Duldung" : "keine Duldung")

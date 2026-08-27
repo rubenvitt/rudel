@@ -203,6 +203,14 @@ extension CyclePhaseEstimator {
             // im Proöstrus, das Signal trennt die beiden Phasen nicht.
             // `standingHeat == false` ebenso — nicht zu dulden heißt „noch
             // nicht" oder „nicht mehr", je nach Tag, und benennt keine Phase.
+            //
+            // Aus demselben Grund fehlen hier `frequentUrination`,
+            // `genitalLicking` und `vulvaSwellingVisible`. Sie sind die einzigen
+            // Zeichen, die ohne Anfassen zu erheben sind und deshalb praktisch
+            // lückenlos anfallen — aber alle drei laufen über Proöstrus *und*
+            // Östrus. Eine Phasenregel darauf zu bauen hieße, die häufigste
+            // Beobachtung zur unsichersten Aussage zu machen. Sie beantworten
+            // stattdessen `PhaseSignals.indicatesActiveHeat`.
         }
         return nil
     }

@@ -69,6 +69,13 @@ extension CyclePeriod {
         sortedObservations.first { $0.standingHeat == true }?.date
     }
 
+    /// Erster Tag, an dem überhaupt ein Zeichen einer laufenden Läufigkeit
+    /// dokumentiert ist. Anders als `firstStandingHeatDate` auch dann gesetzt,
+    /// wenn nur Alltagszeichen erfasst wurden.
+    var firstActiveHeatSignDate: Date? {
+        sortedObservations.first { $0.phaseSignals.indicatesActiveHeat }?.date
+    }
+
     /// Läuft die sichtbare Hitze zum Stichtag noch?
     func isVisiblyActive(asOf: Date = Date()) -> Bool {
         guard let visibleHeatEndDate else { return day1Date <= asOf }
@@ -90,11 +97,22 @@ final class CycleObservation {
     var dischargePresent: Bool?
     var dischargeColorValue: DischargeColor?
     var dischargeAmountValue: DischargeAmount?
+    /// Konsistenz der Vulva — Tastbefund.
     var vulvaTurgorValue: VulvaTurgor?
 
-    /// Schwanz zur Seite legen bei Berührung.
+    // Alltagszeichen: ohne Anfassen zu erheben, deshalb die einzigen Felder,
+    // die in der Praxis lückenlos anfallen. Sie belegen eine laufende
+    // Läufigkeit, benennen aber keine Phase — siehe `PhaseSignals`.
+    var frequentUrination: Bool?
+    var genitalLicking: Bool?
+    var vulvaSwellingVisible: Bool?
+
+    /// Flagging: Schwanz zur Seite bei Berührung von Kruppe/Damm. Teil des
+    /// Duldungsreflexes, ohne Rüden auslösbar und früher da als die volle
+    /// Duldung.
     var flagging: Bool?
-    /// Duldung / Standhitze.
+    /// Duldung / Standhitze: der vollständige Reflex. Ebenfalls ohne Rüden
+    /// prüfbar, über festen Druck auf die Lendenpartie.
     var standingHeat: Bool?
     var attractsMales: Bool?
 
@@ -114,6 +132,9 @@ final class CycleObservation {
         dischargeColor: DischargeColor? = nil,
         dischargeAmount: DischargeAmount? = nil,
         vulvaTurgor: VulvaTurgor? = nil,
+        frequentUrination: Bool? = nil,
+        genitalLicking: Bool? = nil,
+        vulvaSwellingVisible: Bool? = nil,
         flagging: Bool? = nil,
         standingHeat: Bool? = nil,
         attractsMales: Bool? = nil,
@@ -128,6 +149,9 @@ final class CycleObservation {
         self.dischargeColorValue = dischargeColor
         self.dischargeAmountValue = dischargeAmount
         self.vulvaTurgorValue = vulvaTurgor
+        self.frequentUrination = frequentUrination
+        self.genitalLicking = genitalLicking
+        self.vulvaSwellingVisible = vulvaSwellingVisible
         self.flagging = flagging
         self.standingHeat = standingHeat
         self.attractsMales = attractsMales
@@ -147,6 +171,9 @@ extension CycleObservation {
             dischargeColor: dischargeColorValue,
             dischargeAmount: dischargeAmountValue,
             vulvaTurgor: vulvaTurgorValue,
+            frequentUrination: frequentUrination,
+            genitalLicking: genitalLicking,
+            vulvaSwellingVisible: vulvaSwellingVisible,
             flagging: flagging,
             standingHeat: standingHeat,
             attractsMales: attractsMales,

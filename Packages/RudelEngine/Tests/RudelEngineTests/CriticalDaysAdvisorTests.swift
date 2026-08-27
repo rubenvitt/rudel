@@ -30,14 +30,22 @@ struct CriticalDaysAdvisorTests {
         flagging: Bool? = nil,
         color: DischargeColor? = nil,
         turgor: VulvaTurgor? = nil,
-        progesterone: Double? = nil
+        progesterone: Double? = nil,
+        frequentUrination: Bool? = nil,
+        genitalLicking: Bool? = nil,
+        vulvaSwellingVisible: Bool? = nil,
+        attractsMales: Bool? = nil
     ) -> PhaseSignals {
         PhaseSignals(
             date: cycleDay(dayInCycle),
             dischargeColor: color,
             vulvaTurgor: turgor,
+            frequentUrination: frequentUrination,
+            genitalLicking: genitalLicking,
+            vulvaSwellingVisible: vulvaSwellingVisible,
             flagging: flagging,
             standingHeat: standingHeat,
+            attractsMales: attractsMales,
             progesteroneNgPerMl: progesterone
         )
     }
@@ -308,6 +316,117 @@ struct CriticalDaysAdvisorTests {
         )
 
         #expect(result.isEmpty)
+    }
+
+    // MARK: - Die niedrige Stufe verspricht nicht zu viel
+
+    @Test("Ab Tag 4 behauptet die niedrige Stufe nicht mehr, eine Deckung sei unmöglich")
+    func elevatedStopsClaimingImpossibleOnceEstrusCouldStart() {
+        let result = notices(fromDay: 1, throughDay: 8)
+        let byDay = Dictionary(uniqueKeysWithValues: result.map { ($0.dayInCycle, $0) })
+
+        // Tag 1–3: der Proöstrus dauert mindestens 3 Tage, hier stimmt das „noch nicht".
+        #expect(byDay[3]?.body.contains("noch nicht") == true)
+        // Ab Tag 4 kann der Östrus laut Populationsspanne beginnen.
+        for dayNumber in 4...8 {
+            #expect(byDay[dayNumber]?.body.contains("noch nicht") == false)
+            #expect(byDay[dayNumber]?.body.contains("nicht ausgeschlossen") == true)
+        }
+        // Die Stufe bleibt trotzdem die niedrige — sonst wäre fast die ganze
+        // Läufigkeit kritisch und die Abstufung wertlos.
+        #expect(result.allSatisfy { $0.risk == .elevated })
+    }
+
+    @Test("Die Grenze folgt der Studienkonstante, nicht einer Zahl im Text")
+    func elevatedWordingBoundaryFollowsStudyConstant() {
+        let result = notices(fromDay: 4, throughDay: 4)
+        #expect(result.first?.body.contains("Tag \(StudyConstants.proestrusMinDays + 1)") == true)
+    }
+
+    // MARK: - Flagging zieht den kritischen Beginn nach vorn
+
+    @Test("Flagging an Tag 4 macht Tag 4 kritisch — nicht erst Tag 9")
+    func flaggingOnDayFourMakesDayFourCritical() {
+        let result = notices(
+            signals: [signal(dayInCycle: 4, flagging: true)],
+            fromDay: 1,
+            throughDay: 10
+        )
+
+        let byDay = Dictionary(uniqueKeysWithValues: result.map { ($0.dayInCycle, $0) })
+        #expect(byDay[3]?.risk == .elevated)
+        #expect(byDay[4]?.risk == .critical)
+        // Der erste kritische Tag verdient die deutlichere Meldung.
+        #expect(byDay[4]?.isTransition == true)
+        #expect(byDay[5]?.risk == .critical)
+        #expect(byDay[9]?.risk == .critical)
+    }
+
+    @Test("Flagging ist absichtlich weniger spezifisch als Duldung — beide ziehen gleich weit vor")
+    func flaggingAndStandingHeatPullForwardAlike() {
+        let viaFlagging = advisor.criticalStartDay(
+            anchor: day1, signals: [signal(dayInCycle: 5, flagging: true)]
+        )
+        let viaStandingHeat = advisor.criticalStartDay(
+            anchor: day1, signals: [signal(dayInCycle: 5, standingHeat: true)]
+        )
+
+        // Gleiche Wirkung, unterschiedliche Verfügbarkeit: das Flagging tritt
+        // früher auf, also greift die Regel über dasselbe Signal früher.
+        #expect(viaFlagging == 5)
+        #expect(viaStandingHeat == 5)
+    }
+
+    // MARK: - Alltagszeichen ziehen nichts vor
+
+    @Test("Alltagszeichen an Tag 2 machen Tag 2 nicht kritisch")
+    func everydaySignsDoNotPullCriticalForward() {
+        let result = notices(
+            signals: [
+                signal(
+                    dayInCycle: 2,
+                    frequentUrination: true,
+                    genitalLicking: true,
+                    vulvaSwellingVisible: true,
+                    attractsMales: true
+                )
+            ],
+            fromDay: 1,
+            throughDay: 10
+        )
+
+        let byDay = Dictionary(uniqueKeysWithValues: result.map { ($0.dayInCycle, $0) })
+        // Alle vier setzen mit dem Proöstrus ein und halten über den Östrus an —
+        // sie trennen die Phasen nicht. Zählte man sie mit, liefe die Stufe
+        // `.critical` ab Tag 2 durch und wäre damit wertlos.
+        #expect(byDay[2]?.risk == .elevated)
+        #expect(byDay[8]?.risk == .elevated)
+        #expect(byDay[9]?.risk == .critical)
+    }
+
+    @Test("Alltagszeichen verschieben den kritischen Beginn auch einzeln nicht")
+    func everydaySignsLeaveCriticalStartAtPopulationValue() {
+        let cases: [PhaseSignals] = [
+            signal(dayInCycle: 2, frequentUrination: true),
+            signal(dayInCycle: 2, genitalLicking: true),
+            signal(dayInCycle: 2, vulvaSwellingVisible: true),
+            signal(dayInCycle: 2, attractsMales: true)
+        ]
+
+        for candidate in cases {
+            #expect(advisor.criticalStartDay(anchor: day1, signals: [candidate])
+                == StudyConstants.proestrusTypicalDays)
+        }
+    }
+
+    @Test("Ein Alltagszeichen belegt trotzdem, dass eine Läufigkeit läuft")
+    func everydaySignsProveActiveHeat() {
+        #expect(signal(dayInCycle: 2, frequentUrination: true).indicatesActiveHeat)
+        #expect(signal(dayInCycle: 2, genitalLicking: true).indicatesActiveHeat)
+        #expect(signal(dayInCycle: 2, vulvaSwellingVisible: true).indicatesActiveHeat)
+        // `false` ist ein Befund, aber kein Beleg.
+        #expect(!signal(dayInCycle: 2, frequentUrination: false).indicatesActiveHeat)
+        #expect(!signal(dayInCycle: 2).indicatesActiveHeat)
     }
 
     // MARK: - Risikostufen-Ordnung

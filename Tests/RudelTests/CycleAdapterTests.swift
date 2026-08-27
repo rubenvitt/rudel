@@ -27,12 +27,15 @@ struct CycleAdapterTests {
             dischargeColor: .strawColored,
             dischargeAmount: .moderate,
             vulvaTurgor: .swollenSoft,
+            frequentUrination: true,
+            genitalLicking: true,
+            vulvaSwellingVisible: true,
             flagging: true,
             standingHeat: true,
             attractsMales: false,
             progesteroneNgPerMl: 6.4,
             cornificationPercent: 88,
-            note: "Duldet den Rüden",
+            note: "Duldet beim Handtest",
             loggedAt: Fixture.logged
         )
         context.insert(observation)
@@ -44,6 +47,9 @@ struct CycleAdapterTests {
         #expect(signals.dischargeColor == .strawColored)
         #expect(signals.dischargeAmount == .moderate)
         #expect(signals.vulvaTurgor == .swollenSoft)
+        #expect(signals.frequentUrination == true)
+        #expect(signals.genitalLicking == true)
+        #expect(signals.vulvaSwellingVisible == true)
         #expect(signals.flagging == true)
         #expect(signals.standingHeat == true)
         // Beobachtetes „nein" ist ein echter Wert und muss false bleiben —
@@ -68,6 +74,9 @@ struct CycleAdapterTests {
         #expect(signals.dischargeColor == nil)
         #expect(signals.dischargeAmount == nil)
         #expect(signals.vulvaTurgor == nil)
+        #expect(signals.frequentUrination == nil)
+        #expect(signals.genitalLicking == nil)
+        #expect(signals.vulvaSwellingVisible == nil)
         #expect(signals.flagging == nil)
         #expect(signals.standingHeat == nil)
         #expect(signals.attractsMales == nil)
@@ -263,6 +272,59 @@ struct CycleAdapterTests {
 
         #expect(period.sortedObservations.count == 3)
         #expect(period.firstStandingHeatDate == nil)
+    }
+
+    @Test("firstActiveHeatSignDate greift auch, wenn nur Alltagszeichen erfasst sind")
+    func firstActiveHeatSignDateWorksWithoutHandling() throws {
+        let context = try makeContext()
+        let period = CyclePeriod(day1Date: Fixture.day(2026, 4, 1), createdAt: Fixture.logged)
+        context.insert(period)
+
+        // Genau der Fall, für den die Alltagszeichen da sind: niemand hat
+        // getastet, niemand hat die Farbe beurteilt — und trotzdem ist belegt,
+        // dass die Läufigkeit läuft.
+        let everyday = CycleObservation(
+            date: Fixture.day(2026, 4, 2),
+            frequentUrination: true,
+            loggedAt: Fixture.logged
+        )
+        context.insert(everyday)
+        everyday.period = period
+
+        let standingHeat = CycleObservation(
+            date: Fixture.day(2026, 4, 11),
+            standingHeat: true,
+            loggedAt: Fixture.logged
+        )
+        context.insert(standingHeat)
+        standingHeat.period = period
+        try context.save()
+
+        #expect(period.firstActiveHeatSignDate == Fixture.day(2026, 4, 2))
+        // Die Duldung ist davon unberührt — sie bleibt der späte, harte Beleg.
+        #expect(period.firstStandingHeatDate == Fixture.day(2026, 4, 11))
+    }
+
+    @Test("Ein ausdrückliches „nein“ bei den Alltagszeichen belegt keine Läufigkeit")
+    func negativeEverydaySignsAreNoProof() throws {
+        let context = try makeContext()
+        let period = CyclePeriod(day1Date: Fixture.day(2026, 4, 1), createdAt: Fixture.logged)
+        context.insert(period)
+
+        let observation = CycleObservation(
+            date: Fixture.day(2026, 4, 2),
+            frequentUrination: false,
+            genitalLicking: false,
+            vulvaSwellingVisible: false,
+            loggedAt: Fixture.logged
+        )
+        context.insert(observation)
+        observation.period = period
+        try context.save()
+
+        // Der Eintrag ist eine echte Beobachtung — aber kein Beleg.
+        #expect(!observation.phaseSignals.isEmpty)
+        #expect(period.firstActiveHeatSignDate == nil)
     }
 
     @Test("engineID ist die UUID der Läufigkeit als String")

@@ -33,6 +33,7 @@ private struct CycleOverviewContent: View {
 
     @State private var periodPendingDeletion: CyclePeriod?
     @State private var quickLogFeedback = 0
+    @State private var breedingExpanded = false
 
     // MARK: Ableitungen
 
@@ -76,6 +77,45 @@ private struct CycleOverviewContent: View {
             signals: activePeriod.phaseSignals,
             asOf: today
         )
+    }
+
+    /// Alle Tageshinweise der laufenden Läufigkeit, von Tag 1 bis über das Ende
+    /// des kritischen Zeitraums hinaus.
+    ///
+    /// **Eine Quelle für zwei Anzeigen.** Aus derselben Liste kommen der Hinweis
+    /// für heute *und* die Grenzen der kritischen Tage. Zwei Aufrufe mit
+    /// unterschiedlichen Fenstern könnten auseinanderlaufen, sobald eine
+    /// Beobachtung den Beginn verschiebt — und dann stünde auf einem Screen
+    /// „kritisch ab Tag 7" neben „heute ist Tag 8, erhöhte Aufmerksamkeit".
+    private var criticalNotices: [CriticalDayNotice] {
+        guard let activePeriod else { return [] }
+        let horizon = dayMath.adding(
+            days: Self.visibleHeatMaxDays + CriticalDaysAdvisor.subsidingBufferDays,
+            to: activePeriod.day1Date
+        )
+        return CriticalDaysAdvisor(dayMath: dayMath).notices(
+            day1: activePeriod.day1Date,
+            signals: activePeriod.phaseSignals,
+            visibleHeatEnd: activePeriod.visibleHeatEndDate,
+            petName: pet.name,
+            sourceID: activePeriod.engineID,
+            from: activePeriod.day1Date,
+            through: horizon
+        )
+    }
+
+    /// Der Hinweis für heute. Genau der, den auch die Benachrichtigung trägt —
+    /// App und Meldung dürfen zur selben Sache nicht Verschiedenes sagen.
+    private var todaysRisk: CriticalDayNotice? {
+        criticalNotices.first { dayMath.isSameDay($0.date, today) }
+    }
+
+    /// Zeitraum der Stufe `.critical` als Datumsspanne. `nil`, solange die Stufe
+    /// im betrachteten Fenster gar nicht vorkommt.
+    private var criticalRange: ClosedRange<Date>? {
+        let days = criticalNotices.filter { $0.risk == .critical }.map(\.date)
+        guard let first = days.first, let last = days.last, first <= last else { return nil }
+        return first...last
     }
 
     private var fertileWindow: FertileWindowEstimate? {
@@ -127,8 +167,10 @@ private struct CycleOverviewContent: View {
             Label("Kein Zyklus erfasst", systemImage: "circle.hexagonpath")
         } description: {
             Text(
-                "Erfasse Tag 1 der Läufigkeit — den ersten Tag mit blutigem Ausfluss oder Vulvaschwellung. "
-                    + "Er ist der Anker, auf dem jede Prognose beruht."
+                "Erfasse Tag 1 der Läufigkeit — den ersten Tag, an dem sie erkennbar war: "
+                    + "sichtbar geschwollene Vulva, blutiger Ausfluss, vermehrtes Belecken oder "
+                    + "häufigeres Urinieren. Er ist der Anker, auf dem jede Prognose und jede "
+                    + "Risikostufe beruht."
             )
         } actions: {
             Button {
@@ -143,9 +185,15 @@ private struct CycleOverviewContent: View {
     private var list: some View {
         List {
             if let period = activePeriod, let phase = phaseEstimate {
+                // Zuerst das Risiko, dann die Phase: „muss sie heute an der Leine
+                // bleiben?" ist die Frage, mit der die App morgens aufgemacht
+                // wird. Die Phase ist die Begründung dahinter, nicht die Antwort.
+                if let notice = todaysRisk {
+                    riskSection(notice)
+                }
                 activeHeatSection(period: period, phase: phase)
                 if let window = fertileWindow {
-                    fertileWindowSection(window)
+                    breedingSection(window)
                 }
             } else {
                 nextHeatSection
@@ -162,6 +210,47 @@ private struct CycleOverviewContent: View {
         .listStyle(.insetGrouped)
         .safeAreaInset(edge: .bottom) { actionBar }
         .sensoryFeedback(.success, trigger: quickLogFeedback)
+    }
+
+    // MARK: Risiko
+
+    /// Die Antwort auf „wie sehr muss ich heute aufpassen?".
+    ///
+    /// Text und Stufe kommen unverändert aus `CriticalDaysAdvisor` — derselben
+    /// Quelle, aus der die Benachrichtigung entsteht. Eigene Formulierungen an
+    /// dieser Stelle wären eine zweite Wahrheit über dieselbe Sache.
+    private func riskSection(_ notice: CriticalDayNotice) -> some View {
+        Section {
+            RiskHeaderRow(notice: notice)
+            if let range = criticalRange {
+                LabeledValueRow(
+                    label: "Kritische Tage",
+                    value: Format.dateRange(range),
+                    systemImage: "exclamationmark.octagon"
+                )
+            }
+        } header: {
+            Text("Wie sehr aufpassen?")
+        } footer: {
+            Text(riskFooter(notice))
+        }
+    }
+
+    /// Warum die Stufe so steht, wie sie steht — und was sie verschiebt.
+    private func riskFooter(_ notice: CriticalDayNotice) -> String {
+        var text =
+            "Der Übergang zum Östrus liegt im Mittel bei Tag 10, die Spanne reicht von Tag "
+            + "\(StudyConstants.proestrusMinDays + 1) bis Tag "
+            + "\(StudyConstants.proestrusMaxDays + 1). Die kritischen Tage beginnen deshalb schon an "
+            + "Tag \(StudyConstants.proestrusTypicalDays) — einen Tag vor dem Mittel, aber bewusst "
+            + "nicht am Anfang der Spanne: sonst wäre fast die ganze Läufigkeit kritisch und die "
+            + "Stufe sagte nichts mehr.\n\n"
+            + "Beobachtetes Flagging, Duldung, strohfarbener Ausfluss oder eine weicher werdende "
+            + "Vulva ziehen den Beginn weiter nach vorn — nie nach hinten."
+        if notice.risk != .subsiding, activePeriod?.visibleHeatEndDate == nil {
+            text += " Ist die sichtbare Hitze vorbei, beendet ein erfasstes Enddatum die Hinweise früher."
+        }
+        return text
     }
 
     // MARK: Laufende Läufigkeit
@@ -207,25 +296,44 @@ private struct CycleOverviewContent: View {
         }
     }
 
-    private func fertileWindowSection(_ estimate: FertileWindowEstimate) -> some View {
+    /// Das fruchtbare Fenster — **eingeklappt und als Deckplanung beschriftet**.
+    ///
+    /// Es beantwortet nicht die Frage, um die es in dieser App geht. Das Fenster
+    /// liegt um den optimalen Deckzeitpunkt und ist je nach Datenlage nur ±1 bis
+    /// ±5 Tage breit; der Zeitraum, in dem eine Deckung *aufgehen kann*, ist
+    /// deutlich breiter und beginnt früher — Spermien bleiben im Genitaltrakt
+    /// mehrere Tage befruchtungsfähig, und schon die Östrus-Grenze streut über
+    /// 3 bis 21 Tage. Darum steht hier eine schmalere Spanne als in „Wie sehr
+    /// aufpassen?" — die schmalere sieht genauer aus und wäre als Risikoangabe
+    /// grob falsch. Wer die beiden nebeneinander gleich groß zeigt, lädt genau
+    /// diese Verwechslung ein.
+    private func breedingSection(_ estimate: FertileWindowEstimate) -> some View {
         Section {
-            LabeledValueRow(
-                label: "Fenster",
-                value: Format.dateRange(estimate.window),
-                systemImage: "calendar.badge.clock"
-            )
-            LabeledValueRow(
-                label: "Bester Zeitpunkt",
-                value: Format.date(estimate.optimalDate),
-                systemImage: "scope"
-            )
-            ConfidenceLabel(confidence: estimate.confidence, detail: CycleLabel.source(estimate.source))
-            // Pflicht-Caveat: sichtbar daneben, nicht hinter einem Info-Button.
-            CycleNoticeRow(text: estimate.caveat)
+            DisclosureGroup("Fruchtbares Fenster", isExpanded: $breedingExpanded) {
+                LabeledValueRow(
+                    label: "Fenster",
+                    value: Format.dateRange(estimate.window),
+                    systemImage: "calendar.badge.clock"
+                )
+                LabeledValueRow(
+                    label: "Bester Zeitpunkt",
+                    value: Format.date(estimate.optimalDate),
+                    systemImage: "scope"
+                )
+                ConfidenceLabel(confidence: estimate.confidence, detail: CycleLabel.source(estimate.source))
+                // Pflicht-Caveat: sichtbar daneben, nicht hinter einem Info-Button.
+                CycleNoticeRow(text: estimate.caveat)
+            }
         } header: {
-            Text("Fruchtbares Fenster")
+            Text("Deckplanung")
         } footer: {
-            Text("Nur informativ. Ohne Progesteronverlauf ist der Eisprung nicht bestimmbar.")
+            Text(
+                "Nur für eine geplante Verpaarung. Ohne Progesteronverlauf ist der Eisprung nicht "
+                    + "bestimmbar.\n\n"
+                    + "Nicht als Risikozeitraum lesen: Dieses Fenster liegt um den besten "
+                    + "Deckzeitpunkt und ist enger als der Zeitraum, in dem eine Deckung aufgehen "
+                    + "kann. Wie sehr aufzupassen ist, steht oben."
+            )
         }
     }
 
@@ -460,6 +568,34 @@ private struct ActiveHeatHeaderRow: View {
     }
 }
 
+/// Kopfzeile der Risikostufe. Steht als erstes auf dem Screen.
+///
+/// `notice.phase` wird bewusst **nicht** gerendert: sie stammt allein aus dem
+/// Kalender und kann von der Phasenschätzung darunter abweichen (siehe
+/// `CriticalDayNotice.phase`). Zwei verschiedene Phasenangaben auf einem Screen
+/// wären schlimmer als eine fehlende.
+private struct RiskHeaderRow: View {
+    let notice: CriticalDayNotice
+
+    var body: some View {
+        let tint = CycleLabel.riskTint(notice.risk)
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(CycleLabel.riskTitle(notice.risk), systemImage: CycleLabel.riskSymbolName(notice.risk))
+                .font(.headline)
+                .foregroundStyle(tint)
+            Text(CycleLabel.riskHeadline(notice.risk))
+                .font(.title3.weight(.semibold))
+            Text(notice.body)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 6)
+        .listRowBackground(tint.opacity(0.10))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Schnellfrage nach der Duldung. Zwei Taps von „App offen" bis „erfasst"
 /// (PRD §2) — deshalb hier und nicht nur im Formular.
 private struct QuickStandingHeatRow: View {
@@ -469,7 +605,11 @@ private struct QuickStandingHeatRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Duldet sie heute?")
                 .font(.subheadline.weight(.semibold))
-            Text("Standhitze ist das eindeutigste Östrus-Signal.")
+            Text(
+                "Kein Rüde nötig: mit flacher Hand festen Druck auf die Lendenpartie geben. "
+                    + "Duldet sie, bleibt sie stehen, stemmt sich fest und legt den Schwanz zur Seite. "
+                    + "Das eindeutigste Östrus-Signal."
+            )
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

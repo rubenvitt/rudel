@@ -28,11 +28,15 @@ struct CycleObservationLogSheet: View {
     @State private var dischargeColor: DischargeColor?
     @State private var dischargeAmount: DischargeAmount?
     @State private var vulvaTurgor: VulvaTurgor?
+    @State private var frequentUrination: Bool?
+    @State private var genitalLicking: Bool?
+    @State private var vulvaSwellingVisible: Bool?
     @State private var flagging: Bool?
     @State private var attractsMales: Bool?
     @State private var progesteroneText = ""
     @State private var cornificationText = ""
     @State private var note = ""
+    @State private var detailExpanded = false
     @State private var clinicalExpanded = false
 
     // Läufigkeits-Ebene
@@ -101,6 +105,9 @@ struct CycleObservationLogSheet: View {
             dischargeColor: dischargeColor,
             dischargeAmount: dischargeAmount,
             vulvaTurgor: vulvaTurgor,
+            frequentUrination: frequentUrination,
+            genitalLicking: genitalLicking,
+            vulvaSwellingVisible: vulvaSwellingVisible,
             flagging: flagging,
             standingHeat: standingHeat,
             attractsMales: attractsMales,
@@ -213,8 +220,14 @@ struct CycleObservationLogSheet: View {
                 }
             }
 
-            // MARK: Duldung
+            // MARK: Duldungsreflex
             Section {
+                CycleTriStatePicker(
+                    title: "Flagging",
+                    value: $flagging,
+                    yesLabel: "Legt den Schwanz zur Seite",
+                    noLabel: "Legt ihn nicht zur Seite"
+                )
                 CycleTriStatePicker(
                     title: "Duldung",
                     value: $standingHeat,
@@ -222,51 +235,79 @@ struct CycleObservationLogSheet: View {
                     noLabel: "Duldet nicht"
                 )
             } header: {
-                Text("Duldung / Standhitze")
+                Text("Duldungsreflex")
             } footer: {
                 Text(
-                    "Das eindeutigste Östrus-Signal: steht sie still und legt den Schwanz zur Seite, "
-                        + "wenn ein Rüde aufreitet. Verschiebt die Phasenschätzung stärker als jedes andere Zeichen."
+                    "Beides ist ohne Rüden prüfbar, beim Streicheln über den Rücken.\n\n"
+                        + "Flagging: über Kruppe und Rutenansatz streichen. Legt sie den Schwanz zur "
+                        + "Seite, ist das der Teilreflex — er kommt früher als die volle Duldung und "
+                        + "kann schon im späten Proöstrus auftreten.\n\n"
+                        + "Duldung: mit flacher Hand festen Druck auf die Lendenpartie geben. Duldet "
+                        + "sie, bleibt sie stehen, stemmt sich fest, hebt die Hinterhand und legt den "
+                        + "Schwanz zur Seite. Weicht sie aus oder setzt sich, duldet sie nicht.\n\n"
+                        + "Die Duldung ist das eindeutigste Östrus-Signal und verschiebt die "
+                        + "Phasenschätzung stärker als jedes andere Zeichen. Das Flagging ist weniger "
+                        + "eindeutig, warnt dafür früher — beides zieht die kritischen Tage nach vorn."
                 )
             }
 
-            // MARK: Ausfluss
+            // MARK: Alltagszeichen
             Section {
                 CycleTriStatePicker(
-                    title: "Ausfluss",
-                    value: $dischargePresent,
-                    yesLabel: "Vorhanden",
-                    noLabel: "Keiner"
+                    title: "Vulva sichtbar geschwollen",
+                    value: $vulvaSwellingVisible,
+                    yesLabel: "Geschwollen",
+                    noLabel: "Unauffällig"
                 )
-                if dischargePresent != false {
-                    CycleOptionalPicker(title: "Farbe", value: $dischargeColor) { Format.label($0) }
-                    CycleOptionalPicker(title: "Menge", value: $dischargeAmount) { Format.label($0) }
-                }
-            } header: {
-                Text("Ausfluss")
-            } footer: {
-                Text("Der Wechsel blutig → strohfarben ist das verlässlichste Zeichen für den Übergang Proöstrus → Östrus.")
-            }
-
-            // MARK: Vulva
-            Section {
-                CycleOptionalPicker(title: "Turgor", value: $vulvaTurgor) { Format.label($0) }
-            } header: {
-                Text("Vulva")
-            } footer: {
-                Text("Im Proöstrus prall, im Östrus weicher und nachgiebiger. Das Weicherwerden geht der Duldung meist voraus.")
-            }
-
-            // MARK: Verhalten
-            Section {
-                CycleTriStatePicker(title: "Flagging", value: $flagging)
+                CycleTriStatePicker(
+                    title: "Häufiges Urinieren",
+                    value: $frequentUrination,
+                    yesLabel: "Häufiger als sonst",
+                    noLabel: "Wie sonst"
+                )
+                CycleTriStatePicker(
+                    title: "Vermehrtes Belecken",
+                    value: $genitalLicking,
+                    yesLabel: "Vermehrt",
+                    noLabel: "Wie sonst"
+                )
                 CycleTriStatePicker(title: "Rüden interessiert", value: $attractsMales)
             } header: {
-                Text("Verhalten")
+                Text("Alltagszeichen")
             } footer: {
                 Text(
-                    "Flagging: der Schwanz wird bei Berührung zur Seite gelegt. "
-                        + "Nicht ausgefüllt heißt „nicht beobachtet“ — nicht „nein“."
+                    "Ohne Anfassen zu beobachten — deshalb die Felder, die sich am ehesten "
+                        + "lückenlos führen lassen.\n\n"
+                        + "Sie belegen, dass eine Läufigkeit läuft, sagen aber nicht, in welcher Phase: "
+                        + "alle vier setzen mit dem Proöstrus ein und halten über den Östrus an. "
+                        + "Sie verschieben die Phasenschätzung deshalb nicht und lösen für sich genommen "
+                        + "keine Warnung aus. Dafür sind Flagging und Duldung da."
+                )
+            }
+
+            // MARK: Genauer hinsehen
+            Section {
+                DisclosureGroup("Ausfluss und Vulva", isExpanded: $detailExpanded) {
+                    CycleTriStatePicker(
+                        title: "Ausfluss",
+                        value: $dischargePresent,
+                        yesLabel: "Vorhanden",
+                        noLabel: "Keiner"
+                    )
+                    if dischargePresent != false {
+                        CycleOptionalPicker(title: "Farbe", value: $dischargeColor) { Format.label($0) }
+                        CycleOptionalPicker(title: "Menge", value: $dischargeAmount) { Format.label($0) }
+                    }
+                    CycleOptionalPicker(title: "Konsistenz der Vulva", value: $vulvaTurgor) { Format.label($0) }
+                }
+            } footer: {
+                Text(
+                    "Zugeklappt, weil es Hinsehen und Tasten verlangt — nichts davon ist Pflicht, "
+                        + "die App rechnet auch ohne.\n\n"
+                        + "Wenn es sich ergibt, sind es die schärfsten nicht-klinischen Zeichen: der "
+                        + "Farbwechsel blutig → strohfarben und das Weicherwerden der Vulva markieren "
+                        + "beide den Übergang Proöstrus → Östrus und ziehen die kritischen Tage nach vorn. "
+                        + "Die Farbe lässt sich auch am Liegeplatz oder an einem hellen Tuch beurteilen."
                 )
             }
 
@@ -380,6 +421,9 @@ struct CycleObservationLogSheet: View {
                 dischargeColor: dischargeColor,
                 dischargeAmount: dischargeAmount,
                 vulvaTurgor: vulvaTurgor,
+                frequentUrination: frequentUrination,
+                genitalLicking: genitalLicking,
+                vulvaSwellingVisible: vulvaSwellingVisible,
                 flagging: flagging,
                 standingHeat: standingHeat,
                 attractsMales: attractsMales,

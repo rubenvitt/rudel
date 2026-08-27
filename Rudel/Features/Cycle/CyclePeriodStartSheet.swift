@@ -25,12 +25,16 @@ struct CyclePeriodStartSheet: View {
     @State private var note = ""
 
     // Erste Beobachtung, optional. Vorbelegung überall „nicht beobachtet":
-    // Tag 1 ist über Ausfluss *oder* Schwellung definiert, und welches von
-    // beiden zutrifft, weiß nur der Mensch davor.
+    // Tag 1 ist über mehrere Zeichen definiert, und welches davon aufgefallen
+    // ist, weiß nur der Mensch davor.
+    @State private var vulvaSwellingVisible: Bool?
+    @State private var frequentUrination: Bool?
+    @State private var genitalLicking: Bool?
     @State private var dischargePresent: Bool?
     @State private var dischargeColor: DischargeColor?
     @State private var dischargeAmount: DischargeAmount?
     @State private var vulvaTurgor: VulvaTurgor?
+    @State private var detailExpanded = false
 
     // MARK: Ableitungen
 
@@ -83,7 +87,10 @@ struct CyclePeriodStartSheet: View {
             dischargePresent: dischargePresent,
             dischargeColor: dischargeColor,
             dischargeAmount: dischargeAmount,
-            vulvaTurgor: vulvaTurgor
+            vulvaTurgor: vulvaTurgor,
+            frequentUrination: frequentUrination,
+            genitalLicking: genitalLicking,
+            vulvaSwellingVisible: vulvaSwellingVisible
         )
     }
 
@@ -123,8 +130,11 @@ struct CyclePeriodStartSheet: View {
                     Label("Was ist Tag 1?", systemImage: "info.circle")
                         .font(.subheadline.weight(.semibold))
                     Text(
-                        "Der erste Tag mit blutigem Ausfluss oder deutlich geschwollener Vulva. "
-                            + "Phase, fruchtbares Fenster und die Prognose der nächsten Läufigkeit rechnen alle von diesem Tag aus."
+                        "Der erste Tag, an dem die Läufigkeit erkennbar war — was davon zuerst "
+                            + "aufgefallen ist, spielt keine Rolle: sichtbar geschwollene Vulva, "
+                            + "blutiger Ausfluss, vermehrtes Belecken, häufigeres Urinieren oder "
+                            + "auffälliges Rüden-Interesse. Von diesem Tag rechnen Phase, "
+                            + "Risikostufen und die Prognose der nächsten Läufigkeit."
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -167,22 +177,45 @@ struct CyclePeriodStartSheet: View {
 
             Section {
                 CycleTriStatePicker(
-                    title: "Ausfluss",
-                    value: $dischargePresent,
-                    yesLabel: "Vorhanden",
-                    noLabel: "Keiner"
+                    title: "Vulva sichtbar geschwollen",
+                    value: $vulvaSwellingVisible,
+                    yesLabel: "Geschwollen",
+                    noLabel: "Unauffällig"
                 )
-                if dischargePresent != false {
-                    CycleOptionalPicker(title: "Farbe", value: $dischargeColor) { Format.label($0) }
-                    CycleOptionalPicker(title: "Menge", value: $dischargeAmount) { Format.label($0) }
+                CycleTriStatePicker(
+                    title: "Häufiges Urinieren",
+                    value: $frequentUrination,
+                    yesLabel: "Häufiger als sonst",
+                    noLabel: "Wie sonst"
+                )
+                CycleTriStatePicker(
+                    title: "Vermehrtes Belecken",
+                    value: $genitalLicking,
+                    yesLabel: "Vermehrt",
+                    noLabel: "Wie sonst"
+                )
+                DisclosureGroup("Ausfluss und Vulva", isExpanded: $detailExpanded) {
+                    CycleTriStatePicker(
+                        title: "Ausfluss",
+                        value: $dischargePresent,
+                        yesLabel: "Vorhanden",
+                        noLabel: "Keiner"
+                    )
+                    if dischargePresent != false {
+                        CycleOptionalPicker(title: "Farbe", value: $dischargeColor) { Format.label($0) }
+                        CycleOptionalPicker(title: "Menge", value: $dischargeAmount) { Format.label($0) }
+                    }
+                    CycleOptionalPicker(title: "Konsistenz der Vulva", value: $vulvaTurgor) { Format.label($0) }
                 }
-                CycleOptionalPicker(title: "Vulva", value: $vulvaTurgor) { Format.label($0) }
             } header: {
                 Text("Erste Beobachtung (optional)")
             } footer: {
                 Text(
-                    "Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar nicht gespeichert — "
-                        + "nicht „nein“. Beobachtungen lassen sich jederzeit nachtragen."
+                    "Oben steht, was ohne Anfassen zu sehen ist; Ausfluss und Tastbefund liegen "
+                        + "eingeklappt darunter.\n\n"
+                        + "Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar "
+                        + "nicht gespeichert — nicht „nein“. Beobachtungen lassen sich jederzeit "
+                        + "nachtragen."
                 )
             }
 
@@ -230,7 +263,10 @@ struct CyclePeriodStartSheet: View {
                 dischargePresent: dischargePresent,
                 dischargeColor: dischargeColor,
                 dischargeAmount: dischargeAmount,
-                vulvaTurgor: vulvaTurgor
+                vulvaTurgor: vulvaTurgor,
+                frequentUrination: frequentUrination,
+                genitalLicking: genitalLicking,
+                vulvaSwellingVisible: vulvaSwellingVisible
             )
             observation.period = period
             context.insert(observation)

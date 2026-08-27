@@ -228,6 +228,16 @@ public struct CriticalDaysAdvisor: Sendable {
             if indicatesEstrus {
                 start = min(start, day)
             }
+
+            // **Nicht** in `indicatesEstrus`: `frequentUrination`,
+            // `genitalLicking`, `vulvaSwellingVisible`, `attractsMales`.
+            // Alle vier setzen bereits mit dem Proöstrus ein und halten über den
+            // Östrus an — sie trennen die beiden Phasen nicht. Wer sie mitzählte,
+            // bekäme an Tag 2 die Stufe `.critical` und damit eine Warnung, die
+            // drei Wochen durchläuft und genau das ist, was die Abstufung
+            // verhindern soll. Bei der sichtbaren Schwellung zeigt der Wert sogar
+            // in die falsche Richtung: sie ist im Proöstrus maximal und nimmt zum
+            // Östrus hin eher ab.
         }
 
         return max(1, start)
@@ -288,6 +298,22 @@ public struct CriticalDaysAdvisor: Sendable {
 
         switch risk {
         case .elevated:
+            // Ab dem Tag, an dem der Östrus frühestens beginnen kann, darf hier
+            // kein „geht noch nicht" mehr stehen. Der Proöstrus dauert
+            // mindestens `proestrusMinDays` Tage, also ist ab dem Tag danach
+            // eine Deckung möglich — selten, aber möglich. Die Stufe bleibt
+            // trotzdem `.elevated`: sonst wäre praktisch die ganze Läufigkeit
+            // kritisch und die Abstufung wertlos. Also bleibt die Stufe, und der
+            // Text hört auf, mehr zu versprechen, als er halten kann.
+            if dayInCycle > StudyConstants.proestrusMinDays {
+                var text = "\(day). Rüden zeigen Interesse. Eine Deckung ist jetzt unwahrscheinlich, "
+                    + "aber nicht ausgeschlossen — der Östrus kann frühestens an Tag "
+                    + "\(StudyConstants.proestrusMinDays + 1) beginnen. Nicht unbeaufsichtigt laufen lassen."
+                if !hasObservations {
+                    text += " Duldung oder Flagging zu prüfen macht die Einschätzung deutlich genauer."
+                }
+                return text
+            }
             return "\(day). Rüden zeigen Interesse, gedeckt werden kann sie noch nicht — unbeaufsichtigt trotzdem nicht laufen lassen."
 
         case .critical:

@@ -311,3 +311,122 @@ Bildmodelle rendern bei „App Icon" gern ein fertig maskiertes Icon *auf* einem
 Hintergrund. iOS maskiert selbst zum Squircle — ein solches Bild ist unbrauchbar
 und lässt sich auch nicht wegcroppen. Das PNG ist deshalb randlos und **ohne
 Alpha-Kanal**; ein transparentes App-Icon wird vom App Store abgelehnt.
+
+## 9. Beobachtbarkeit statt Vollständigkeit (Nachtrag, 27. August 2026)
+
+Nachträglich beauftragt, mit einer Beobachtung aus dem Alltag: Menge und Farbe
+des Ausflusses sowie die Konsistenz der Vulva sind nicht täglich zu erheben.
+Wer keinen Deckakt plant, greift seinem Hund nicht jeden Morgen zwischen die
+Hinterbeine. Die App verlangte damit genau die Felder, die im echten Betrieb
+leer bleiben — und stellte gleichzeitig ein „fruchtbares Fenster" mit „bestem
+Zeitpunkt" nach vorn, also die Antwort auf eine Frage, die hier niemand stellt.
+
+### 9.1 Duldung und Flagging sind nicht dasselbe
+
+Beide beschreiben denselben Reflex in unterschiedlichem Ausmaß:
+
+| | Auslöser | Aussage | Zeitpunkt |
+|---|---|---|---|
+| **Flagging** | Streichen über Kruppe/Rutenansatz | Schwanz wird zur Seite gelegt — Teilreflex | früher, teils schon im späten Proöstrus |
+| **Duldung** | fester Druck auf die Lendenpartie | ganzer Reflex: steht, stemmt sich, hebt die Hinterhand, Schwanz zur Seite | später, praktisch nur im Östrus |
+
+Flagging ist damit die **frühere, weniger spezifische** Teilmenge. Für eine
+Risikoeinschätzung ist genau das die nützlichere Eigenschaft — und deshalb
+ziehen beide in `CriticalDaysAdvisor.criticalStartDay` die Stufe `.critical`
+gleich weit nach vorn.
+
+**Beide brauchen keinen Rüden.** Die UI behauptete das Gegenteil („wenn ein
+Rüde aufreitet") und machte damit das stärkste Signal des ganzen Modells für
+einen Einzelhund-Haushalt unerfüllbar. Der Handtest steht jetzt in der Fußzeile
+des Formulars und in der Schnellfrage der Übersicht.
+
+### 9.2 Drei Alltagszeichen, bewusst ohne Phasenwirkung
+
+`PhaseSignals` bekommt `frequentUrination`, `genitalLicking` und
+`vulvaSwellingVisible` — alle drei ohne Anfassen zu erheben und deshalb die
+einzigen Felder, die sich lückenlos führen lassen.
+
+Genau deshalb dürfen sie **keine Phase benennen und die Stufe `.critical` nicht
+vorziehen**:
+
+- Vermehrtes Urinieren/Markieren setzt mit dem Proöstrus ein und hält über den
+  Östrus an.
+- Vermehrtes Belecken folgt dem Ausfluss und existiert in beiden Phasen.
+- Die sichtbare Schwellung ist im Proöstrus **maximal** und nimmt zum Östrus
+  hin eher wieder ab — als Phasenmarker zeigte sie sogar in die falsche
+  Richtung.
+
+Wer sie „der Vollständigkeit halber" mit auswertete, bekäme an Tag 2 die Stufe
+`.critical` und damit eine Warnung, die drei Wochen durchläuft — das ist der
+Zustand, den die Abstufung überhaupt erst verhindern soll. Beide Regelwerke
+(`CyclePhaseEstimator.observedPhase`, `CriticalDaysAdvisor.criticalStartDay`)
+tragen diese Begründung als Kommentar, und je ein Test hält sie fest.
+
+Was die drei stattdessen können, steht in `PhaseSignals.indicatesActiveHeat`:
+„läuft überhaupt eine Läufigkeit?" — zuverlässig beantwortbar, ohne eine
+Phasenaussage zu erfinden.
+
+### 9.3 Das Risiko steht jetzt auf dem Screen
+
+`CriticalDaysAdvisor` lief bis hierher **nur** in `NotificationService` — im
+Zyklus-Tab stand keine einzige Risikoangabe. Die Übersicht rendert nun als
+erste Sektion den Hinweis für heute: Stufe, Kurzaussage, der Text des Advisors
+und die Datumsspanne der kritischen Tage.
+
+Der Text kommt **unverändert** aus dem Advisor, nicht aus einer zweiten
+Formulierung in der View. §7 führt bereits eine solche Doppelung als bekannte
+Grenze; eine weitere wurde nicht angelegt. Aus demselben Grund kommen der
+Hinweis für heute und die Spanne aus **einem** `notices(…)`-Aufruf: zwei
+Aufrufe mit verschiedenen Fenstern könnten auseinanderlaufen, sobald eine
+Beobachtung den Beginn verschiebt.
+
+`CriticalDayNotice.phase` wird bewusst **nicht** gerendert — sie stammt allein
+aus dem Kalender und darf von der Phasenschätzung darunter abweichen. Zwei
+verschiedene Phasenangaben auf einem Screen wären schlimmer als eine fehlende.
+
+### 9.4 Das fruchtbare Fenster ist eingeklappt, nicht umbenannt
+
+Naheliegend wäre, das fruchtbare Fenster einfach als „Risikofenster" zu
+beschriften — die Rechnung ist dieselbe. Das wäre falsch: Das Fenster liegt um
+den optimalen Deckzeitpunkt und ist je nach Datenlage ±1 bis ±5 Tage breit. Der
+Zeitraum, in dem eine Deckung aufgehen kann, ist deutlich breiter und beginnt
+früher — Spermien bleiben im Genitaltrakt mehrere Tage befruchtungsfähig, und
+schon die Östrus-Grenze streut über 3 bis 21 Tage.
+
+Umbenannt stünde also eine **schmalere** Zahl auf dem Screen als die, die
+`CriticalDaysAdvisor` rechnet: zwei widersprüchliche Antworten auf dieselbe
+Frage, und die falsche sähe genauer aus. Die Mathematik bleibt deshalb
+unangetastet; die Sektion heißt „Deckplanung", ist zugeklappt und trägt in der
+Fußzeile ausdrücklich, dass sie kein Risikozeitraum ist.
+
+### 9.5 Tag 1 ist breiter definiert
+
+Der Anker hieß „erster Tag mit blutigem Ausfluss oder deutlich geschwollener
+Vulva" — beides Zeichen, die man erst sieht, wenn man hinsieht. Er heißt jetzt
+„erster Tag, an dem die Läufigkeit erkennbar war" und zählt die Alltagszeichen
+mit auf. Das Tag-1-Sheet nimmt sie als erste Beobachtung entgegen; Ausfluss und
+Tastbefund liegen darunter eingeklappt.
+
+**Nicht gebaut: eine Erkennung „Anzeichen da, aber kein Tag-1-Anker".**
+Inhaltlich wäre sie richtig — das Risikowerk schweigt ohne Anker, und die
+Alltagszeichen fallen typischerweise vor dem Anker auf. Es fehlt aber der
+Speicherweg: `CycleObservation` hängt an einer `CyclePeriod`, eine Beobachtung
+ohne Läufigkeit lässt sich gar nicht ablegen. Ein Detektor ohne Datenquelle
+wäre eine leere Regel. Dieselbe Information landet stattdessen dort, wo sie
+handlungsfähig ist: in der Definition von Tag 1.
+
+### 9.6 Die niedrige Stufe versprach zu viel
+
+Beim Umbau aufgefallen: `.elevated` formulierte „Rüden zeigen Interesse,
+gedeckt werden kann sie noch nicht" — an **jedem** Tag vor dem kritischen
+Beginn, also bis Tag 8. Das widerspricht der Spanne, mit der dieselbe Datei
+rechnet: Der Proöstrus dauert mindestens 3 Tage, der Östrus kann damit
+frühestens an Tag 4 beginnen. Für die Tage 4 bis 8 stand also eine
+Entwarnung auf dem Screen, die die eigene Populationsspanne nicht deckt — und
+das ausgerechnet in der Kategorie, deren Fehler irreversibel ist.
+
+Korrigiert wurde der **Text**, nicht die Stufe: Ab Tag
+`proestrusMinDays + 1` heißt es „unwahrscheinlich, aber nicht ausgeschlossen"
+mit dem Hinweis, Duldung oder Flagging zu prüfen. Die Stufe auf `.critical`
+vorzuziehen wäre der falsche Schluss gewesen — dann wäre praktisch die ganze
+Läufigkeit kritisch, und genau das entwertet die Abstufung.
