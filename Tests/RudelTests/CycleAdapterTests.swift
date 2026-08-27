@@ -274,8 +274,8 @@ struct CycleAdapterTests {
         #expect(period.firstStandingHeatDate == nil)
     }
 
-    @Test("firstActiveHeatSignDate greift auch, wenn nur Alltagszeichen erfasst sind")
-    func firstActiveHeatSignDateWorksWithoutHandling() throws {
+    @Test("Ein reiner Alltagszeichen-Eintrag reicht der Engine als Beleg einer laufenden Läufigkeit")
+    func everydaySignsSurviveTheAdapter() throws {
         let context = try makeContext()
         let period = CyclePeriod(day1Date: Fixture.day(2026, 4, 1), createdAt: Fixture.logged)
         context.insert(period)
@@ -300,7 +300,12 @@ struct CycleAdapterTests {
         standingHeat.period = period
         try context.save()
 
-        #expect(period.firstActiveHeatSignDate == Fixture.day(2026, 4, 2))
+        // Der Adapter muss die Alltagszeichen so durchreichen, dass die
+        // Engine-Regel greift — sonst wäre der ganze Zweck der drei Felder
+        // (etwas beitragen, ohne Anfassen) an der Modellschicht verloren.
+        let signals = period.phaseSignals
+        #expect(signals.count == 2)
+        #expect(signals.first?.indicatesActiveHeat == true)
         // Die Duldung ist davon unberührt — sie bleibt der späte, harte Beleg.
         #expect(period.firstStandingHeatDate == Fixture.day(2026, 4, 11))
     }
@@ -324,7 +329,7 @@ struct CycleAdapterTests {
 
         // Der Eintrag ist eine echte Beobachtung — aber kein Beleg.
         #expect(!observation.phaseSignals.isEmpty)
-        #expect(period.firstActiveHeatSignDate == nil)
+        #expect(observation.phaseSignals.indicatesActiveHeat == false)
     }
 
     @Test("engineID ist die UUID der Läufigkeit als String")

@@ -50,6 +50,62 @@ final class SmokeTests: XCTestCase {
         }
     }
 
+    /// Der Zyklus-Durchstich: Läufigkeit anlegen, damit die Screens der
+    /// laufenden Läufigkeit überhaupt gebaut werden.
+    ///
+    /// Ohne einen Tag-1-Anker zeigt der Zyklus-Tab nur seinen Leerzustand — die
+    /// Risikostufe, die Deckplanung und das Beobachtungsformular sind dann
+    /// unerreichbar und wären allein vom Compiler geprüft. Genau die Lücke, die
+    /// dieses Target schließen soll.
+    @MainActor
+    func testCycleScreensRenderWithARunningHeat() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
+
+        createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
+
+        let cycleTab = app.tabBars.buttons["Zyklus"]
+        // Der Tab erscheint nur für unkastrierte Hündinnen. Ist das Anlege-
+        // Formular anders vorbelegt, ist hier nichts zu prüfen.
+        guard cycleTab.waitForExistence(timeout: 5) else { return }
+        cycleTab.tap()
+
+        // Tag 1 anlegen — vorbelegt mit heute, also ist danach eine Läufigkeit
+        // aktiv und die Risikostufe steht auf Tag 1.
+        let startButton = app.buttons["Läufigkeit begonnen"].firstMatch
+        guard startButton.waitForExistence(timeout: 5) else {
+            XCTFail("Kein Einstieg in die Läufigkeitserfassung")
+            return
+        }
+        startButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "Absturz im Tag-1-Sheet")
+        attachScreenshot(of: app, named: "zyklus-tag1-sheet")
+
+        let saveButton = app.buttons["Speichern"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5), "Speichern im Tag-1-Sheet fehlt")
+        saveButton.tap()
+
+        // Zurück auf der Übersicht: Risikostufe, laufende Läufigkeit und
+        // Deckplanung werden jetzt tatsächlich gebaut.
+        let riskHeader = app.staticTexts["Wie sehr aufpassen?"]
+        XCTAssertTrue(
+            riskHeader.waitForExistence(timeout: 10),
+            "Die Risikostufe erscheint nicht, obwohl eine Läufigkeit läuft"
+        )
+        XCTAssertEqual(app.state, .runningForeground, "Absturz beim Aufbau der Zyklus-Übersicht")
+        attachScreenshot(of: app, named: "zyklus-laufend")
+
+        // Und das Beobachtungsformular, das ohne Läufigkeit nur seinen
+        // Leerzustand zeigen könnte.
+        let observeButton = app.buttons["Beobachtung erfassen"].firstMatch
+        XCTAssertTrue(observeButton.waitForExistence(timeout: 5), "Kein Einstieg in die Beobachtung")
+        observeButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "Absturz im Beobachtungs-Sheet")
+        attachScreenshot(of: app, named: "zyklus-beobachtung")
+        dismissSheet(in: app)
+    }
+
     /// Zieht jedes Erfassungs-Sheet einmal auf. Sheets sind die Screens mit den
     /// meisten Bindings und damit die wahrscheinlichste Absturzstelle.
     @MainActor

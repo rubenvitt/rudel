@@ -69,13 +69,6 @@ extension CyclePeriod {
         sortedObservations.first { $0.standingHeat == true }?.date
     }
 
-    /// Erster Tag, an dem überhaupt ein Zeichen einer laufenden Läufigkeit
-    /// dokumentiert ist. Anders als `firstStandingHeatDate` auch dann gesetzt,
-    /// wenn nur Alltagszeichen erfasst wurden.
-    var firstActiveHeatSignDate: Date? {
-        sortedObservations.first { $0.phaseSignals.indicatesActiveHeat }?.date
-    }
-
     /// Läuft die sichtbare Hitze zum Stichtag noch?
     func isVisiblyActive(asOf: Date = Date()) -> Bool {
         guard let visibleHeatEndDate else { return day1Date <= asOf }

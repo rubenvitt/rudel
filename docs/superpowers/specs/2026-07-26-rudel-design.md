@@ -430,3 +430,27 @@ Korrigiert wurde der **Text**, nicht die Stufe: Ab Tag
 mit dem Hinweis, Duldung oder Flagging zu prüfen. Die Stufe auf `.critical`
 vorzuziehen wäre der falsche Schluss gewesen — dann wäre praktisch die ganze
 Läufigkeit kritisch, und genau das entwertet die Abstufung.
+
+### 9.7 Schema-Erweiterung ohne Migrationsplan
+
+`CycleObservation` bekommt drei neue Properties. Die App hält keinen
+`VersionedSchema` und keinen `SchemaMigrationPlan` — sie verlässt sich auf die
+implizite Lightweight-Migration von SwiftData. Drei optionale `Bool?` ohne
+`@Attribute`-Constraint und ohne Umbenennung sind genau der Fall, den diese
+Migration abdeckt; ein vorhandener Store öffnet unverändert.
+
+Das ist hier nicht nur zulässig, sondern semantisch passend: Bereits
+gespeicherte Beobachtungen bekommen `nil`, und `nil` heißt in diesem Modell
+ohnehin „nicht beobachtet" — genau das, was für einen Tag vor Einführung der
+Felder stimmt. Ein Default von `false` hätte rückwirkend Beobachtungen
+behauptet, die niemand gemacht hat.
+
+Relevant wird das, weil §6 einen In-Memory-Fallback ausschließt: Öffnet der
+Store nicht, zeigt die App den Fehler und schreibt nichts. Eine Schema-Änderung
+ist damit die einzige Klasse Fehler, die die gesamte Historie unerreichbar
+macht — der Grund, warum das hier festgehalten wird statt als Selbstverständnis
+durchzugehen.
+
+**Sobald ein pflichtiges Feld, eine Umbenennung oder ein geänderter Typ dazu
+kommt, reicht das nicht mehr.** Dann braucht es einen `VersionedSchema` und
+einen Migrationsplan, bevor die Version auf ein Gerät kommt.
