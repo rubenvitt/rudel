@@ -37,6 +37,14 @@ public struct NotificationPlanner: Sendable {
         public var body: String
         public var petID: String
         public var category: DueItem.Category
+        /// Opake ID des zugrundeliegenden Plans, sofern vorhanden.
+        public var sourceID: String
+        /// Ursprünglicher Fälligkeitstermin. Bei Vorwarnungen ist dieser später
+        /// als `fireDate`; Dosis-Termine tragen hier ihre planmäßige Gabezeit.
+        public var dueAt: Date?
+        /// Optionales Wiederholungsintervall für App-seitig erzeugte Fallbacks.
+        /// Der Standardplaner erzeugt ausschließlich einmalige Termine.
+        public var repeatInterval: TimeInterval?
         /// Priorität für den Fall, dass gekürzt werden muss. Höher = wichtiger.
         public var priority: Int
 
@@ -47,7 +55,10 @@ public struct NotificationPlanner: Sendable {
             body: String,
             petID: String,
             category: DueItem.Category,
-            priority: Int
+            priority: Int,
+            sourceID: String = "",
+            dueAt: Date? = nil,
+            repeatInterval: TimeInterval? = nil
         ) {
             self.id = id
             self.fireDate = fireDate
@@ -56,6 +67,9 @@ public struct NotificationPlanner: Sendable {
             self.petID = petID
             self.category = category
             self.priority = priority
+            self.sourceID = sourceID
+            self.dueAt = dueAt
+            self.repeatInterval = repeatInterval
         }
     }
 
@@ -92,6 +106,9 @@ public struct NotificationPlanner: Sendable {
     ///   - doseOccurrences: Einzelgaben-Termine je Medikament, Schlüssel ist
     ///     `MedicationInput.sourceID`. Werden von der App aus
     ///     `MedicationCalculator.doseOccurrences(schedule:in:)` befüllt.
+    ///   - medicationReminders: Vollständige Engine-Termine. Wenn gesetzt, ist
+    ///     diese Liste für Dosis-Benachrichtigungen maßgeblich; Dashboard-Dosen
+    ///     und `doseOccurrences` werden dann nicht berücksichtigt.
     ///   - criticalDays: Tageshinweise einer laufenden Läufigkeit aus
     ///     `CriticalDaysAdvisor`, geschlüsselt nach **`petID`**.
     ///
@@ -101,6 +118,8 @@ public struct NotificationPlanner: Sendable {
     ///     direkt herein, statt aus einem passenden `DueItem` erschlossen werden
     ///     zu müssen — genau die Abhängigkeit, an der Dosis-Termine ohne
     ///     Gegenstück verworfen werden müssen.
+    ///   - alarmHandledReminders: Termine, deren Fälligkeitsbenachrichtigung ein
+    ///     Alarm übernimmt. Vorab-Erinnerungen derselben Fälligkeit bleiben.
     ///   - settings: Vorwarnzeiten und Fensterlänge.
     ///   - asOf: „jetzt". Termine in der Vergangenheit werden verworfen — iOS
     ///     würde sie sofort feuern.
@@ -130,7 +149,9 @@ public struct NotificationPlanner: Sendable {
     public func plan(
         dueItems: [DueItem],
         doseOccurrences: [String: [Date]],
+        medicationReminders: [MedicationReminder]? = nil,
         criticalDays: [String: [CriticalDayNotice]] = [:],
+        alarmHandledReminders: [MedicationReminder] = [],
         settings: Settings,
         asOf: Date
     ) -> [PlannedNotification] {
@@ -147,23 +168,34 @@ public struct NotificationPlanner: Sendable {
             metaBySource[item.sourceID] = item
         }
 
-        for item in dueItems {
+        for item in dueItems where medicationReminders == nil || item.category != .dose {
             candidates.append(contentsOf: notifications(for: item, settings: settings, asOf: asOf))
         }
 
-        for (sourceID, dates) in doseOccurrences {
-            // Ohne passendes `DueItem` fehlen Tiername und `petID`. Eine
-            // Erinnerung, die die App-Schicht keinem Tier zuordnen kann, ist
-            // schlimmer als keine — deshalb überspringen (siehe `concerns`).
-            guard let meta = metaBySource[sourceID] else { continue }
-            for date in dates {
+        if let medicationReminders {
+            for reminder in medicationReminders where reminder.category == .dose {
                 guard let planned = doseNotification(
-                    source: meta,
-                    fireDate: date,
+                    reminder: reminder,
                     settings: settings,
                     asOf: asOf
                 ) else { continue }
                 candidates.append(planned)
+            }
+        } else {
+            for (sourceID, dates) in doseOccurrences {
+                // Ohne passendes `DueItem` fehlen Tiername und `petID`. Eine
+                // Erinnerung, die die App-Schicht keinem Tier zuordnen kann, ist
+                // schlimmer als keine — deshalb überspringen (siehe `concerns`).
+                guard let meta = metaBySource[sourceID] else { continue }
+                for date in dates {
+                    guard let planned = doseNotification(
+                        source: meta,
+                        fireDate: date,
+                        settings: settings,
+                        asOf: asOf
+                    ) else { continue }
+                    candidates.append(planned)
+                }
             }
         }
 
@@ -176,6 +208,31 @@ public struct NotificationPlanner: Sendable {
                     asOf: asOf
                 ) else { continue }
                 candidates.append(planned)
+            }
+        }
+
+        // Vor dem Ranking entfernen: sonst belegen später verworfene
+        // Alarm-Termine bereits Plätze im 56er-Budget. `fireDate == dueAt`
+        // schützt Vorab-Erinnerungen, die dieselbe Fälligkeit referenzieren.
+        if !alarmHandledReminders.isEmpty {
+            let handled = Set(alarmHandledReminders.map {
+                MedicationOccurrenceKey(
+                    sourceID: $0.sourceID,
+                    category: $0.category,
+                    dueAt: $0.dueAt
+                )
+            })
+            candidates.removeAll { candidate in
+                guard let dueAt = candidate.dueAt, candidate.fireDate == dueAt else {
+                    return false
+                }
+                return handled.contains(
+                    MedicationOccurrenceKey(
+                        sourceID: candidate.sourceID,
+                        category: candidate.category,
+                        dueAt: dueAt
+                    )
+                )
             }
         }
 
@@ -207,6 +264,12 @@ public struct NotificationPlanner: Sendable {
             if a.priority != b.priority { return a.priority > b.priority }
             return a.id < b.id
         }
+    }
+
+    private struct MedicationOccurrenceKey: Hashable {
+        var sourceID: String
+        var category: DueItem.Category
+        var dueAt: Date
     }
 
     // MARK: - Prioritäten
@@ -281,7 +344,9 @@ public struct NotificationPlanner: Sendable {
                 body: body(for: item, firingAt: fireDate),
                 petID: item.petID,
                 category: item.category,
-                priority: priority(for: item)
+                priority: priority(for: item),
+                sourceID: item.sourceID,
+                dueAt: at(settings.reminderTime, on: item.dueOn)
             )
         }
     }
@@ -311,7 +376,37 @@ public struct NotificationPlanner: Sendable {
             body: sentence(text),
             petID: item.petID,
             category: .dose,
-            priority: dayMath.isSameDay(fireDate, asOf) ? Self.priorityDoseToday : Self.priorityDoseFuture
+            priority: dayMath.isSameDay(fireDate, asOf) ? Self.priorityDoseToday : Self.priorityDoseFuture,
+            sourceID: item.sourceID,
+            dueAt: fireDate
+        )
+    }
+
+    /// Dosis-Erinnerung mit vollständigen Metadaten aus dem authoritative Plan.
+    private func doseNotification(
+        reminder: MedicationReminder,
+        settings: Settings,
+        asOf: Date
+    ) -> PlannedNotification? {
+        guard reminder.dueAt >= asOf else { return nil }
+        guard dayMath.days(from: asOf, to: reminder.dueAt) <= settings.horizonDays else { return nil }
+
+        let base = trimmed(reminder.title) ?? "Medikament"
+        var text = "\(base): Gabe um \(timeText(reminder.dueAt))"
+        if let detail = trimmed(reminder.detail) { text += " — \(detail)" }
+
+        return PlannedNotification(
+            id: reminder.id,
+            fireDate: reminder.dueAt,
+            title: headline(petName: reminder.petName, subject: appending("geben", to: base)),
+            body: sentence(text),
+            petID: reminder.petID,
+            category: .dose,
+            priority: dayMath.isSameDay(reminder.dueAt, asOf)
+                ? Self.priorityDoseToday
+                : Self.priorityDoseFuture,
+            sourceID: reminder.sourceID,
+            dueAt: reminder.dueAt
         )
     }
 

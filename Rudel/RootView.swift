@@ -19,6 +19,7 @@ struct RootView: View {
     @Query private var doseLogs: [DoseLogEntry]
     @Query private var cyclePeriods: [CyclePeriod]
     @Query private var cycleObservations: [CycleObservation]
+    @Query private var settingsRecords: [AppSettings]
 
     private let notificationService = NotificationService()
 
@@ -42,6 +43,20 @@ struct RootView: View {
         .task(id: notificationFingerprint) {
             await refreshNotifications()
         }
+        .onOpenURL { url in
+            guard let id = MedicationAlarmLink.reminderID(from: url) else { return }
+            appState.present(.medicationReminder(reminderID: id))
+        }
+        .safeAreaInset(edge: .top) {
+            if let issue = MedicationAlarmService.shared.issue {
+                Button { appState.present(.settings) } label: {
+                    Label(issue, systemImage: "exclamationmark.triangle.fill")
+                        .font(.footnote).lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                }
+                .foregroundStyle(.orange).background(.regularMaterial)
+            }
+        }
         .sheet(item: sheetBinding) { sheet in
             SheetPresenter(sheet: sheet)
         }
@@ -61,12 +76,32 @@ struct RootView: View {
         hasher.combine(doseLogs.count)
         hasher.combine(cycleObservations.count)
         for plan in medicationPlans {
+            hasher.combine(plan.id)
+            hasher.combine(plan.pet?.id)
+            hasher.combine(plan.kindValue)
+            hasher.combine(plan.productName)
+            hasher.combine(plan.doseLabel)
+            hasher.combine(plan.doseStartDate)
             hasher.combine(plan.isActive)
             hasher.combine(plan.intervalDays)
             hasher.combine(plan.effectiveDays)
             hasher.combine(plan.doseTimesMinutes)
             hasher.combine(plan.doseEveryNDays)
             hasher.combine(plan.doseEndDate)
+        }
+        for pet in pets {
+            hasher.combine(pet.id)
+            hasher.combine(pet.name)
+        }
+        for settings in settingsRecords {
+            hasher.combine(settings.notificationsEnabled)
+            hasher.combine(settings.medicationAlarmsEnabled)
+            hasher.combine(settings.medicationLeadMinutes)
+            hasher.combine(settings.medicationSnoozeMinutes)
+            hasher.combine(settings.leadDays)
+            hasher.combine(settings.reminderMinutesFromMidnight)
+            hasher.combine(settings.notificationHorizonDays)
+            hasher.combine(settings.criticalDayRemindersEnabled)
         }
         for period in cyclePeriods {
             hasher.combine(period.day1Date)
@@ -82,7 +117,7 @@ struct RootView: View {
     /// Läufigkeit hieße das Hinweise für die ersten zwei Wochen und danach
     /// Schweigen, ausgerechnet in der Phase mit der höchsten Priorität.
     private func refreshNotifications() async {
-        guard !pets.isEmpty else { return }
+        // Auch das Löschen des letzten Tiers muss bestehende Alarme entfernen.
         let settings = AppSettings.loadOrCreate(in: modelContext)
         await notificationService.reschedule(context: modelContext, settings: settings)
     }
@@ -152,8 +187,10 @@ private struct SheetPresenter: View {
 
     var body: some View {
         switch sheet {
-        case .quickLogMedication(let petID):
-            QuickLogMedicationSheet(petID: petID)
+        case .quickLogMedication(let petID, let planID):
+            QuickLogMedicationSheet(petID: petID, initialPlanID: planID)
+        case .medicationReminder(let reminderID):
+            MedicationReminderConfirmationSheet(reminderID: reminderID)
         case .editMedicationPlan(let planID, let petID):
             MedicationPlanEditSheet(planID: planID, petID: petID)
         case .logCycleObservation(let petID):

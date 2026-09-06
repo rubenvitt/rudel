@@ -33,13 +33,7 @@ struct RudelApp: App {
         // CloudKit-Sync ist in v1 aus (PRD §11: „CloudKit-Sync in v1 oder
         // später?"). Das Schema ist trotzdem CloudKit-kompatibel gebaut, siehe
         // `Pet` — Umstellung auf `.private(...)` später ohne Migration.
-        let configuration = ModelConfiguration(
-            schema: Self.schema,
-            cloudKitDatabase: .none
-        )
-        containerResult = Result {
-            try ModelContainer(for: Self.schema, configurations: [configuration])
-        }
+        containerResult = RudelPersistence.containerResult
     }
 
     var body: some Scene {

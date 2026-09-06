@@ -9,6 +9,7 @@ import SwiftUI
 /// Wer etwas anderes meint, korrigiert — wer den Normalfall meint, tippt einmal.
 struct QuickLogMedicationSheet: View {
     let petID: UUID
+    var initialPlanID: UUID? = nil
 
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var context
@@ -22,6 +23,8 @@ struct QuickLogMedicationSheet: View {
     @State private var note = ""
     @State private var productOverride = ""
     @State private var didPrepare = false
+    @State private var selectedDoseAt: Date?
+    @State private var errorMessage: String?
 
     private var now: Date { Date() }
 
@@ -32,6 +35,23 @@ struct QuickLogMedicationSheet: View {
 
     private var selectedPlan: MedicationPlan? {
         plans.first { $0.id == selectedPlanID }
+    }
+
+    private var doseOptions: [MedicationReminder] {
+        guard let plan = selectedPlan, plan.kindValue == .ongoing else { return [] }
+        return MedicationReminderPlanner(dayMath: appState.dayMath).plan(
+            medications: [plan.engineInput()], loggedDoses: [plan.engineID: plan.doseLogs.map(\.scheduledAt)],
+            reminderTime: TimeOfDay(hour: 9), horizonDays: 0, asOf: givenOn
+        )
+    }
+
+    private var selectedDose: MedicationReminder? {
+        doseOptions.first { $0.dueAt == selectedDoseAt } ?? doseOptions.first
+    }
+
+    private var canSave: Bool {
+        guard let selectedPlan else { return false }
+        return selectedPlan.kindValue != .ongoing || selectedDose != nil
     }
 
     var body: some View {
@@ -56,7 +76,7 @@ struct QuickLogMedicationSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Speichern") { save() }
-                        .disabled(selectedPlan == nil)
+                        .disabled(!canSave)
                 }
             }
             .task { prepare() }
@@ -80,12 +100,27 @@ struct QuickLogMedicationSheet: View {
                             .tag(plan.id as UUID?)
                     }
                 }
+                .accessibilityIdentifier("medication-plan-selection")
                 DatePicker(
                     "Datum",
                     selection: $givenOn,
                     in: ...now,
                     displayedComponents: .date
                 )
+                if selectedPlan?.kindValue == .ongoing {
+                    if doseOptions.isEmpty {
+                        Text("An diesem Tag gibt es keine offene Gabe.").foregroundStyle(.secondary)
+                    } else {
+                        Picker("Gabezeit", selection: Binding(
+                            get: { selectedDose?.dueAt }, set: { selectedDoseAt = $0 }
+                        )) {
+                            ForEach(doseOptions) { dose in
+                                Text(Format.time(dose.dueAt)).tag(dose.dueAt as Date?)
+                            }
+                        }
+                        .accessibilityIdentifier("medication-dose-selection")
+                    }
+                }
             } footer: {
                 if let plan = selectedPlan {
                     Text(MedicationDisplay.status(for: plan, asOf: now, dayMath: appState.dayMath).dueText)
@@ -93,14 +128,17 @@ struct QuickLogMedicationSheet: View {
             }
 
             Section {
-                TextField(
+                if selectedPlan?.kindValue != .ongoing { TextField(
                     "Abweichendes Präparat",
                     text: $productOverride,
                     prompt: Text(selectedPlan.map { MedicationDisplay.title(for: $0) } ?? "wie im Plan")
-                )
+                ) }
                 TextField("Notiz", text: $note, axis: .vertical)
             } footer: {
                 Text("Nur ausfüllen, wenn etwas anderes als im Plan gegeben wurde. Leer heißt: wie geplant.")
+            }
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
             }
         }
     }
@@ -124,7 +162,7 @@ struct QuickLogMedicationSheet: View {
 
         givenOn = appState.dayMath.startOfDay(Date())
         if let fetched {
-            selectedPlanID = MedicationDisplay
+            selectedPlanID = initialPlanID ?? MedicationDisplay
                 .sortedActivePlans(of: fetched, asOf: Date(), dayMath: appState.dayMath)
                 .first?.id
         }
@@ -134,6 +172,15 @@ struct QuickLogMedicationSheet: View {
 
     private func save() {
         guard let plan = selectedPlan else { return }
+        if plan.kindValue == .ongoing {
+            guard let dose = selectedDose else { return }
+            let entry = DoseLogEntry(scheduledAt: dose.dueAt, note: note.trimmingCharacters(in: .whitespacesAndNewlines))
+            context.insert(entry)
+            entry.plan = plan
+            do { try context.save(); dismiss() }
+            catch { context.delete(entry); errorMessage = error.localizedDescription }
+            return
+        }
         let event = MedicationEvent(
             givenOn: appState.dayMath.startOfDay(givenOn),
             productNameOverride: productOverride.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -141,7 +188,7 @@ struct QuickLogMedicationSheet: View {
         )
         context.insert(event)
         event.plan = plan
-        try? context.save()
-        dismiss()
+        do { try context.save(); dismiss() }
+        catch { context.delete(event); errorMessage = error.localizedDescription }
     }
 }

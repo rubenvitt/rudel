@@ -158,6 +158,7 @@ struct MedicationPlanEditSheet: View {
         Section {
             TextField("Präparat", text: $productName, prompt: Text(Format.label(kind)))
                 .textInputAutocapitalization(.words)
+                .accessibilityIdentifier("medication-product-name")
         } footer: {
             Text("Ohne Angabe steht in der Liste „\(Format.label(kind))“.")
         }

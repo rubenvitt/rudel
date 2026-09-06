@@ -75,15 +75,19 @@ private struct MedicationPlanList: View {
                 }
                 .accessibilityLabel("Plan anlegen")
             }
+        }
+        .safeAreaInset(edge: .bottom) {
             if !activePlans.isEmpty {
-                ToolbarItem(placement: .bottomBar) {
-                    Button {
-                        appState.present(.quickLogMedication(petID: pet.id))
-                    } label: {
-                        Label("Gabe erfassen", systemImage: "checkmark.circle.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
+                Button {
+                    appState.present(.quickLogMedication(petID: pet.id))
+                } label: {
+                    Label("Gabe erfassen", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .background(.bar)
             }
         }
         .sensoryFeedback(.success, trigger: logPulse)
@@ -412,6 +416,10 @@ private struct MedicationPlanList: View {
     /// normalisiert, weil die Engine auf Tagesebene rechnet und eine Uhrzeit im
     /// Datum die Fälligkeit verschieben würde.
     private func logGiven(_ plan: MedicationPlan) {
+        if plan.kindValue == .ongoing {
+            appState.present(.quickLogMedication(petID: pet.id, planID: plan.id))
+            return
+        }
         let event = MedicationEvent(givenOn: appState.dayMath.startOfDay(Date()))
         context.insert(event)
         event.plan = plan

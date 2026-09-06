@@ -18,6 +18,134 @@ import Testing
 @Suite("Benachrichtigungs-Kette (PRD §10.1)")
 struct NotificationChainTests {
 
+    @Test("Eine defekte Alarmdatei blockiert Mitteilungen aus dem gesunden Store nicht")
+    func corruptRegistryKeepsNotificationFallback() throws {
+        let (context, settings) = try makeStore()
+        let registry = TestAlarmRegistry()
+        registry.rejectReads = true
+        let alarms = MedicationAlarmService(system: TestAlarmSystem(), registry: registry)
+        let service = NotificationService(dayMath: .utc, alarmService: alarms)
+        let (reminders, available) = try service.medicationSchedulingInput(context: context, settings: settings, asOf: asOf)
+        #expect(!available)
+        #expect(alarms.issue != nil)
+        #expect(!service.plannedNotifications(context: context, settings: settings, asOf: asOf, reminders: reminders).isEmpty)
+    }
+
+    @Test("Der Hauptschalter räumt trotz defekter Alarmdatei auf")
+    func masterOffDoesNotReadRegistry() async throws {
+        let (context, settings) = try makeStore()
+        settings.notificationsEnabled = false
+        let system = TestAlarmSystem()
+        let alarmID = UUID()
+        system.alarms[alarmID] = .alerting
+        let registry = TestAlarmRegistry()
+        registry.rejectReads = true
+        let service = NotificationService(dayMath: .utc, alarmService: MedicationAlarmService(system: system, registry: registry))
+        let outcome = await service.reschedule(context: context, settings: settings, asOf: asOf)
+        guard case .disabled = outcome else { Issue.record("Abschalten wurde nicht bestätigt"); return }
+        #expect(system.cancelled.contains(alarmID))
+    }
+
+    @Test("Ein fehlgeschlagener Wiederholungsalarm hält die Gabe offen und aktiviert den Ersatzweg")
+    func failedStopRearmFallsBackWithoutLogging() async throws {
+        let data = MedicationReminderDataTests()
+        let (context, settings, plan, reminder) = try data.fixture()
+        let system = TestAlarmSystem()
+        let registry = TestAlarmRegistry()
+        let alarms = MedicationAlarmService(system: system, registry: registry)
+        _ = await alarms.reconcile(reminders: [reminder], configuration: settings.medicationAlarmConfiguration, asOf: reminder.dueAt.addingTimeInterval(-600))
+        let alarmID = try #require(registry.records.first?.id)
+        system.alarms.removeValue(forKey: alarmID)
+        system.rejectSchedules = true
+        let stoppedAt = reminder.dueAt.addingTimeInterval(60)
+        await alarms.rearmAfterStop(id: alarmID, validReminders: [reminder], configuration: settings.medicationAlarmConfiguration, asOf: stoppedAt)
+        let handled = await alarms.reconcile(reminders: [reminder], configuration: settings.medicationAlarmConfiguration, asOf: stoppedAt)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: stoppedAt, reminders: [reminder], handledByAlarms: handled)
+        #expect(planned.contains { $0.dueAt == reminder.dueAt && $0.fireDate > stoppedAt && $0.repeatInterval == 600 })
+        #expect(plan.doseLogs.isEmpty)
+        #expect(plan.events.isEmpty)
+    }
+
+    @Test("61 Termine bleiben mit 32 Alarmen und 29 Mitteilungen vollständig abgedeckt")
+    func budgetIsAppliedAfterAlarmCoverage() throws {
+        let context = try makeContext()
+        let settings = AppSettings.loadOrCreate(in: context)
+        settings.notificationHorizonDays = 60
+        settings.medicationLeadMinutes = 0
+        let pet = Pet(name: "Zola", createdAt: Fixture.logged)
+        context.insert(pet)
+        let plan = MedicationPlan(kind: .ongoing, productName: "Testpräparat", doseTimesMinutes: [8 * 60],
+                                  doseStartDate: asOf, createdAt: Fixture.logged)
+        context.insert(plan)
+        plan.pet = pet
+        try context.save()
+        let reminders = try MedicationReminderData(dayMath: .utc).reminders(context: context, settings: settings, asOf: asOf)
+        #expect(reminders.count == 61)
+        let handled = Set(reminders.prefix(32).map(\.id))
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: asOf,
+                                                   reminders: reminders, handledByAlarms: handled)
+        #expect(planned.filter { $0.category == .dose }.count == 29)
+        #expect(Set(planned.compactMap(\.dueAt)) == Set(reminders.dropFirst(32).map(\.dueAt)))
+    }
+
+    @Test("Eine überfällige Gabe erhält eine wiederholte Ersatz-Erinnerung")
+    func overdueDoseHasRepeatingFallback() throws {
+        let context = try makeContext()
+        let pet = Pet(name: "Zola", createdAt: Fixture.logged)
+        context.insert(pet)
+        let plan = MedicationPlan(kind: .ongoing, productName: "Testpräparat", doseTimesMinutes: [8 * 60],
+                                  doseStartDate: Fixture.day(2026, 9, 4), createdAt: Fixture.logged)
+        context.insert(plan)
+        plan.pet = pet
+        try context.save()
+        let settings = AppSettings.loadOrCreate(in: context)
+        let missedAt = Fixture.day(2026, 9, 5).addingTimeInterval(8 * 3600)
+        let now = missedAt.addingTimeInterval(3600)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: now)
+        let fallback = try #require(planned.first { $0.sourceID == plan.engineID && $0.dueAt == missedAt })
+        #expect(fallback.fireDate == now.addingTimeInterval(600))
+        #expect(fallback.repeatInterval == 600)
+    }
+
+    @Test("Ein Pausentag verliert die nächsten Gaben nicht")
+    func restDayStillSchedulesFutureDoses() throws {
+        let context = try makeContext()
+        let pet = Pet(name: "Zola", createdAt: Fixture.logged)
+        context.insert(pet)
+        let plan = MedicationPlan(
+            kind: .ongoing, productName: "Testpräparat",
+            doseTimesMinutes: [8 * 60], doseEveryNDays: 2,
+            doseStartDate: Fixture.day(2026, 9, 4), createdAt: Fixture.logged
+        )
+        context.insert(plan)
+        plan.pet = pet
+        try context.save()
+        let settings = AppSettings.loadOrCreate(in: context)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: Fixture.day(2026, 9, 5))
+        #expect(planned.contains { $0.category == .dose && $0.fireDate == Fixture.day(2026, 9, 6).addingTimeInterval(8 * 3600) })
+    }
+
+    @Test("Eine vorzeitig bestätigte Gabe wird nicht erneut aus dem Dashboard geplant")
+    func earlyConfirmationRemovesDoseNotification() throws {
+        let context = try makeContext()
+        let pet = Pet(name: "Zola", createdAt: Fixture.logged)
+        context.insert(pet)
+        let plan = MedicationPlan(
+            kind: .ongoing, productName: "Testpräparat", doseTimesMinutes: [8 * 60],
+            doseStartDate: Fixture.day(2026, 9, 4), createdAt: Fixture.logged
+        )
+        context.insert(plan)
+        plan.pet = pet
+        let dueAt = Fixture.day(2026, 9, 5).addingTimeInterval(8 * 3600)
+        let log = DoseLogEntry(scheduledAt: dueAt, takenAt: dueAt.addingTimeInterval(-600))
+        context.insert(log)
+        log.plan = plan
+        try context.save()
+        let settings = AppSettings.loadOrCreate(in: context)
+        let planned = service.plannedNotifications(context: context, settings: settings, asOf: dueAt.addingTimeInterval(-300))
+        #expect(!planned.contains { $0.category == .dose && $0.fireDate == dueAt })
+    }
+
     private let asOf = Fixture.day(2026, 7, 26)
     private let service = NotificationService(dayMath: .utc)
 

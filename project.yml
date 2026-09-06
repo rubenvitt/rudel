@@ -29,9 +29,11 @@ targets:
     # niemand muss project.yml anfassen.
     sources:
       - path: Rudel
+      - path: Shared
     dependencies:
       - package: RudelEngine
         product: RudelEngine
+      - target: RudelWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.Rudel
@@ -50,6 +52,35 @@ targets:
         CODE_SIGN_STYLE: Automatic
         # Simulator-Builds brauchen kein Team; leer lassen bis ein Device-Build ansteht.
         DEVELOPMENT_TEAM: ""
+    info:
+      path: DerivedInfo/Rudel-Info.plist
+      properties:
+        NSAlarmKitUsageDescription: "Rudel erinnert dich mit Alarmen an offene Medikamentengaben."
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: email.rubeen.Rudel.reminders
+            CFBundleURLSchemes: [rudel]
+
+  RudelWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: RudelWidgets
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.Rudel.Widgets
+        GENERATE_INFOPLIST_FILE: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+    info:
+      path: DerivedInfo/RudelWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Medikamentenalarme
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
   RudelTests:
     type: bundle.unit-test

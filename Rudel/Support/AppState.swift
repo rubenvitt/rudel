@@ -30,7 +30,8 @@ final class AppState {
     }
 
     enum Sheet: Hashable, Identifiable {
-        case quickLogMedication(petID: UUID)
+        case quickLogMedication(petID: UUID, planID: UUID? = nil)
+        case medicationReminder(reminderID: String)
         case editMedicationPlan(planID: UUID?, petID: UUID)
         case logCycleObservation(petID: UUID)
         case startCyclePeriod(petID: UUID)
@@ -41,7 +42,8 @@ final class AppState {
 
         var id: String {
             switch self {
-            case .quickLogMedication(let petID): return "quickLogMedication-\(petID)"
+            case .quickLogMedication(let petID, let planID): return "quickLogMedication-\(petID)-\(planID?.uuidString ?? "")"
+            case .medicationReminder(let reminderID): return "medicationReminder-\(reminderID)"
             case .editMedicationPlan(let planID, let petID):
                 return "editMedicationPlan-\(planID?.uuidString ?? "new")-\(petID)"
             case .logCycleObservation(let petID): return "logCycleObservation-\(petID)"

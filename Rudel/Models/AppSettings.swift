@@ -13,6 +13,10 @@ final class AppSettings {
 
     var notificationsEnabled: Bool = true
 
+    var medicationAlarmsEnabled: Bool = true
+    var medicationLeadMinutes: Int = 30
+    var medicationSnoozeMinutes: Int = 10
+
     /// Vorwarnzeiten in Tagen vor Fälligkeit (PRD §5.6). Absteigend.
     var leadDays: [Int] = [7, 1, 0]
 
@@ -47,6 +51,13 @@ final class AppSettings {
 }
 
 extension AppSettings {
+    var medicationAlarmConfiguration: MedicationAlarmConfiguration {
+        MedicationAlarmConfiguration(
+            enabled: notificationsEnabled && medicationAlarmsEnabled,
+            leadMinutes: medicationLeadMinutes,
+            snoozeMinutes: medicationSnoozeMinutes
+        )
+    }
     var reminderTime: TimeOfDay {
         TimeOfDay(
             hour: reminderMinutesFromMidnight / 60,

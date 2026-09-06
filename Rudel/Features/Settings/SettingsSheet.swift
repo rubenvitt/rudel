@@ -6,10 +6,8 @@ import UserNotifications
 
 /// Einstellungen: Erinnerungen, Diagnose, Datenschutz.
 ///
-/// Vorwarnzeiten, Uhrzeit und Fenster werden sofort gespeichert, aber erst beim
-/// Schließen neu geplant — bei jedem Stepper-Tipp bis zu 56 Requests neu zu
-/// setzen wäre Verschwendung. Der Hauptschalter plant dagegen sofort um, weil
-/// sein Ergebnis direkt darunter in der Diagnose steht.
+/// Änderungen werden gespeichert und über den gemeinsamen Abgleich wirksam.
+/// Der Hauptschalter aktualisiert zusätzlich sofort die Diagnose im Sheet.
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -69,6 +67,7 @@ struct SettingsSheet: View {
         Form {
             notificationSection(settings)
             if settings.notificationsEnabled {
+                medicationAlarmSection(settings)
                 leadDaysSection(settings)
                 timeSection(settings)
                 windowSection(settings)
@@ -87,16 +86,53 @@ struct SettingsSheet: View {
     // MARK: - Benachrichtigungen
 
     @ViewBuilder
+    private func medicationAlarmSection(_ settings: AppSettings) -> some View {
+        @Bindable var bound = settings
+        let alarms = MedicationAlarmService.shared
+        Section {
+            Toggle("Medikamentenalarme", isOn: $bound.medicationAlarmsEnabled)
+                .onChange(of: settings.medicationAlarmsEnabled) { markChanged() }
+            Stepper("Vorwarnung: \(settings.medicationLeadMinutes) Minuten",
+                    value: $bound.medicationLeadMinutes, in: 0...120, step: 5)
+                .onChange(of: settings.medicationLeadMinutes) { markChanged() }
+            if settings.medicationAlarmsEnabled {
+                Stepper("Schlummern: \(settings.medicationSnoozeMinutes) Minuten",
+                        value: $bound.medicationSnoozeMinutes, in: 5...60, step: 5)
+                    .onChange(of: settings.medicationSnoozeMinutes) { markChanged() }
+                LabeledContent("Alarmberechtigung", value: alarmAuthorizationLabel)
+                LabeledContent("Gesetzte Alarme", value: "\(alarms.scheduledCount)")
+                if alarms.authorization == .denied {
+                    Button("Alarmberechtigung in iOS öffnen") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    }
+                }
+            }
+            if let issue = alarms.issue {
+                Label(issue, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.footnote)
+            }
+        } header: {
+            Text("Medikamentengabe")
+        } footer: {
+            Text("Vor dem Termin zeigt eine Live Activity den Countdown. Schlummern und Stopp verschieben den Alarm; die Gabe bleibt offen, bis du sie bestätigst. Ohne Alarmberechtigung kommen nur normale Mitteilungen.")
+        }
+    }
+
+    private var alarmAuthorizationLabel: String {
+        switch MedicationAlarmService.shared.authorization {
+        case .authorized: return "Erteilt"
+        case .denied: return "Verweigert"
+        case .notDetermined: return "Noch nicht gefragt"
+        }
+    }
+
+    @ViewBuilder
     private func notificationSection(_ settings: AppSettings) -> some View {
         // `@Bindable` nur für die `$`-Bindings; gelesen wird über den Parameter.
         @Bindable var bound = settings
 
         Section {
             Toggle("Erinnerungen", isOn: $bound.notificationsEnabled)
-                // Gesperrt, solange eine Neuplanung läuft: zwei überlappende
-                // Durchläufe räumen sich gegenseitig die Requests ab, und der
-                // spätere `removeAll` würde die Erinnerungen des früheren
-                // löschen — sichtbar eingeschaltet, tatsächlich nichts gesetzt.
+                // Die Diagnose soll erst den abgeschlossenen Stand anzeigen.
                 .disabled(isWorking)
                 .onChange(of: settings.notificationsEnabled) {
                     Task { await apply(settings) }
@@ -193,7 +229,7 @@ struct SettingsSheet: View {
         } footer: {
             Text(
                 settings.leadDays.isEmpty
-                    ? "Ohne Vorwarnzeit erinnert Rudel an keine Fälligkeit mehr. Einzelgaben eines Dauermedikaments werden weiterhin zu ihrer Gabezeit gemeldet."
+                    ? "Zusätzliche Mitteilungen vor Intervall-Fälligkeiten sind aus. Medikamentenalarme, Einzelgaben und die Vorwarnung in Minuten bleiben separat einstellbar."
                     : "Jede Vorwarnzeit erzeugt eine eigene Erinnerung — drei Werte heißt drei Mitteilungen pro Fälligkeit."
             )
         }
@@ -404,6 +440,8 @@ struct SettingsSheet: View {
         needsReschedule = false
 
         switch outcome {
+        case .failed(let message):
+            statusMessage = "Erinnerungen konnten nicht aktualisiert werden: \(message)"
         case .disabled:
             failures = []
             statusMessage = "Erinnerungen sind aus. Alle ausstehenden wurden entfernt."

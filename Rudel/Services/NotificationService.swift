@@ -16,11 +16,12 @@ import UserNotifications
 ///
 /// ## Kein Singleton
 ///
-/// Der Service hält keinen Zustand — jede View darf sich eine eigene Instanz
-/// anlegen (`NotificationService()`), das ist so gut wie eine geteilte. Deshalb
-/// gibt es bewusst kein `shared`, das später jeder Testaufbau umgehen müsste.
+/// Views dürfen eigene Instanzen verwenden; die gemeinsame Warteschlange
+/// serialisiert Systemänderungen. Der Alarmservice ist für Tests injizierbar.
 @MainActor
 final class NotificationService {
+    private static var schedulingTail: Task<Void, Never>?
+    private static var schedulingToken = UUID()
 
     /// Tagesarithmetik in der Zeitzone des Geräts. Wird für das Planungsfenster
     /// gebraucht und an die Engine weitergegeben, damit „heute" dasselbe
@@ -28,12 +29,15 @@ final class NotificationService {
     let dayMath: DayMath
 
     private let center = UNUserNotificationCenter.current()
+    private let alarmServiceOverride: MedicationAlarmService?
+    private var alarmService: MedicationAlarmService { alarmServiceOverride ?? .shared }
 
     /// `nonisolated`, damit eine SwiftUI-View den Service in einem
     /// Property-Initialisierer anlegen kann — der läuft nicht auf dem MainActor.
     /// Zulässig, weil hier nur Sendable-Werte gespeichert werden.
-    nonisolated init(dayMath: DayMath = .current()) {
+    nonisolated init(dayMath: DayMath = .current(), alarmService: MedicationAlarmService? = nil) {
         self.dayMath = dayMath
+        self.alarmServiceOverride = alarmService
     }
 
     // MARK: - Ergebnis-Typen
@@ -69,6 +73,7 @@ final class NotificationService {
         /// Systemberechtigung fehlt. Es wurde nichts gesetzt und nichts entfernt.
         case notAuthorized(UNAuthorizationStatus)
         case applied(ApplyResult)
+        case failed(String)
 
         var applyResult: ApplyResult? {
             if case .applied(let result) = self { return result }
@@ -114,73 +119,100 @@ final class NotificationService {
 
     // MARK: - Setzen
 
-    /// Ersetzt alle ausstehenden Erinnerungen durch `planned`.
-    ///
-    /// `removeAll` + neu setzen statt inkrementellem Abgleich: der Planner
-    /// liefert ein vollständiges Fenster, also ist der Zielzustand bekannt. Ein
-    /// Diff müsste Termine, Titel und Prioritäten vergleichen — mehr Code, mehr
-    /// Wege, an denen eine Erinnerung verloren geht.
+    /// Gleiche Requests bleiben bestehen: insbesondere darf ein laufender
+    /// Wiederholungs-Countdown nicht bei jedem App-Abgleich von vorn anfangen.
     @discardableResult
-    func apply(_ planned: [NotificationPlanner.PlannedNotification]) async -> ApplyResult {
-        center.removeAllPendingNotificationRequests()
-
+    func apply(_ planned: [NotificationPlanner.PlannedNotification], reminders: [MedicationReminder] = []) async -> ApplyResult {
+        let existing = Dictionary(uniqueKeysWithValues: await center.pendingNotificationRequests().map { ($0.identifier, $0) })
+        let desiredIDs = Set(planned.map(\.id))
+        center.removePendingNotificationRequests(withIdentifiers: existing.keys.filter { !desiredIDs.contains($0) })
         var result = ApplyResult(requested: planned.count)
-
         for item in planned {
-            let content = UNMutableNotificationContent()
-            content.title = item.title
-            content.body = item.body
-            content.sound = .default
-            // Gruppiert die Mitteilungen je Tier — bei zwei Tieren stehen sonst
-            // gleich betitelte Erinnerungen unsortiert untereinander.
-            content.threadIdentifier = item.petID
-            content.categoryIdentifier = item.category.rawValue
-            content.userInfo = [
-                "petID": item.petID,
-                "category": item.category.rawValue,
-            ]
-
-            // Kalender-Trigger statt Zeitintervall: ein Intervall verschiebt sich
-            // bei einem Zeitzonenwechsel mit, die 9-Uhr-Erinnerung käme dann um
-            // 3 Uhr. Bewusst **ohne** `timeZone` in den Components — so gilt die
-            // Wanduhr des Geräts, auch nach einem Flug.
-            //
-            // Und bewusst `Calendar.current` statt `dayMath.calendar`: der
-            // Engine-Default für `DayMath` ist UTC. Würde der Service damit
-            // gebaut, läge hier eine UTC-Wanduhrzeit, die iOS als Ortszeit
-            // liest — jede Erinnerung um den Zonen-Offset verschoben. Die
-            // Fenster-Arithmetik darf injizierbar bleiben, die Uhrzeit einer
-            // echten Mitteilung nicht.
-            let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute],
-                from: item.fireDate
-            )
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-
-            // `item.id` als Identifier: gleiche Quelle + gleicher Termin ⇒ gleiche
-            // ID, iOS ersetzt den Request dann statt zu duplizieren. Damit ist
-            // auch ein Setzen, das sich mit dem Abräumen überlappt, harmlos.
-            let request = UNNotificationRequest(
-                identifier: item.id,
-                content: content,
-                trigger: trigger
-            )
-
+            let reminder = reminders.first { $0.sourceID == item.sourceID && $0.dueAt == item.dueAt && $0.category == item.category }
+            let request = Self.request(for: item, reminder: reminder)
+            if let old = existing[item.id], Self.canKeep(old, for: request) {
+                result.scheduled += 1
+                continue
+            }
             do {
                 try await center.add(request)
                 result.scheduled += 1
             } catch {
-                result.failures.append(
-                    ScheduleFailure(
-                        id: item.id,
-                        title: item.title,
-                        reason: error.localizedDescription
-                    )
-                )
+                result.failures.append(ScheduleFailure(id: item.id, title: item.title, reason: error.localizedDescription))
             }
         }
-
         return result
+    }
+
+    static func request(for item: NotificationPlanner.PlannedNotification, reminder: MedicationReminder? = nil) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = item.title
+        content.body = item.body
+        content.sound = .default
+        content.threadIdentifier = item.petID
+        content.categoryIdentifier = item.category.rawValue
+        content.userInfo = ["petID": item.petID, "category": item.category.rawValue]
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        if let reminder, Self.isMedication(reminder.category), let data = try? encoder.encode(reminder) {
+            content.userInfo["medicationReminder"] = data
+        }
+        if Self.isMedication(item.category),
+           let dueAt = item.dueAt, !item.sourceID.isEmpty {
+            content.userInfo["medicationOccurrence"] = occurrenceKey(sourceID: item.sourceID, category: item.category, dueAt: dueAt)
+        }
+        let trigger: UNNotificationTrigger
+        if let interval = item.repeatInterval {
+            trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(60, interval), repeats: true)
+        } else {
+            // Ortszeit ohne festgehaltene Zeitzone: die Wanduhr des Geräts gilt.
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: item.fireDate)
+            trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        }
+        return UNNotificationRequest(identifier: item.id, content: content, trigger: trigger)
+    }
+
+    static func canKeep(_ existing: UNNotificationRequest, for desired: UNNotificationRequest) -> Bool {
+        existing.identifier == desired.identifier && existing.content.isEqual(desired.content)
+            && existing.trigger?.isEqual(desired.trigger) == true
+    }
+
+    static func reminders(from requests: [UNNotificationRequest]) -> [MedicationReminder] {
+        requests.compactMap {
+            guard let data = $0.content.userInfo["medicationReminder"] as? Data,
+                  let reminder = try? JSONDecoder().decode(MedicationReminder.self, from: data),
+                  Self.isMedication(reminder.category) else { return nil }
+            return reminder
+        }
+    }
+
+    func notificationReminders() async -> [MedicationReminder] {
+        let pending = await center.pendingNotificationRequests()
+        let delivered = await center.deliveredNotifications().map(\.request)
+        return Self.reminders(from: pending + delivered)
+    }
+
+    private static func occurrenceKey(sourceID: String, category: DueItem.Category, dueAt: Date) -> String {
+        "\(category.rawValue)|\(sourceID)|\(Int(dueAt.timeIntervalSince1970))"
+    }
+
+    private static func isMedication(_ category: DueItem.Category) -> Bool {
+        switch category {
+        case .medication, .protectionExpiry, .dose: return true
+        case .cycleForecast, .criticalDays: return false
+        }
+    }
+
+    private func removeCompletedMedicationNotifications(open reminders: [MedicationReminder]) async {
+        let open = Set(reminders.map { Self.occurrenceKey(sourceID: $0.sourceID, category: $0.category, dueAt: $0.dueAt) })
+        let completed = await center.deliveredNotifications().compactMap { notification -> String? in
+            guard let category = DueItem.Category(rawValue: notification.request.content.categoryIdentifier),
+                  Self.isMedication(category),
+                  let key = notification.request.content.userInfo["medicationOccurrence"] as? String,
+                  !open.contains(key) else { return nil }
+            return notification.request.identifier
+        }
+        center.removeDeliveredNotifications(withIdentifiers: completed)
     }
 
     /// Anzahl ausstehender Erinnerungen — für die Diagnose in den Einstellungen.
@@ -204,15 +236,61 @@ final class NotificationService {
         settings: AppSettings,
         asOf: Date = Date()
     ) async -> RescheduleOutcome {
+        // Alle Aufrufer teilen dieselbe Warteschlange. Zwei View-Tasks dürfen
+        // sich nicht gegenseitig Requests entfernen oder Schlummern zurücksetzen.
+        let previous = Self.schedulingTail
+        let token = UUID()
+        Self.schedulingToken = token
+        let task = Task { @MainActor in
+            await previous?.value
+            return await self.performReschedule(context: context, settings: settings, asOf: asOf)
+        }
+        Self.schedulingTail = Task { _ = await task.value }
+        let result = await task.value
+        if Self.schedulingToken == token { Self.schedulingTail = nil }
+        return result
+    }
+
+    private func performReschedule(context: ModelContext, settings: AppSettings, asOf: Date) async -> RescheduleOutcome {
+        let alarmService = self.alarmService
         guard settings.notificationsEnabled else {
-            // Abgeschaltet heißt: auch das Bestehende muss weg. Sonst feuern
-            // gestern geplante Erinnerungen weiter.
+            // Abschalten funktioniert unabhängig davon, ob die Alarmdatei
+            // lesbar ist. Es benötigt nur den tatsächlichen Systemzustand.
             center.removeAllPendingNotificationRequests()
+            center.removeAllDeliveredNotifications()
+            _ = await alarmService.reconcile(reminders: [], configuration: settings.medicationAlarmConfiguration, asOf: asOf)
             settings.lastNotificationSyncAt = asOf
-            try? context.save()
+            do { try context.save() } catch { return .failed(error.localizedDescription) }
+            if let issue = alarmService.issue { return .failed(issue) }
             return .disabled
         }
+        let reminders: [MedicationReminder]
+        let registryAvailable: Bool
+        do {
+            // Ein noch nicht gespeicherter Log darf keinen Alarm endgültig
+            // abschalten. Bei Storefehlern bleibt der bisherige Systemstand stehen.
+            try context.save()
+            let notificationReminders = await notificationReminders()
+            (reminders, registryAvailable) = try medicationSchedulingInput(context: context, settings: settings, retaining: notificationReminders, asOf: asOf)
+        } catch {
+            alarmService.reportFailure(error)
+            return .failed(error.localizedDescription)
+        }
+        await removeCompletedMedicationNotifications(open: reminders)
+        var handled = Set<String>()
+        if registryAvailable || !settings.medicationAlarmsEnabled {
+            handled = await alarmService.reconcile(
+                reminders: reminders, configuration: settings.medicationAlarmConfiguration, asOf: asOf
+            )
+        }
 
+        let planned = plannedNotifications(
+            context: context, settings: settings, asOf: asOf,
+            reminders: reminders, handledByAlarms: handled
+        )
+        if planned.isEmpty {
+            return .applied(await apply([]))
+        }
         var status = await authorizationStatus()
         if status == .notDetermined {
             // Der Nutzer hat Erinnerungen in der App eingeschaltet — der erste
@@ -224,11 +302,67 @@ final class NotificationService {
             return .notAuthorized(status)
         }
 
-        let planned = plannedNotifications(context: context, settings: settings, asOf: asOf)
-        let result = await apply(planned)
+        let result = await apply(planned, reminders: reminders)
         settings.lastNotificationSyncAt = asOf
         try? context.save()
         return .applied(result)
+    }
+
+    /// Eine defekte Alarmdatei darf den unabhängigen Mitteilungsweg nicht
+    /// blockieren. Ein unlesbarer medizinischer Store bleibt dagegen ein Fehler.
+    func medicationSchedulingInput(context: ModelContext, settings: AppSettings, retaining notifications: [MedicationReminder] = [], asOf: Date) throws -> ([MedicationReminder], Bool) {
+        var retained = notifications
+        var registryAvailable = true
+        do { retained += try alarmService.registeredReminders() }
+        catch {
+            registryAvailable = false
+            alarmService.reportFailure(error)
+        }
+        return (try MedicationReminderData(dayMath: dayMath).reminders(
+            context: context, settings: settings, retaining: retained, asOf: asOf
+        ), registryAvailable)
+    }
+
+    /// Der Alarm übernimmt den eigentlichen Termin, eine normale Vorwarnung
+    /// macht zusätzlich auf den beginnenden Countdown aufmerksam.
+    private func notificationPlan(
+        base: [NotificationPlanner.PlannedNotification], reminders: [MedicationReminder],
+        handledByAlarms: Set<String>, settings: AppSettings, asOf: Date
+    ) -> [NotificationPlanner.PlannedNotification] {
+        let overdue = reminders.filter { $0.dueAt < asOf && !handledByAlarms.contains($0.id) }
+        var candidates = base.filter { notification in
+            !overdue.contains { $0.sourceID == notification.sourceID && $0.dueAt == notification.dueAt }
+        }
+        let retryInterval = Double(settings.medicationAlarmConfiguration.snoozeMinutes * 60)
+        for reminder in overdue {
+            candidates.append(NotificationPlanner.PlannedNotification(
+                id: "retry:\(reminder.id)", fireDate: asOf.addingTimeInterval(retryInterval),
+                title: "\(reminder.petName): Gabe noch offen",
+                body: "\(reminder.title) · geplant \(Format.dateTime(reminder.dueAt)). Bitte die Gabe prüfen und bestätigen.",
+                petID: reminder.petID, category: reminder.category, priority: 50,
+                sourceID: reminder.sourceID, dueAt: reminder.dueAt, repeatInterval: retryInterval
+            ))
+        }
+        let lead = settings.medicationAlarmConfiguration.leadMinutes
+        if lead > 0 {
+            for reminder in reminders {
+                let fireDate = reminder.dueAt.addingTimeInterval(-Double(lead * 60))
+                guard fireDate >= asOf else { continue }
+                candidates.append(NotificationPlanner.PlannedNotification(
+                    id: "advance:\(reminder.id)", fireDate: fireDate,
+                    title: "\(reminder.petName): \(reminder.title) in \(lead) Minuten",
+                    body: [reminder.detail, "Geplant um \(Format.time(reminder.dueAt))."].compactMap { $0 }.joined(separator: " · "),
+                    petID: reminder.petID, category: reminder.category,
+                    priority: dayMath.isSameDay(fireDate, asOf) ? 35 : 15,
+                    sourceID: reminder.sourceID, dueAt: reminder.dueAt
+                ))
+            }
+        }
+        candidates.sort {
+            if $0.priority != $1.priority { return $0.priority > $1.priority }
+            return $0.fireDate == $1.fireDate ? $0.id < $1.id : $0.fireDate < $1.fireDate
+        }
+        return Array(candidates.prefix(NotificationPlanner.budget)).sorted { $0.fireDate < $1.fireDate }
     }
 
     /// Der reine Teil von `reschedule`: aus dem Store das ableiten, was die
@@ -237,7 +371,9 @@ final class NotificationService {
     func plannedNotifications(
         context: ModelContext,
         settings: AppSettings,
-        asOf: Date
+        asOf: Date,
+        reminders: [MedicationReminder]? = nil,
+        handledByAlarms: Set<String> = []
     ) -> [NotificationPlanner.PlannedNotification] {
         let descriptor = FetchDescriptor<Pet>(sortBy: [SortDescriptor(\.createdAt)])
         let pets = (try? context.fetch(descriptor)) ?? []
@@ -325,13 +461,19 @@ final class NotificationService {
             asOf: asOf
         )
 
-        return NotificationPlanner(dayMath: dayMath).plan(
+        let medicationReminders = reminders ?? ((try? MedicationReminderData(dayMath: dayMath).reminders(
+            context: context, settings: settings, asOf: asOf
+        )) ?? [])
+        let base = NotificationPlanner(dayMath: dayMath).plan(
             dueItems: dueItems,
             doseOccurrences: doseOccurrences,
+            medicationReminders: medicationReminders,
             criticalDays: criticalDays,
+            alarmHandledReminders: medicationReminders.filter { handledByAlarms.contains($0.id) },
             settings: plannerSettings,
             asOf: asOf
         )
+        return notificationPlan(base: base, reminders: medicationReminders, handledByAlarms: handledByAlarms, settings: settings, asOf: asOf)
     }
 
     /// Ist diese Einzelgabe schon abgehakt?

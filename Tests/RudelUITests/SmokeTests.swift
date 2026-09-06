@@ -14,6 +14,80 @@ final class SmokeTests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
+        addUIInterruptionMonitor(withDescription: "Systemberechtigung im isolierten Simulator") { alert in
+            for label in ["Allow", "Erlauben", "Zulassen"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+    }
+
+    @MainActor
+    func testMedicationReminderSettingsAndConfirmationRoute() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
+        createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
+        app.tabBars.buttons["Profil"].tap()
+        app.buttons["Einstellungen"].tap()
+        XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
+        setReminders(true, in: app)
+        XCTAssertTrue(app.switches["Medikamentenalarme"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.steppers["Vorwarnung: 30 Minuten"].exists)
+        XCTAssertTrue(app.steppers["Schlummern: 10 Minuten"].exists)
+        attachScreenshot(of: app, named: "medikamentenalarm-einstellungen")
+        // Nur der isolierte Test-Store: keine echten Alarme während UI-Tests.
+        setReminders(false, in: app)
+        app.buttons["Fertig"].tap()
+        app.open(URL(string: "rudel://medication-reminder?reminder=already-completed")!)
+        XCTAssertTrue(app.navigationBars["Gabe bestätigen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Diese Erinnerung ist bereits erledigt oder wurde durch einen geänderten Plan ersetzt."].exists)
+        XCTAssertFalse(app.buttons["Jetzt als gegeben bestätigen"].exists)
+        attachScreenshot(of: app, named: "medikamentenalarm-erledigter-verweis")
+        app.buttons["Schließen"].tap()
+    }
+
+    @MainActor
+    func testOngoingMedicationQuickLogSelectsAConcreteDose() throws {
+        let app = XCUIApplication()
+        let productName = "UI-Präparat \(UUID().uuidString.prefix(6))"
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
+        createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
+        app.tabBars.buttons["Profil"].tap()
+        app.buttons["Einstellungen"].tap()
+        XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
+        setReminders(false, in: app)
+        app.buttons["Fertig"].tap()
+        app.tabBars.buttons["Medikamente"].tap()
+        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.buttons["Art"].tap()
+        app.buttons["Laufendes Medikament"].tap()
+        let product = app.textFields["medication-product-name"]
+        XCTAssertTrue(product.waitForExistence(timeout: 5))
+        product.tap()
+        product.typeText(productName)
+        app.buttons["Speichern"].tap()
+        XCTAssertTrue(app.buttons["Gabe erfassen"].waitForExistence(timeout: 5))
+        app.buttons["Gabe erfassen"].tap()
+        XCTAssertTrue(app.navigationBars["Gabe erfassen"].waitForExistence(timeout: 5))
+        app.buttons["medication-plan-selection"].tap()
+        app.buttons[productName].tap()
+        attachScreenshot(of: app, named: "medikament-erfassungsformular")
+        XCTAssertTrue(app.buttons["medication-dose-selection"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.buttons["Speichern"].isEnabled)
+        attachScreenshot(of: app, named: "medikament-konkrete-gabe-erfassen")
+        app.buttons["Speichern"].tap()
+        XCTAssertTrue(app.buttons["Gabe erfassen"].waitForExistence(timeout: 5))
+        app.buttons["Gabe erfassen"].tap()
+        XCTAssertTrue(app.buttons["medication-plan-selection"].waitForExistence(timeout: 5))
+        app.buttons["medication-plan-selection"].tap()
+        app.buttons[productName].tap()
+        XCTAssertTrue(app.staticTexts["An diesem Tag gibt es keine offene Gabe."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Speichern"].isEnabled)
+        attachScreenshot(of: app, named: "medikament-bestaetigung-einmalig")
+        app.buttons["Abbrechen"].tap()
     }
 
     /// Der Durchstich: vom leeren Zustand bis durch alle Tabs.
@@ -146,6 +220,19 @@ final class SmokeTests: XCTestCase {
     }
 
     // MARK: - Helfer
+
+    @MainActor
+    private func setReminders(_ enabled: Bool, in app: XCUIApplication) {
+        let toggle = app.switches["Erinnerungen"]
+        let expected = enabled ? "1" : "0"
+        if toggle.value as? String != expected {
+            // SwiftUI meldet die ganze beschriftete Zeile als Switch. Der
+            // tatsächliche Schalter sitzt am rechten Rand der Zeile.
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        }
+        let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: toggle)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
+    }
 
     /// Legt ein Tier an, falls die App noch den Willkommensbildschirm zeigt.
     /// Bleibt der Store aus einem vorherigen Lauf gefüllt, passiert nichts —

@@ -1,5 +1,6 @@
 # Von xcodegen generiert — project.yml ist die Quelle der Wahrheit.
 Rudel.xcodeproj/
+DerivedInfo/
 
 # Build-Artefakte
 .build/
