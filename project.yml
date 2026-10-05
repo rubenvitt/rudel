@@ -20,6 +20,7 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
+    DEVELOPMENT_TEAM: H95J852PKP
 
 targets:
   Rudel:
@@ -50,8 +51,6 @@ targets:
           UIInterfaceOrientationLandscapeRight
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_STYLE: Automatic
-        # Simulator-Builds brauchen kein Team; leer lassen bis ein Device-Build ansteht.
-        DEVELOPMENT_TEAM: ""
     info:
       path: DerivedInfo/Rudel-Info.plist
       properties:

@@ -262,9 +262,18 @@ final class MedicationEvent {
     var productNameOverride: String = ""
     var note: String = ""
     var loggedAt: Date = Date.distantPast
+    /// Optional, weil das Feld nachträglich hinzukam: Die Leichtmigration
+    /// befüllt bestehende Zeilen bei Codable-Enums nicht mit dem Default, ein
+    /// nicht-optionaler Typ crasht dann beim Lesen. `nil` heißt „gegeben".
+    @Attribute(originalName: "outcomeValue")
+    var storedOutcome: MedicationEventOutcome?
+
     /// `.skipped` = bewusst ausgelassen. Dann ist `givenOn` der Tag der
     /// Entscheidung, nicht einer Gabe.
-    var outcomeValue: MedicationEventOutcome = MedicationEventOutcome.given
+    var outcomeValue: MedicationEventOutcome {
+        get { storedOutcome ?? .given }
+        set { storedOutcome = newValue }
+    }
 
     var plan: MedicationPlan?
 
