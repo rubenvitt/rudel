@@ -12,6 +12,11 @@ public struct MedicationReminder: Sendable, Codable, Equatable, Hashable, Identi
     public var detail: String?
     public var category: DueItem.Category
     public var dueAt: Date
+    /// Darf dieser Termin einen Alarm auslösen? Nur zeitkritische Pläne.
+    /// Vorsorge bleibt trotzdem in der Liste, weil `NotificationPlanner`
+    /// Dosis-Mitteilungen ausschließlich hieraus nimmt; gefiltert wird erst an
+    /// der Grenze zum Alarmdienst.
+    public var usesAlarm: Bool
 
     public init(
         id: String,
@@ -21,7 +26,8 @@ public struct MedicationReminder: Sendable, Codable, Equatable, Hashable, Identi
         title: String,
         detail: String? = nil,
         category: DueItem.Category,
-        dueAt: Date
+        dueAt: Date,
+        usesAlarm: Bool = true
     ) {
         self.id = id
         self.sourceID = sourceID
@@ -31,6 +37,27 @@ public struct MedicationReminder: Sendable, Codable, Equatable, Hashable, Identi
         self.detail = detail
         self.category = category
         self.dueAt = dueAt
+        self.usesAlarm = usesAlarm
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, sourceID, petID, petName, title, detail, category, dueAt, usesAlarm
+    }
+
+    /// Eigenes Decoding nur wegen `usesAlarm`: bestehende Registry-Dateien
+    /// stammen aus der Zeit, als jeder Termin ein Alarm war, und kennen das Feld
+    /// nicht. Fehlt es, gilt deshalb `true` — genau das damalige Verhalten.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        sourceID = try container.decode(String.self, forKey: .sourceID)
+        petID = try container.decode(String.self, forKey: .petID)
+        petName = try container.decode(String.self, forKey: .petName)
+        title = try container.decode(String.self, forKey: .title)
+        detail = try container.decodeIfPresent(String.self, forKey: .detail)
+        category = try container.decode(DueItem.Category.self, forKey: .category)
+        dueAt = try container.decode(Date.self, forKey: .dueAt)
+        usesAlarm = try container.decodeIfPresent(Bool.self, forKey: .usesAlarm) ?? true
     }
 }
 
@@ -39,6 +66,10 @@ public struct MedicationReminder: Sendable, Codable, Equatable, Hashable, Identi
 /// Anders als `DueItemBuilder` ist der Plan nicht auf heutige Dashboard-Dosen
 /// begrenzt. Offene Gaben von heute bleiben enthalten, auch wenn ihre Uhrzeit
 /// bereits verstrichen ist; erst ein passender Logeintrag entfernt sie.
+///
+/// Geplant werden Termine **aller** Pläne, auch der Vorsorge: `usesAlarm`
+/// trennt die zeitkritischen ab, damit Vorsorge ihre Mitteilungen behält, aber
+/// nie einen Alarm auslöst.
 public struct MedicationReminderPlanner: Sendable {
     public let dayMath: DayMath
 
@@ -69,8 +100,21 @@ public struct MedicationReminderPlanner: Sendable {
 
         for medication in activeMedications where medication.kind == .ongoing {
             guard let schedule = medication.schedule else { continue }
+            // Zurückgestellt: das Fenster beginnt erst am Tag der Zurückstellung.
+            // Hier statt im `MedicationCalculator`, weil die Zurückstellung kein
+            // Teil des Dosierschemas ist, sondern ein Zustand des Plans — der
+            // Rechner bleibt eine reine Funktion des Schemas.
+            var lowerBound = today
+            if let deferredUntil = medication.deferredUntil {
+                lowerBound = max(lowerBound, dayMath.startOfDay(deferredUntil))
+            }
+            // Liegt die Zurückstellung hinter dem Horizont, gibt es nichts zu
+            // planen — und ein Bereich mit Untergrenze über der Obergrenze würde
+            // abstürzen.
+            guard lowerBound <= occurrenceRange.upperBound else { continue }
+            let range = lowerBound...occurrenceRange.upperBound
             let loggedMinutes = loggedMinutesBySource[medication.sourceID] ?? []
-            for dueAt in calculator.doseOccurrences(schedule: schedule, in: occurrenceRange) {
+            for dueAt in calculator.doseOccurrences(schedule: schedule, in: range) {
                 guard !loggedMinutes.contains(minuteKey(dueAt)) else { continue }
                 reminders.append(
                     reminder(
@@ -80,7 +124,8 @@ public struct MedicationReminderPlanner: Sendable {
                             ? "Laufendes Medikament"
                             : medication.productName,
                         detail: schedule.doseLabel.isEmpty ? nil : schedule.doseLabel,
-                        dueAt: dueAt
+                        dueAt: dueAt,
+                        usesAlarm: medication.careClass == .timeCritical
                     )
                 )
             }
@@ -89,12 +134,14 @@ public struct MedicationReminderPlanner: Sendable {
         // `DueItemBuilder` bleibt die einzige Quelle für Intervall- und
         // Wirkdauer-Fälligkeiten. Dessen heutige `.dose`-Items werden verworfen,
         // weil die vollständigen Dosen oben direkt aus dem Schema entstehen.
+        // Vorrats-Items sind keine Gabe: sie dürfen weder Alarm noch
+        // Bestätigung auslösen und laufen nur über `NotificationPlanner`.
         let nonDoseItems = DueItemBuilder(dayMath: dayMath).build(
             medications: activeMedications,
             cycles: [],
             asOf: asOf,
             forecastHorizonDays: horizon
-        ).filter { $0.category != .dose }
+        ).filter { $0.category != .dose && $0.category != .restock }
 
         for item in nonDoseItems {
             let daysUntilDue = dayMath.days(from: today, to: item.dueOn)
@@ -113,7 +160,10 @@ public struct MedicationReminderPlanner: Sendable {
                     title: item.title,
                     detail: item.detail,
                     category: item.category,
-                    dueAt: dueAt
+                    dueAt: dueAt,
+                    // Fehlt die Klasse (nur bei Nicht-Medikamenten-Items, die
+                    // hier nicht vorkommen), lieber kein Alarm als ein falscher.
+                    usesAlarm: item.careClass == .timeCritical
                 )
             )
         }
@@ -134,7 +184,8 @@ private extension MedicationReminderPlanner {
         category: DueItem.Category,
         title: String,
         detail: String?,
-        dueAt: Date
+        dueAt: Date,
+        usesAlarm: Bool
     ) -> MedicationReminder {
         MedicationReminder(
             id: reminderID(sourceID: medication.sourceID, category: category, dueAt: dueAt),
@@ -144,7 +195,8 @@ private extension MedicationReminderPlanner {
             title: title,
             detail: detail,
             category: category,
-            dueAt: dueAt
+            dueAt: dueAt,
+            usesAlarm: usesAlarm
         )
     }
 

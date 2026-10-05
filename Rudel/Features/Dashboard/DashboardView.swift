@@ -31,6 +31,7 @@ private struct DashboardContent: View {
     // Die Datenmenge ist einstellig bis dreistellig — das kostet nichts.
     @Query(sort: \MedicationPlan.createdAt) private var allPlans: [MedicationPlan]
     @Query(sort: \CyclePeriod.day1Date, order: .reverse) private var allPeriods: [CyclePeriod]
+    @Query(sort: \VetAppointment.date) private var allAppointments: [VetAppointment]
 
     /// Zählt erfolgreiche Log-Vorgänge und dient nur als Auslöser für die
     /// haptische Rückmeldung. Sitzt auf der `List`, nicht auf der Zeile: die
@@ -51,6 +52,11 @@ private struct DashboardContent: View {
         allPeriods.filter { $0.pet?.id == pet.id }
     }
 
+    /// Wie die Pläne nur die des gewählten Tiers: der Screen zeigt ein Tier.
+    private var appointments: [VetAppointment] {
+        allAppointments.filter { $0.pet?.id == pet.id }
+    }
+
     var body: some View {
         // Einmal rechnen, mehrfach anzeigen — jeder Zugriff auf `snapshot`
         // würde die Engine erneut aufrufen.
@@ -58,6 +64,7 @@ private struct DashboardContent: View {
             pet: pet,
             plans: plans,
             periods: periods,
+            appointments: appointments,
             dayMath: appState.dayMath,
             asOf: today
         )
@@ -66,11 +73,11 @@ private struct DashboardContent: View {
             headerSection
             tasksSection(data)
             dosesSection(data)
+            quickActionsSection
             cycleSection(data)
             laterSection(data)
-            quickActionsSection
         }
-        .listStyle(.insetGrouped)
+        .rudelListStyle()
         .sensoryFeedback(.success, trigger: logTick)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -89,23 +96,15 @@ private struct DashboardContent: View {
     @ViewBuilder
     private var headerSection: some View {
         Section {
-            HStack(spacing: 14) {
-                PetAvatar(pet: pet, size: 52)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(petName)
-                        .font(.headline)
-                    if let subtitle = petSubtitle {
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+            RudelPetHero(
+                pet: pet,
+                eyebrow: today.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "de_DE"))),
+                introduction: "Heute mit",
+                subtitle: ageText
+            ) {
+                weightRow
             }
-            .padding(.vertical, 4)
-
-            weightRow
-        } header: {
-            Text(Format.date(today))
+            .rudelFeatureRow()
         }
     }
 
@@ -119,28 +118,25 @@ private struct DashboardContent: View {
         if let latest = history.first {
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: "scalemass")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(RudelTheme.sage)
                     .frame(width: 20)
                 Text("Gewicht")
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(Format.weight(latest.valueKg))
-                        .foregroundStyle(.secondary)
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
                     if let trend = weightTrend(history) {
                         Label(trend.text, systemImage: trend.symbolName)
                             .font(.caption)
-                            .foregroundStyle(trend.tint)
+                            .foregroundStyle(RudelTheme.sage)
                             .labelStyle(.titleAndIcon)
                     }
                 }
             }
             .accessibilityElement(children: .combine)
         } else {
-            LabeledValueRow(
-                label: "Gewicht",
-                value: "noch nicht erfasst",
-                systemImage: "scalemass"
-            )
+            Label("Gewicht noch nicht erfasst", systemImage: "scalemass")
+                .font(.subheadline).foregroundStyle(RudelTheme.sage)
         }
     }
 
@@ -177,45 +173,49 @@ private struct DashboardContent: View {
     private func tasksSection(_ data: DashboardSnapshot) -> some View {
         Section {
             if data.tasks.isEmpty {
-                ContentUnavailableView {
-                    Label("Nichts offen", systemImage: "checkmark.seal")
-                } description: {
-                    Text("Für \(petName) ist gerade keine Gabe fällig.")
+                HStack(alignment: .top, spacing: 14) {
+                    RudelIcon(symbol: "checkmark")
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Nichts offen").font(.headline).foregroundStyle(RudelTheme.ink)
+                        Text("Für \(petName) ist gerade keine Gabe fällig.")
+                            .font(.subheadline).foregroundStyle(RudelTheme.muted)
+                    }
                 }
-                .listRowBackground(Color.clear)
+                .padding(.vertical, 8)
             } else {
                 ForEach(data.tasks) { item in
                     DueItemRow(
                         item: item,
                         title: title(for: item),
                         symbolName: symbolName(for: item),
-                        protection: data.protection[item.sourceID],
+                        dueText: dueText(for: item),
+                        // Nur die Fälligkeit trägt den Schutzbalken, nicht das
+                        // Vorrats-Item desselben Plans.
+                        protection: item.category == .restock ? nil : data.protection[item.sourceID],
                         forecastConfidence: item.isForecast ? data.prediction?.confidence : nil,
-                        onLog: logAction(for: item),
-                        logActionTitle: logActionTitle(for: item)
+                        onLog: primaryAction(for: item),
+                        logActionTitle: primaryActionTitle(for: item),
+                        actionSymbol: primaryActionSymbol(for: item)
                     )
+                    // Nur Termine öffnen per Tap; Gaben haben ihren eigenen Knopf.
+                    .contentShape(.rect)
+                    .gesture(TapGesture().onEnded { openAppointment(item) }, isEnabled: item.category == .vetAppointment)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        if canLog(item) {
-                            Button {
-                                logGiven(item)
-                            } label: {
-                                Label(logActionTitle(for: item), systemImage: "checkmark")
+                        if let action = primaryAction(for: item) {
+                            Button(action: action) {
+                                Label(primaryActionTitle(for: item), systemImage: primaryActionSymbol(for: item))
                             }
-                            .tint(.green)
+                            .tint(usesBlueAction(item) ? .blue : .green)
                         }
                         secondarySwipeAction(for: item)
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        preventiveSwipeActions(for: item)
                     }
                 }
             }
         } header: {
-            HStack {
-                Text("Offene Aufgaben")
-                Spacer()
-                if !data.tasks.isEmpty {
-                    Text("\(data.tasks.count)")
-                        .accessibilityLabel("\(data.tasks.count) offen")
-                }
-            }
+            RudelSectionHeading(title: "Offene Aufgaben", detail: data.tasks.isEmpty ? nil : "\(data.tasks.count) offen")
         }
     }
 
@@ -229,18 +229,22 @@ private struct DashboardContent: View {
                 ForEach(data.later) { item in
                     LabeledValueRow(
                         label: title(for: item),
-                        value: Format.relativeDue(days: item.daysUntilDue),
+                        value: laterValue(for: item),
                         systemImage: symbolName(for: item)
                     )
+                    // Nur Termine öffnen per Tap; Gaben haben ihren eigenen Knopf.
+                    .contentShape(.rect)
+                    .gesture(TapGesture().onEnded { openAppointment(item) }, isEnabled: item.category == .vetAppointment)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if canLog(item) {
-                            Button {
-                                logGiven(item)
-                            } label: {
-                                Label(logActionTitle(for: item), systemImage: "checkmark")
+                        if let action = primaryAction(for: item) {
+                            Button(action: action) {
+                                Label(primaryActionTitle(for: item), systemImage: primaryActionSymbol(for: item))
                             }
-                            .tint(.green)
+                            .tint(usesBlueAction(item) ? .blue : .green)
                         }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        preventiveSwipeActions(for: item)
                     }
                 }
             }
@@ -251,20 +255,44 @@ private struct DashboardContent: View {
     /// einer erwarteten Läufigkeit — der Tag-1-Anker.
     @ViewBuilder
     private func secondarySwipeAction(for item: DueItem) -> some View {
-        if item.category == .cycleForecast {
+        switch item.category {
+        case .cycleForecast:
             Button {
                 appState.present(.startCyclePeriod(petID: pet.id))
             } label: {
                 Label("Tag 1 erfassen", systemImage: "drop")
             }
             .tint(.pink)
-        } else {
+        case .vetAppointment, .restock:
+            // Termin öffnen bzw. „Aufgefüllt" ist die einzige Handlung.
+            EmptyView()
+        case .medication, .protectionExpiry, .dose, .criticalDays:
             Button {
-                appState.present(.quickLogMedication(petID: pet.id))
+                appState.present(.quickLogMedication(petID: pet.id, planID: plan(for: item)?.id))
             } label: {
                 Label("Anderes Datum", systemImage: "calendar")
             }
-            .tint(.blue)
+            .tint(item.needsVetAppointment ? .green : .blue)
+        }
+    }
+
+    /// Auslassen und Zurückstellen — nur für Vorsorge. Auf der anderen Seite
+    /// als „Gegeben", damit ein Vollwisch nie versehentlich auslässt.
+    @ViewBuilder
+    private func preventiveSwipeActions(for item: DueItem) -> some View {
+        if isPreventive(item), let plan = plan(for: item) {
+            Button {
+                skip(plan)
+            } label: {
+                Label("Auslassen", systemImage: "forward")
+            }
+            .tint(.orange)
+            Button {
+                appState.present(.deferMedication(planID: plan.id))
+            } label: {
+                Label("Zurückstellen", systemImage: "moon.zzz")
+            }
+            .tint(.indigo)
         }
     }
 
@@ -280,7 +308,7 @@ private struct DashboardContent: View {
             } header: {
                 Text("Heutige Einzelgaben")
             } footer: {
-                Text("Nur abgehakte Gaben werden gespeichert. Ein Tap auf einen Haken nimmt ihn wieder zurück.")
+                Text("Ein Tap auf einen Haken nimmt ihn wieder zurück.")
             }
         }
     }
@@ -375,37 +403,26 @@ private struct DashboardContent: View {
 
     @ViewBuilder
     private var quickActionsSection: some View {
-        Section("Schnell erfassen") {
-            quickAction("Symptom", systemImage: "stethoscope") {
-                appState.present(.logSymptom(petID: pet.id))
-            }
-            quickAction("Gewicht", systemImage: "scalemass") {
-                appState.present(.logWeight(petID: pet.id))
-            }
-            if pet.tracksCycle {
-                quickAction("Zyklus-Beobachtung", systemImage: "drop") {
-                    appState.present(.logCycleObservation(petID: pet.id))
+        Section {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 12) {
+                RudelQuickAction(title: "Gabe mit Datum", symbol: "pills", apricot: true) {
+                    appState.present(.quickLogMedication(petID: pet.id))
+                }
+                RudelQuickAction(title: "Gewicht", symbol: "scalemass") {
+                    appState.present(.logWeight(petID: pet.id))
+                }
+                RudelQuickAction(title: "Symptom", symbol: "stethoscope") {
+                    appState.present(.logSymptom(petID: pet.id))
+                }
+                if pet.tracksCycle {
+                    RudelQuickAction(title: "Zyklus-Beobachtung", symbol: "drop", apricot: true) {
+                        appState.present(.logCycleObservation(petID: pet.id))
+                    }
                 }
             }
-            quickAction("Gabe mit Datum", systemImage: "pills") {
-                appState.present(.quickLogMedication(petID: pet.id))
-            }
-        }
-    }
-
-    private func quickAction(
-        _ title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack {
-                Label(title, systemImage: systemImage)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
+            .rudelFeatureRow()
+        } header: {
+            RudelSectionHeading(title: "Schnell erfassen")
         }
     }
 
@@ -415,14 +432,33 @@ private struct DashboardContent: View {
         plans.first { $0.engineID == item.sourceID }
     }
 
+    private func appointment(for item: DueItem) -> VetAppointment? {
+        guard item.category == .vetAppointment else { return nil }
+        return appointments.first { $0.engineID == item.sourceID }
+    }
+
     /// Abhakbar sind nur Gaben. Eine Zyklus-Prognose ist keine Aufgabe, die man
     /// erledigt — sie tritt ein. Ein kritischer Tag genauso wenig: er ist ein
-    /// Zustand, den man zur Kenntnis nimmt, nicht abhakt.
+    /// Zustand, den man zur Kenntnis nimmt, nicht abhakt. Und eine Gabe, die
+    /// erst einen Tierarzttermin braucht, ist zuerst ein Termin.
     private func canLog(_ item: DueItem) -> Bool {
         switch item.category {
-        case .medication, .protectionExpiry: return plan(for: item) != nil
-        case .dose, .cycleForecast, .criticalDays: return false
+        case .medication, .protectionExpiry: return plan(for: item) != nil && !item.needsVetAppointment
+        case .dose, .cycleForecast, .criticalDays, .vetAppointment, .restock: return false
         }
+    }
+
+    private func isPreventive(_ item: DueItem) -> Bool {
+        switch item.category {
+        case .medication, .protectionExpiry: return item.careClass == .preventive
+        case .dose, .cycleForecast, .criticalDays, .vetAppointment, .restock: return false
+        }
+    }
+
+    /// Ein begonnener, noch offener Termin wartet auf seinen Abschluss.
+    /// Gegen `Date()`, nicht gegen `today`: der Stichtag steht auf Mitternacht.
+    private func isPastAppointment(_ item: DueItem) -> Bool {
+        item.category == .vetAppointment && item.dueOn < Date()
     }
 
     /// Bei Kotproben-Plänen dokumentiert der Eintrag die abgegebene Probe, nicht
@@ -430,31 +466,126 @@ private struct DashboardContent: View {
     /// kann das nicht wissen: `DueItemBuilder.MedicationInput` führt das Feld
     /// nicht mit, also korrigiert die View den Titel.
     private func title(for item: DueItem) -> String {
+        if isPastAppointment(item) {
+            return "Termin abschließen"
+        }
         if item.category == .medication, let plan = plan(for: item), plan.usesFecalSampleInstead {
             return "Kotprobe"
         }
         return item.title
     }
 
-    private func logActionTitle(for item: DueItem) -> String {
+    /// Termin- und Vorratsaktionen sind keine Gabe — kein Grün.
+    private func usesBlueAction(_ item: DueItem) -> Bool {
+        item.category == .vetAppointment || item.category == .restock || item.needsVetAppointment
+    }
+
+    private func primaryActionTitle(for item: DueItem) -> String {
+        if item.category == .restock {
+            return "Aufgefüllt"
+        }
+        if item.category == .vetAppointment {
+            return isPastAppointment(item) ? "Termin abschließen" : "Termin öffnen"
+        }
+        if item.needsVetAppointment {
+            return "Termin anlegen"
+        }
         if let plan = plan(for: item), plan.usesFecalSampleInstead {
             return "Abgegeben"
         }
         return "Gegeben"
     }
 
-    /// `nil` ⇒ die Zeile bekommt keinen Haken-Button und keine Wisch-Aktion
-    /// zum Eintragen.
-    private func logAction(for item: DueItem) -> (() -> Void)? {
+    private func primaryActionSymbol(for item: DueItem) -> String {
+        if item.category == .restock {
+            return "shippingbox.fill"
+        }
+        if item.category == .vetAppointment {
+            return isPastAppointment(item) ? "checkmark.seal" : "calendar"
+        }
+        return item.needsVetAppointment ? "calendar.badge.plus" : "checkmark.circle.fill"
+    }
+
+    /// `nil` ⇒ die Zeile bekommt keinen Aktions-Button und keine Wisch-Aktion.
+    private func primaryAction(for item: DueItem) -> (() -> Void)? {
+        // Vor allem anderen: ein Vorrats-Item darf nie als Gabe erfasst werden.
+        if item.category == .restock {
+            guard let plan = plan(for: item) else { return nil }
+            return { appState.present(.restockMedication(planID: plan.id)) }
+        }
+        if item.category == .vetAppointment {
+            guard appointment(for: item) != nil else { return nil }
+            return { openAppointment(item) }
+        }
+        if item.needsVetAppointment, let plan = plan(for: item) {
+            return {
+                appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
+            }
+        }
         guard canLog(item) else { return nil }
         return { logGiven(item) }
     }
 
+    private func openAppointment(_ item: DueItem) {
+        guard let appointment = appointment(for: item) else { return }
+        appState.present(.editAppointment(
+            appointmentID: appointment.id,
+            petID: pet.id,
+            planID: appointment.medicationPlan?.id
+        ))
+    }
+
     private func symbolName(for item: DueItem) -> String {
-        if let plan = plan(for: item) {
-            return Format.symbolName(plan.kindValue)
+        switch item.category {
+        case .vetAppointment:
+            return appointment(for: item)?.reasonValue.symbolName ?? "stethoscope"
+        case .cycleForecast:
+            return "drop"
+        case .restock:
+            return "shippingbox"
+        case .medication, .protectionExpiry, .dose, .criticalDays:
+            if let plan = plan(for: item) {
+                return Format.symbolName(plan.kindValue)
+            }
+            return "bell"
         }
-        return item.category == .cycleForecast ? "drop" : "bell"
+    }
+
+    /// Fälligkeitszeile einer offenen Aufgabe.
+    private func dueText(for item: DueItem) -> String {
+        if item.category == .restock {
+            let reach = item.stock.flatMap(MedicationDisplay.reachText) ?? "reicht bis \(Format.shortDate(item.dueOn))"
+            return reach.prefix(1).uppercased() + reach.dropFirst()
+        }
+        if item.category == .vetAppointment {
+            return isPastAppointment(item)
+                ? "War \(Format.dateTime(item.dueOn))"
+                : "\(Format.relativeDue(days: item.daysUntilDue)), \(Format.time(item.dueOn))"
+        }
+        if let deferredUntil = item.deferredUntil {
+            return "zurückgestellt bis \(Format.date(deferredUntil))"
+        }
+        // „Noch nie gegeben" liefert die Engine als `.overdue` mit
+        // `daysUntilDue == 0`. Daneben „Heute" zu schreiben wäre eine
+        // Beschönigung — in diesem Fall steht nur das Datum.
+        let due = item.urgency == .overdue && item.daysUntilDue == 0
+            ? Format.date(item.dueOn)
+            : "\(Format.relativeDue(days: item.daysUntilDue)) · \(Format.date(item.dueOn))"
+        return item.needsVetAppointment ? "Tierarzttermin vereinbaren · \(due)" : due
+    }
+
+    /// Kurzwert für „Später geplant".
+    private func laterValue(for item: DueItem) -> String {
+        if item.category == .restock {
+            return item.stock.flatMap(MedicationDisplay.reachText) ?? "Vorrat bis \(Format.shortDate(item.dueOn))"
+        }
+        if item.category == .vetAppointment {
+            return Format.dateTime(item.dueOn)
+        }
+        if let deferredUntil = item.deferredUntil {
+            return "zurückgestellt bis \(Format.shortDate(deferredUntil))"
+        }
+        return Format.relativeDue(days: item.daysUntilDue)
     }
 
     /// Ein Tap = eine dokumentierte Gabe mit heutigem Datum. Kein Sheet, keine
@@ -464,8 +595,11 @@ private struct DashboardContent: View {
         guard let plan = plan(for: item) else { return }
         // Zweimal am selben Tag ist bei Wurmkur, Zeckenschutz und Impfung immer
         // ein Doppeltipp, kein zweiter Vorgang. Der Zustand ist dann schon
-        // richtig, also nur die Rückmeldung geben und nichts anlegen.
-        if plan.events.contains(where: { appState.dayMath.isSameDay($0.givenOn, today) }) {
+        // richtig, also nur die Rückmeldung geben und nichts anlegen. Nur echte
+        // Gaben zählen: wer morgens ausgelassen hat und abends doch gibt, gibt.
+        if plan.events.contains(where: {
+            $0.outcomeValue == .given && appState.dayMath.isSameDay($0.givenOn, today)
+        }) {
             logTick += 1
             return
         }
@@ -477,9 +611,13 @@ private struct DashboardContent: View {
         logTick += 1
     }
 
-    /// Haken setzen oder zurücknehmen. Das Zurücknehmen **löscht** die Zeile:
-    /// das Journal kennt nur „gegeben"-Einträge, eine fehlende Zeile heißt
-    /// „nicht gegeben" (PRD §8).
+    private func skip(_ plan: MedicationPlan) {
+        MedicationActions.skip(plan, context: context, dayMath: appState.dayMath)
+        logTick += 1
+    }
+
+    /// Haken setzen oder zurücknehmen. Das Zurücknehmen **löscht** die Zeile —
+    /// auch eine ausgelassene: eine fehlende Zeile heißt „offen" (PRD §8).
     private func toggle(_ slot: DoseSlot) {
         if let existing = slot.existingLog {
             context.delete(existing)
@@ -497,14 +635,6 @@ private struct DashboardContent: View {
 
     private var petName: String {
         pet.name.isEmpty ? "Unbenannt" : pet.name
-    }
-
-    private var petSubtitle: String? {
-        var pieces: [String] = []
-        let breed = pet.breed.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !breed.isEmpty { pieces.append(breed) }
-        if let age = ageText { pieces.append(age) }
-        return pieces.isEmpty ? nil : pieces.joined(separator: " · ")
     }
 
     private var ageText: String? {
@@ -564,6 +694,7 @@ private struct DashboardSnapshot {
         pet: Pet,
         plans: [MedicationPlan],
         periods: [CyclePeriod],
+        appointments: [VetAppointment],
         dayMath: DayMath,
         asOf: Date
     ) {
@@ -615,8 +746,9 @@ private struct DashboardSnapshot {
         }
 
         let items = DueItemBuilder(dayMath: dayMath).build(
-            medications: plans.map { $0.engineInput() },
+            medications: plans.map { $0.engineInput(asOf: asOf, dayMath: dayMath) },
             cycles: cycleInputs,
+            appointments: appointments.compactMap { $0.engineInput() },
             asOf: asOf
         )
         let withoutDoses = items.filter { $0.category != .dose }
@@ -628,6 +760,8 @@ private struct DashboardSnapshot {
         // Konfidenz und Grundlage, wo es hingehört.
         later = withoutDoses.filter { $0.urgency == .scheduled && $0.category != .cycleForecast }
 
+        // `lastGivenOn` zählt nur echte Gaben: eine ausgelassene Zeckentablette
+        // füllt den Balken nicht auf.
         for plan in plans where plan.isActive && plan.kindValue.usesEffectivePeriod {
             guard let lastGivenOn = plan.lastGivenOn, plan.effectiveDays > 0 else { continue }
             protection[plan.engineID] = calculator.protectionStatus(
@@ -637,13 +771,12 @@ private struct DashboardSnapshot {
             )
         }
 
-        // Tagesfenster über `DayMath` statt 86400 Sekunden — sonst schneidet
-        // eine Zeitumstellung eine Abendgabe ab.
-        let endOfDay = dayMath.adding(days: 1, to: asOf).addingTimeInterval(-1)
+        // Dieselbe Tagesrechnung wie in der Medikamentenliste, inklusive
+        // Zurückstellung — sonst stünden hier Gaben, die Heute-Liste und
+        // Erinnerungen bewusst weglassen.
         var slots: [DoseSlot] = []
         for plan in plans where plan.isActive && plan.kindValue == .ongoing {
-            guard let schedule = plan.doseSchedule else { continue }
-            for occurrence in calculator.doseOccurrences(schedule: schedule, in: asOf...endOfDay) {
+            for occurrence in MedicationDisplay.todaysDoseOccurrences(for: plan, asOf: asOf, dayMath: dayMath) {
                 // Toleranz gegen Sekundenbruchteile aus der Persistenz — der
                 // Termin ist minutengenau gemeint.
                 let existing = plan.doseLogs.first {
@@ -674,7 +807,10 @@ private struct DoseSlot: Identifiable {
     let existingLog: DoseLogEntry?
 
     var id: String { "\(plan.engineID)-\(scheduledAt.timeIntervalSince1970)" }
-    var isTaken: Bool { existingLog != nil }
+    /// Erledigt — gegeben oder bewusst ausgelassen.
+    var isDone: Bool { existingLog != nil }
+    var isSkipped: Bool { existingLog?.wasSkipped == true }
+    var isTaken: Bool { isDone && !isSkipped }
 }
 
 // MARK: - Zeilen
@@ -685,12 +821,14 @@ private struct DueItemRow: View {
     let item: DueItem
     let title: String
     let symbolName: String
+    let dueText: String
     let protection: ProtectionStatus?
     /// Nur bei Prognosen gesetzt: eine Spanne ohne Konfidenz ist laut PRD §6
     /// nicht zulässig.
     let forecastConfidence: Confidence?
     let onLog: (() -> Void)?
     let logActionTitle: String
+    var actionSymbol = "checkmark.circle.fill"
 
     @ScaledMetric private var iconWidth: CGFloat = 24
 
@@ -715,11 +853,11 @@ private struct DueItemRow: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {
                             UrgencyBadge(urgency: item.urgency)
-                            dueText
+                            dueLabel
                         }
                         VStack(alignment: .leading, spacing: 5) {
                             UrgencyBadge(urgency: item.urgency)
-                            dueText
+                            dueLabel
                         }
                     }
                     if let forecastConfidence {
@@ -731,7 +869,7 @@ private struct DueItemRow: View {
 
                 if let onLog {
                     Button(action: onLog) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: actionSymbol)
                             .font(.title2)
                             .foregroundStyle(.tint)
                     }
@@ -747,20 +885,10 @@ private struct DueItemRow: View {
         .padding(.vertical, 4)
     }
 
-    private var dueText: Text {
-        Text(dueDescription)
+    private var dueLabel: Text {
+        Text(dueText)
             .font(.caption)
             .foregroundStyle(.secondary)
-    }
-
-    /// „Noch nie gegeben" liefert die Engine als `.overdue` mit
-    /// `daysUntilDue == 0`. Daneben „Heute" zu schreiben wäre eine
-    /// Beschönigung — in diesem Fall steht nur das Datum.
-    private var dueDescription: String {
-        if item.urgency == .overdue, item.daysUntilDue == 0 {
-            return Format.date(item.dueOn)
-        }
-        return "\(Format.relativeDue(days: item.daysUntilDue)) · \(Format.date(item.dueOn))"
     }
 }
 
@@ -773,7 +901,8 @@ private struct DoseRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Image(systemName: slot.isTaken ? "checkmark.circle.fill" : "circle")
+                // Ausgelassen ist erledigt, aber nicht gegeben — kein grünes Häkchen.
+                Image(systemName: slot.isSkipped ? "forward.fill" : (slot.isTaken ? "checkmark.circle.fill" : "circle"))
                     .font(.title3)
                     .foregroundStyle(slot.isTaken ? Color.green : Color.secondary)
                     .accessibilityHidden(true)
@@ -781,7 +910,7 @@ private struct DoseRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(productName)
                         .foregroundStyle(.primary)
-                        .strikethrough(slot.isTaken, color: .secondary)
+                        .strikethrough(slot.isDone, color: .secondary)
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -793,8 +922,11 @@ private struct DoseRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(productName), \(Format.time(slot.scheduledAt))")
-        .accessibilityValue(slot.isTaken ? "gegeben" : "offen")
-        .accessibilityHint(slot.isTaken ? "Doppeltippen, um den Haken zurückzunehmen" : "Doppeltippen, um die Gabe einzutragen")
+        .accessibilityValue(slot.isSkipped ? "ausgelassen" : (slot.isTaken ? "gegeben" : "offen"))
+        .accessibilityHint(
+            slot.isSkipped ? "Doppeltippen, um die Auslassung zurückzunehmen"
+                : (slot.isTaken ? "Doppeltippen, um den Haken zurückzunehmen" : "Doppeltippen, um die Gabe einzutragen")
+        )
     }
 
     private var productName: String {
@@ -807,8 +939,8 @@ private struct DoseRow: View {
         var pieces = [Format.time(slot.scheduledAt)]
         let dose = slot.plan.doseLabel.trimmingCharacters(in: .whitespacesAndNewlines)
         if !dose.isEmpty { pieces.append(dose) }
-        if let takenAt = slot.existingLog?.takenAt {
-            pieces.append("abgehakt \(Format.time(takenAt))")
+        if let log = slot.existingLog {
+            pieces.append("\(log.wasSkipped ? "ausgelassen" : "abgehakt") \(Format.time(log.takenAt))")
         }
         return pieces.joined(separator: " · ")
     }
@@ -837,6 +969,7 @@ private struct DoseRow: View {
                 ),
                 title: "Zeckenschutz erneuern",
                 symbolName: "shield.lefthalf.filled",
+                dueText: "3 Tage überfällig",
                 protection: ProtectionStatus(
                     remainingFraction: 0,
                     remainingDays: -3,
@@ -864,6 +997,7 @@ private struct DoseRow: View {
                 ),
                 title: "Läufigkeit erwartet",
                 symbolName: "drop",
+                dueText: "in 11 Tagen",
                 protection: nil,
                 forecastConfidence: .moderate,
                 onLog: nil,
@@ -871,5 +1005,5 @@ private struct DoseRow: View {
             )
         }
     }
-    .listStyle(.insetGrouped)
+    .rudelListStyle()
 }

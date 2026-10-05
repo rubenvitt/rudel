@@ -68,6 +68,7 @@ struct QuickLogMedicationSheet: View {
                     form
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Gabe erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

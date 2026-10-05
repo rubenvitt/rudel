@@ -39,8 +39,10 @@ final class MedicationAlarmService {
             do {
                 var records = try self.registry.load()
                 guard let old = records.first(where: { $0.id == id }) else { return }
+                // Vorsorge darf auch über den Stopp-Knopf eines Altalarms nicht
+                // wieder zum Alarm werden.
                 guard configuration.enabled,
-                      let reminder = validReminders.first(where: { $0.id == old.reminder.id }) else {
+                      let reminder = validReminders.first(where: { $0.id == old.reminder.id && $0.usesAlarm }) else {
                     if try self.system.currentAlarms()[id] != nil { try self.system.cancel(id: id) }
                     records.removeAll { $0.id == id }
                     try self.registry.save(records)
@@ -80,6 +82,11 @@ final class MedicationAlarmService {
     }
 
     private func apply(reminders: [MedicationReminder], configuration: MedicationAlarmConfiguration, asOf: Date) async -> Set<String> {
+        // Zweite Sicherung neben `NotificationService`: Vorsorge erzeugt nie
+        // einen Alarm. Vor allem anderen gefiltert, damit auch die
+        // Kapazitätsmeldung unten nur Alarm-Termine zählt — und ein früher als
+        // Alarm registrierter Vorsorge-Termin wie ein erledigter entfernt wird.
+        let reminders = reminders.filter(\.usesAlarm)
         issue = nil
         var handled = Set<String>()
         do {

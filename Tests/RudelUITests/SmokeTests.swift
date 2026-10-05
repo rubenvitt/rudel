@@ -121,7 +121,187 @@ final class SmokeTests: XCTestCase {
                 "App ist beim Öffnen von \(tab) abgestürzt"
             )
             attachScreenshot(of: app, named: "tab-\(tab)")
+
+            // Der Gesundheit-Tab hat drei Bereiche; der Tierarzt-Bereich wird
+            // erst beim Umschalten gebaut.
+            if tab == "Gesundheit" {
+                let vetSegment = app.segmentedControls.buttons["Tierarzt"]
+                XCTAssertTrue(vetSegment.waitForExistence(timeout: 5), "Bereich Tierarzt fehlt")
+                vetSegment.tap()
+                XCTAssertEqual(app.state, .runningForeground, "Absturz im Tierarzt-Bereich")
+                attachScreenshot(of: app, named: "tab-Gesundheit-Tierarzt")
+                app.segmentedControls.buttons["Symptome"].tap()
+            }
         }
+    }
+
+    /// Tierarzt-Durchstich: Praxis anlegen, Termin mit Praxis anlegen, Termin
+    /// abschließen — und die Notfallkarte im Profil.
+    @MainActor
+    func testVetPracticeAndAppointmentLifecycle() throws {
+        let app = XCUIApplication()
+        // Der Simulator-Store überlebt den Testlauf: eindeutige Namen, damit
+        // Einträge früherer Läufe nicht verwechselt werden.
+        let suffix = UUID().uuidString.prefix(6)
+        let practiceName = "Praxis UI-\(suffix)"
+        let appointmentTitle = "Kontrolle UI-\(suffix)"
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
+        createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
+
+        // Termine erzeugen Mitteilungen — im Test nicht.
+        app.tabBars.buttons["Profil"].tap()
+        app.buttons["Einstellungen"].tap()
+        XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
+        setReminders(false, in: app)
+        app.buttons["Fertig"].tap()
+
+        app.tabBars.buttons["Gesundheit"].tap()
+        let vetSegment = app.segmentedControls.buttons["Tierarzt"]
+        XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
+        vetSegment.tap()
+
+        // Praxis anlegen.
+        openVetAddMenu(in: app, choosing: "Praxis")
+        let nameField = app.textFields["practice-name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Praxis-Sheet öffnet nicht")
+        nameField.tap()
+        nameField.typeText(practiceName)
+        let phoneField = app.textFields["practice-phone"]
+        phoneField.tap()
+        phoneField.typeText("0221 123456")
+        attachScreenshot(of: app, named: "tierarzt-praxis-sheet")
+        app.buttons["Speichern"].tap()
+        XCTAssertTrue(scrollTo(app.staticTexts[practiceName], in: app), "Praxis erscheint nicht unter „Praxen“")
+
+        // Termin mit dieser Praxis anlegen.
+        openVetAddMenu(in: app, choosing: "Termin")
+        let titleField = app.textFields["appointment-title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), "Termin-Sheet öffnet nicht")
+        titleField.tap()
+        titleField.typeText(appointmentTitle)
+        app.buttons["appointment-practice"].tap()
+        let practiceOption = app.buttons[practiceName].firstMatch
+        XCTAssertTrue(practiceOption.waitForExistence(timeout: 5), "Praxis fehlt in der Auswahl")
+        // Jeder Lauf legt eine Praxis an; die Auswahl wächst und der neue
+        // Eintrag kann außerhalb des sichtbaren Menüs liegen.
+        var attempts = 0
+        while !practiceOption.isHittable, attempts < 6 {
+            app.swipeUp()
+            attempts += 1
+        }
+        practiceOption.tap()
+        XCTAssertTrue(app.buttons["appointment-practice"].label.contains(practiceName) || app.staticTexts[practiceName].exists)
+        attachScreenshot(of: app, named: "tierarzt-termin-sheet")
+        app.buttons["Speichern"].tap()
+
+        let upcoming = app.buttons.matching(identifier: "upcoming-appointment")
+            .matching(NSPredicate(format: "label CONTAINS %@", appointmentTitle)).firstMatch
+        XCTAssertTrue(scrollTo(upcoming, in: app), "Termin erscheint nicht unter „Anstehend“")
+        XCTAssertTrue(upcoming.label.contains(practiceName), "Termin zeigt die Praxis nicht")
+        attachScreenshot(of: app, named: "tierarzt-anstehend")
+
+        // Termin abschließen.
+        upcoming.tap()
+        let doneButton = app.buttons["Als erledigt markieren"]
+        XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "Abschluss fehlt im Termin-Sheet")
+        doneButton.tap()
+        let findings = app.textFields["appointment-findings"]
+        XCTAssertTrue(revealInForm(findings, in: app), "Befundfeld erscheint nicht")
+        findings.tap()
+        findings.typeText("Alles unauffällig")
+        let cost = app.textFields["appointment-cost"]
+        cost.tap()
+        cost.typeText("45")
+        attachScreenshot(of: app, named: "tierarzt-termin-abschluss")
+        app.buttons["Speichern"].tap()
+
+        let past = app.buttons.matching(identifier: "past-appointment")
+            .matching(NSPredicate(format: "label CONTAINS %@", appointmentTitle)).firstMatch
+        XCTAssertTrue(scrollTo(past, in: app), "Erledigter Termin erscheint nicht im Verlauf")
+        XCTAssertFalse(upcoming.exists, "Erledigter Termin steht noch unter „Anstehend“")
+        attachScreenshot(of: app, named: "tierarzt-verlauf")
+
+        // Notfallkarte im Profil.
+        app.tabBars.buttons["Profil"].tap()
+        XCTAssertTrue(app.staticTexts["Notfall"].waitForExistence(timeout: 5), "Abschnitt „Notfall“ fehlt")
+        XCTAssertTrue(app.staticTexts["Chipnummer"].exists)
+        attachScreenshot(of: app, named: "profil-notfall")
+    }
+
+    /// Praxis direkt im Termin-Formular anlegen, Bericht teilen, Termin in
+    /// den Kalender übernehmen. Teilen-Menü und Kalender-Editor sind
+    /// Systemansichten: geprüft wird, dass sie erscheinen, dann abbrechen.
+    @MainActor
+    func testAppointmentInlinePracticeReportAndCalendar() throws {
+        let app = XCUIApplication()
+        let suffix = UUID().uuidString.prefix(6)
+        let practiceName = "Inline-Praxis \(suffix)"
+        let appointmentTitle = "Bericht UI-\(suffix)"
+
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
+        createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
+
+        app.tabBars.buttons["Profil"].tap()
+        app.buttons["Einstellungen"].tap()
+        XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
+        setReminders(false, in: app)
+        app.buttons["Fertig"].tap()
+
+        app.tabBars.buttons["Gesundheit"].tap()
+        let vetSegment = app.segmentedControls.buttons["Tierarzt"]
+        XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
+        vetSegment.tap()
+
+        // Neue Praxis aus dem Termin-Formular heraus.
+        openVetAddMenu(in: app, choosing: "Termin")
+        let titleField = app.textFields["appointment-title"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5), "Termin-Sheet öffnet nicht")
+        titleField.tap()
+        titleField.typeText(appointmentTitle)
+        let newPractice = app.buttons["appointment-new-practice"]
+        XCTAssertTrue(newPractice.waitForExistence(timeout: 5), "„Neue Praxis …“ fehlt")
+        newPractice.tap()
+        let nameField = app.textFields["practice-name"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5), "Praxis-Formular öffnet nicht")
+        nameField.tap()
+        nameField.typeText(practiceName)
+        attachScreenshot(of: app, named: "termin-neue-praxis")
+        // Zwei Formulare übereinander: das Speichern der Praxis gezielt treffen.
+        app.navigationBars["Praxis"].buttons["Speichern"].tap()
+        XCTAssertTrue(app.navigationBars["Termin"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Praxis"].exists, "Praxis-Formular bleibt offen")
+        let picker = app.buttons["appointment-practice"]
+        XCTAssertTrue(
+            picker.label.contains(practiceName) || app.staticTexts[practiceName].exists,
+            "Neue Praxis ist nicht ausgewählt: \(picker.label)"
+        )
+        attachScreenshot(of: app, named: "termin-praxis-ausgewaehlt")
+        app.navigationBars["Termin"].buttons["Speichern"].tap()
+
+        let upcoming = app.buttons.matching(identifier: "upcoming-appointment")
+            .matching(NSPredicate(format: "label CONTAINS %@", appointmentTitle)).firstMatch
+        XCTAssertTrue(scrollTo(upcoming, in: app), "Termin erscheint nicht unter „Anstehend“")
+        XCTAssertTrue(upcoming.label.contains(practiceName), "Termin zeigt die neue Praxis nicht")
+        upcoming.tap()
+
+        // Bericht teilen.
+        let report = app.buttons["appointment-report-share"]
+        XCTAssertTrue(revealInForm(report, in: app), "Bericht-Button fehlt im Termin")
+        report.tap()
+        XCTAssertTrue(closeShareSheet(in: app), "Teilen-Menü erscheint nicht")
+        XCTAssertTrue(app.navigationBars["Termin"].waitForExistence(timeout: 5))
+
+        // In den Kalender übernehmen.
+        let calendar = app.buttons["appointment-add-to-calendar"]
+        XCTAssertTrue(revealInForm(calendar, in: app), "„In Kalender übernehmen“ fehlt")
+        calendar.tap()
+        XCTAssertTrue(cancelCalendarEditor(in: app), "Kalender-Editor erscheint nicht")
+        XCTAssertTrue(app.navigationBars["Termin"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["appointment-add-to-calendar"].exists, "Abbrechen darf nicht als eingetragen gelten")
+        app.navigationBars["Termin"].buttons["Abbrechen"].tap()
     }
 
     /// Der Zyklus-Durchstich: Läufigkeit anlegen, damit die Screens der
@@ -220,6 +400,109 @@ final class SmokeTests: XCTestCase {
     }
 
     // MARK: - Helfer
+
+    /// Sucht ein Element in einer Liste. Der Store wächst mit jedem Lauf, und
+    /// eine `List` erzeugt Zeilen außerhalb des Bildschirms gar nicht erst —
+    /// deshalb erst nach unten, dann zurück nach oben blättern.
+    ///
+    /// `isHittable` allein reicht nicht: eine Zeile unter dem angehefteten
+    /// Bereichsumschalter gilt als antippbar, der Tipp träfe aber den
+    /// Umschalter. Deshalb zählt nur der Streifen zwischen Umschalter und
+    /// Tab-Leiste.
+    @MainActor
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        func isVisible() -> Bool {
+            guard element.exists, element.isHittable else { return false }
+            let picker = app.segmentedControls.firstMatch
+            let top = picker.exists ? picker.frame.maxY : 0
+            let tabBar = app.tabBars.firstMatch
+            let bottom = tabBar.exists ? tabBar.frame.minY : app.frame.maxY
+            return element.frame.minY >= top && element.frame.maxY <= bottom
+        }
+        _ = element.waitForExistence(timeout: 3)
+        if isVisible() { return true }
+        for _ in 0..<10 {
+            app.swipeUp()
+            if isVisible() { return true }
+        }
+        for _ in 0..<20 {
+            app.swipeDown()
+            if isVisible() { return true }
+        }
+        return false
+    }
+
+    /// Ein `Form` baut Zeilen außerhalb des Bildschirms nicht: nach unten
+    /// blättern, bis das Element da und antippbar ist.
+    @MainActor
+    private func revealInForm(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        for _ in 0..<6 {
+            if element.waitForExistence(timeout: 1), element.isHittable { return true }
+            app.swipeUp()
+        }
+        return element.exists && element.isHittable
+    }
+
+    /// Das Teilen-Menü ist eine Systemansicht; ihr Schließen-Knopf folgt der
+    /// Sprache des Simulators, nicht der App.
+    @MainActor
+    private func closeShareSheet(in app: XCUIApplication) -> Bool {
+        let deadline = Date().addingTimeInterval(15)
+        while Date() < deadline {
+            for label in ["Close", "Schließen"] {
+                let button = app.buttons[label].firstMatch
+                if button.exists, button.isHittable {
+                    attachScreenshot(of: app, named: "bericht-teilen")
+                    button.tap()
+                    return true
+                }
+            }
+            if app.otherElements["ActivityListView"].exists || app.collectionViews["ActivityListView"].exists {
+                attachScreenshot(of: app, named: "bericht-teilen")
+                // Die kompakte Teilen-Karte (iOS 26) hat keinen Schließen-Knopf.
+                // Ein Tipp auf den Titel daneben schließt nur sie; ein Wischen
+                // nach unten nähme das Termin-Formular darunter gleich mit.
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.11)).tap()
+                return true
+            }
+            usleep(300_000)
+        }
+        return false
+    }
+
+    /// Der Kalender-Editor läuft außerhalb der App. Abbrechen kann bei
+    /// vorbelegtem Ereignis noch eine Rückfrage zum Verwerfen auslösen.
+    @MainActor
+    private func cancelCalendarEditor(in app: XCUIApplication) -> Bool {
+        let bar = app.navigationBars.matching(
+            NSPredicate(format: "identifier IN %@", ["New Event", "Neues Ereignis", "Edit Event", "Ereignis bearbeiten"])
+        ).firstMatch
+        guard bar.waitForExistence(timeout: 15) else { return false }
+        attachScreenshot(of: app, named: "kalender-editor")
+        for label in ["Cancel", "Abbrechen"] where bar.buttons[label].exists {
+            bar.buttons[label].tap()
+            break
+        }
+        for label in ["Discard Changes", "Änderungen verwerfen", "Delete Event", "Ereignis löschen"] {
+            let discard = app.buttons[label].firstMatch
+            if discard.waitForExistence(timeout: 2) {
+                discard.tap()
+                break
+            }
+        }
+        return true
+    }
+
+    /// Das Plus im Tierarzt-Bereich ist ein Menü mit „Termin“ und „Praxis“.
+    @MainActor
+    private func openVetAddMenu(in app: XCUIApplication, choosing item: String) {
+        let menu = app.buttons["vet-add-menu"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "Plus-Menü im Tierarzt-Bereich fehlt")
+        menu.tap()
+        let entry = app.buttons[item].firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Menüeintrag \(item) fehlt")
+        entry.tap()
+    }
 
     @MainActor
     private func setReminders(_ enabled: Bool, in app: XCUIApplication) {

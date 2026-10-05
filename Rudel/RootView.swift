@@ -19,6 +19,8 @@ struct RootView: View {
     @Query private var doseLogs: [DoseLogEntry]
     @Query private var cyclePeriods: [CyclePeriod]
     @Query private var cycleObservations: [CycleObservation]
+    @Query private var vetAppointments: [VetAppointment]
+    @Query private var vetPractices: [VetPractice]
     @Query private var settingsRecords: [AppSettings]
 
     private let notificationService = NotificationService()
@@ -59,17 +61,22 @@ struct RootView: View {
         }
         .sheet(item: sheetBinding) { sheet in
             SheetPresenter(sheet: sheet)
+                .tint(RudelTheme.accent)
+                .presentationCornerRadius(28)
         }
+        .tint(RudelTheme.accent)
     }
 
     /// Ändert sich genau dann, wenn sich am geplanten Benachrichtigungs-Satz
     /// etwas ändern kann.
     ///
     /// Die Zähler decken jeden Log ab: das Journal ist append-only (PRD §8), eine
-    /// neue Gabe oder Beobachtung ist also immer ein neuer Datensatz. Für die
-    /// wenigen Felder, die Erinnerungen beeinflussen **ohne** einen Datensatz
-    /// anzulegen — abgesetzter Plan, geändertes Dosierschema, erfasstes Ende der
-    /// sichtbaren Hitze — fließen die Werte selbst ein.
+    /// neue Gabe oder Beobachtung ist also immer ein neuer Datensatz. Das gilt
+    /// auch für Auslassungen — `outcomeValue` und `wasSkipped` stehen beim
+    /// Anlegen fest. Für die Felder, die Erinnerungen beeinflussen **ohne**
+    /// einen Datensatz anzulegen — abgesetzter Plan, geändertes Dosierschema,
+    /// Zurückstellung, verschobener oder abgeschlossener Termin, erfasstes Ende
+    /// der sichtbaren Hitze, Impfung, Vorrat — fließen die Werte selbst ein.
     private var notificationFingerprint: Int {
         var hasher = Hasher()
         hasher.combine(medicationEvents.count)
@@ -88,6 +95,35 @@ struct RootView: View {
             hasher.combine(plan.doseTimesMinutes)
             hasher.combine(plan.doseEveryNDays)
             hasher.combine(plan.doseEndDate)
+            hasher.combine(plan.careClassOverride)
+            hasher.combine(plan.requiresVetVisitOverride)
+            hasher.combine(plan.deferredUntil)
+            hasher.combine(plan.deferredAt)
+            hasher.combine(plan.vaccineValue)
+            // Vorrat: Zählung und Parameter. Die Gaben seit der Zählung stecken
+            // schon in den Zählern oben.
+            hasher.combine(plan.stockCountedAt)
+            hasher.combine(plan.stockAmount)
+            hasher.combine(plan.stockUnit)
+            hasher.combine(plan.amountPerGiving)
+            hasher.combine(plan.restockLeadDays)
+            hasher.combine(plan.needsPrescription)
+        }
+        for appointment in vetAppointments {
+            hasher.combine(appointment.id)
+            hasher.combine(appointment.date)
+            hasher.combine(appointment.statusValue)
+            hasher.combine(appointment.title)
+            hasher.combine(appointment.reasonValue)
+            hasher.combine(appointment.pet?.id)
+            hasher.combine(appointment.practice?.id)
+            hasher.combine(appointment.practice?.name)
+            hasher.combine(appointment.medicationPlan?.id)
+        }
+        // Der Praxisname steht im Mitteilungstext eines Termins.
+        for practice in vetPractices {
+            hasher.combine(practice.id)
+            hasher.combine(practice.name)
         }
         for pet in pets {
             hasher.combine(pet.id)
@@ -101,6 +137,7 @@ struct RootView: View {
             hasher.combine(settings.leadDays)
             hasher.combine(settings.reminderMinutesFromMidnight)
             hasher.combine(settings.notificationHorizonDays)
+            hasher.combine(settings.appointmentLeadMinutes)
             hasher.combine(settings.criticalDayRemindersEnabled)
         }
         for period in cyclePeriods {
@@ -142,6 +179,7 @@ struct RootView: View {
                 PetProfileView()
             }
         }
+        .toolbarBackground(RudelTheme.canvas, for: .tabBar)
     }
 
     /// `@Observable` über `@Environment` liefert kein `$`-Binding — deshalb
@@ -203,6 +241,14 @@ private struct SheetPresenter: View {
             WeightLogSheet(petID: petID)
         case .editPet(let petID):
             PetEditSheet(petID: petID)
+        case .deferMedication(let planID):
+            MedicationDeferSheet(planID: planID)
+        case .restockMedication(let planID):
+            MedicationRestockSheet(planID: planID)
+        case .editAppointment(let appointmentID, let petID, let planID):
+            VetAppointmentEditSheet(appointmentID: appointmentID, petID: petID, planID: planID)
+        case .editPractice(let practiceID):
+            VetPracticeEditSheet(practiceID: practiceID)
         case .settings:
             SettingsSheet()
         }

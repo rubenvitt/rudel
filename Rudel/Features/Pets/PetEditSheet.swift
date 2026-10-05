@@ -32,6 +32,12 @@ struct PetEditSheet: View {
     @State private var photoData: Data?
     @State private var photoItem: PhotosPickerItem?
     @State private var isProcessingPhoto = false
+    @State private var microchipNumber = ""
+    @State private var allergies = ""
+    @State private var insuranceInfo = ""
+    @State private var primaryPracticeID: UUID?
+
+    @Query(sort: \VetPractice.name) private var practices: [VetPractice]
 
     /// Die Vorbelegung darf nur einmal laufen. `.task` feuert bei jedem
     /// Wiedereinblenden erneut und würde sonst Tippen überschreiben.
@@ -54,7 +60,9 @@ struct PetEditSheet: View {
                 if species == .dog {
                     sizeClassSection
                 }
+                emergencySection
             }
+            .rudelFormStyle()
             .navigationTitle(isNew ? "Neues Tier" : "Tier bearbeiten")
             .navigationBarTitleDisplayMode(.inline)
             // Beim Anlegen steht die Tastatur direkt im Namensfeld: danach fehlt
@@ -152,6 +160,7 @@ struct PetEditSheet: View {
         Section {
             TextField("Rasse", text: $breed, prompt: Text("z. B. Rhodesian Ridgeback"))
                 .textInputAutocapitalization(.words)
+                .accessibilityLabel("Rasse")
 
             Toggle("Geburtsdatum bekannt", isOn: $hasBirthDate)
 
@@ -223,6 +232,37 @@ struct PetEditSheet: View {
         }
     }
 
+    /// Was eine fremde Praxis im Notfall wissen muss. Steht im Profil unter
+    /// „Notfall".
+    private var emergencySection: some View {
+        Section {
+            Picker("Haustierarzt", selection: $primaryPracticeID) {
+                Text("Keiner").tag(nil as UUID?)
+                ForEach(practices) { practice in
+                    Text(VetDisplay.practiceName(practice)).tag(Optional(practice.id))
+                }
+            }
+            TextField("Chipnummer", text: $microchipNumber, prompt: Text("Chipnummer"))
+                .keyboardType(.asciiCapable)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .monospacedDigit()
+                .accessibilityLabel("Chipnummer")
+            TextField("Allergien", text: $allergies, prompt: Text("Allergien / Unverträglichkeiten"), axis: .vertical)
+                .lineLimit(1...4)
+                .accessibilityLabel("Allergien und Unverträglichkeiten")
+            TextField("Versicherung", text: $insuranceInfo, prompt: Text("Versicherung, Policennummer"), axis: .vertical)
+                .lineLimit(1...3)
+                .accessibilityLabel("Versicherung")
+        } header: {
+            Text("Notfall")
+        } footer: {
+            if practices.isEmpty {
+                Text("Praxen legst du unter Gesundheit › Tierarzt an.")
+            }
+        }
+    }
+
     /// Eine Zeile des Zielbereichs. Kurzes Label links, Zahl rechtsbündig,
     /// Einheit dahinter — so bleibt nichts abgeschnitten, auch bei großer
     /// Schrift.
@@ -243,7 +283,7 @@ struct PetEditSheet: View {
     private var sexFooter: String {
         switch species {
         case .dog:
-            return "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt; für alle anderen blendet Rudel den Zyklus-Tab aus."
+            return "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt. Für andere Tiere ist kein Zyklustracking verfügbar."
         case .cat:
             return "Für Katzen gibt es in Rudel keine Zyklusprognose. Katzen sind saisonal polyöstrisch: innerhalb der Saison folgt der Östrus alle zwei bis drei Wochen, und der Eisprung wird erst durch die Paarung ausgelöst. Dieses Muster lässt sich nicht wie der Zyklus einer Hündin vorhersagen — deshalb fehlen hier die zyklusbezogenen Felder."
         }
@@ -311,6 +351,10 @@ struct PetEditSheet: View {
         isNeutered = pet.isNeutered
         sizeClassOverride = pet.sizeClassOverride
         photoData = pet.photoData
+        microchipNumber = pet.microchipNumber
+        allergies = pet.allergies
+        insuranceInfo = pet.insuranceInfo
+        primaryPracticeID = pet.primaryPractice?.id
     }
 
     private func loadPhoto() async {
@@ -342,6 +386,7 @@ struct PetEditSheet: View {
         let trimmedBreed = breed.trimmingCharacters(in: .whitespacesAndNewlines)
         // Eine Größenklassen-Vorgabe gilt nur für Hunde (siehe `DogSizeClass`).
         let override = species == .dog ? sizeClassOverride : nil
+        let practice = primaryPracticeID.flatMap { id in practices.first { $0.id == id } }
 
         if let pet = existingPet {
             pet.name = trimmedName
@@ -354,6 +399,7 @@ struct PetEditSheet: View {
             pet.isNeutered = isNeutered
             pet.sizeClassOverride = override
             pet.photoData = photoData
+            applyEmergencyData(to: pet, practice: practice)
             try? context.save()
         } else if isNew {
             let pet = Pet(
@@ -369,6 +415,7 @@ struct PetEditSheet: View {
             )
             pet.photoData = photoData
             context.insert(pet)
+            applyEmergencyData(to: pet, practice: practice)
             try? context.save()
             // Das neu angelegte Tier ist das, mit dem der Nutzer weiterarbeiten
             // will — sonst zeigen alle Tabs weiter das alte.
@@ -379,6 +426,13 @@ struct PetEditSheet: View {
         // niemand angefordert hat.
 
         dismiss()
+    }
+
+    private func applyEmergencyData(to pet: Pet, practice: VetPractice?) {
+        pet.microchipNumber = microchipNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        pet.allergies = allergies.trimmingCharacters(in: .whitespacesAndNewlines)
+        pet.insuranceInfo = insuranceInfo.trimmingCharacters(in: .whitespacesAndNewlines)
+        pet.primaryPractice = practice
     }
 }
 

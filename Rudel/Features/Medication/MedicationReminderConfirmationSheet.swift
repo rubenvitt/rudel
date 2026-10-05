@@ -29,6 +29,14 @@ struct MedicationReminderConfirmationSheet: View {
                     } footer: {
                         Text("Bestätige erst, wenn du diese Gabe tatsächlich verabreicht hast.")
                     }
+                    Section {
+                        Button(reminder.category == .dose ? "Gabe auslassen" : "Diesmal auslassen",
+                               systemImage: "forward.end") {
+                            Task { await skip(reminder) }
+                        }
+                        .foregroundStyle(RudelTheme.muted)
+                        .disabled(isSaving)
+                    }
                 } else if isLoading {
                     ProgressView("Gabe laden …")
                 } else if errorMessage == nil {
@@ -38,6 +46,7 @@ struct MedicationReminderConfirmationSheet: View {
                     Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Gabe bestätigen")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Schließen") { dismiss() } } }
             .task {
@@ -55,11 +64,25 @@ struct MedicationReminderConfirmationSheet: View {
     }
 
     private func confirm(_ reminder: MedicationReminder) async {
+        await record { data, settings in
+            try data.confirm(reminder, context: context, settings: settings, asOf: Date())
+        }
+    }
+
+    /// Auslassen beendet den Termin wie eine Bestätigung — der Alarm darf
+    /// danach nicht erneut auslösen.
+    private func skip(_ reminder: MedicationReminder) async {
+        await record { data, settings in
+            try data.skip(reminder, context: context, settings: settings, asOf: Date())
+        }
+    }
+
+    private func record(_ write: (MedicationReminderData, AppSettings) throws -> Bool) async {
         isSaving = true
         defer { isSaving = false }
         let settings = AppSettings.loadOrCreate(in: context)
         do {
-            try MedicationReminderData().confirm(reminder, context: context, settings: settings, asOf: Date())
+            _ = try write(MedicationReminderData(), settings)
             await NotificationService().reschedule(context: context, settings: settings)
             dismiss()
         } catch { errorMessage = error.localizedDescription }

@@ -109,6 +109,7 @@ struct CyclePeriodStartSheet: View {
                     form
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Läufigkeit begonnen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

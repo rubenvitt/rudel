@@ -16,11 +16,11 @@ extension Urgency {
 
     var tint: Color {
         switch self {
-        case .overdue: return .red
-        case .dueToday: return .orange
-        case .dueSoon: return .yellow
-        case .upcoming: return .blue
-        case .scheduled: return .secondary
+        case .overdue: return RudelTheme.danger
+        case .dueToday: return RudelTheme.warning
+        case .dueSoon: return RudelTheme.warning
+        case .upcoming: return RudelTheme.accent
+        case .scheduled: return RudelTheme.muted
         }
     }
 
@@ -125,9 +125,9 @@ extension Confidence {
 
     var tint: Color {
         switch self {
-        case .low: return .secondary
-        case .moderate: return .orange
-        case .high: return .green
+        case .low: return RudelTheme.muted
+        case .moderate: return RudelTheme.warning
+        case .high: return RudelTheme.success
         }
     }
 }
@@ -169,13 +169,13 @@ struct SectionCard<Content: View>: View {
                         Image(systemName: systemImage)
                     }
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(.system(.title3, design: .serif, weight: .medium))
+                .foregroundStyle(RudelTheme.ink)
             }
             content
         }
-        .padding(16)
-        .background(.background.secondary, in: .rect(cornerRadius: 16))
+        .padding(22)
+        .background(RudelTheme.surface, in: .rect(cornerRadius: RudelTheme.cardRadius))
     }
 }
 
@@ -186,16 +186,17 @@ struct LabeledValueRow: View {
     var systemImage: String?
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(RudelTheme.accent)
                     .frame(width: 20)
             }
             Text(label)
             Spacer()
             Text(value)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(RudelTheme.muted)
+                .multilineTextAlignment(.trailing)
         }
     }
 }

@@ -151,7 +151,7 @@ final class NotificationService {
         content.sound = .default
         content.threadIdentifier = item.petID
         content.categoryIdentifier = item.category.rawValue
-        content.userInfo = ["petID": item.petID, "category": item.category.rawValue]
+        content.userInfo = ["petID": item.petID, "category": item.category.rawValue, "sourceID": item.sourceID]
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         if let reminder, Self.isMedication(reminder.category), let data = try? encoder.encode(reminder) {
@@ -199,7 +199,7 @@ final class NotificationService {
     private static func isMedication(_ category: DueItem.Category) -> Bool {
         switch category {
         case .medication, .protectionExpiry, .dose: return true
-        case .cycleForecast, .criticalDays: return false
+        case .cycleForecast, .criticalDays, .vetAppointment, .restock: return false
         }
     }
 
@@ -213,6 +213,20 @@ final class NotificationService {
             return notification.request.identifier
         }
         center.removeDeliveredNotifications(withIdentifiers: completed)
+    }
+
+    /// Nach „Aufgefüllt" soll die Vorrats-Mitteilung nicht in der
+    /// Mitteilungszentrale stehen bleiben. Ist der Vorrat weiter knapp, plant
+    /// der Planer für dieselbe Quelle erneut — dann bleibt sie stehen.
+    private func removeResolvedRestockNotifications(stillLow: Set<String>) async {
+        let resolved = await center.deliveredNotifications().compactMap { notification -> String? in
+            let content = notification.request.content
+            guard content.categoryIdentifier == DueItem.Category.restock.rawValue,
+                  let sourceID = content.userInfo["sourceID"] as? String,
+                  !stillLow.contains(sourceID) else { return nil }
+            return notification.request.identifier
+        }
+        center.removeDeliveredNotifications(withIdentifiers: resolved)
     }
 
     /// Anzahl ausstehender Erinnerungen — für die Diagnose in den Einstellungen.
@@ -279,8 +293,12 @@ final class NotificationService {
         await removeCompletedMedicationNotifications(open: reminders)
         var handled = Set<String>()
         if registryAvailable || !settings.medicationAlarmsEnabled {
+            // Die Grenze zwischen Vorsorge und Alarm: nur zeitkritische Termine
+            // gehen an AlarmKit. Die übrigen bleiben in `reminders`, weil der
+            // Planer Dosis-Mitteilungen ausschließlich daraus bildet.
             handled = await alarmService.reconcile(
-                reminders: reminders, configuration: settings.medicationAlarmConfiguration, asOf: asOf
+                reminders: reminders.filter(\.usesAlarm),
+                configuration: settings.medicationAlarmConfiguration, asOf: asOf
             )
         }
 
@@ -288,6 +306,7 @@ final class NotificationService {
             context: context, settings: settings, asOf: asOf,
             reminders: reminders, handledByAlarms: handled
         )
+        await removeResolvedRestockNotifications(stillLow: Set(planned.filter { $0.category == .restock }.map(\.sourceID)))
         if planned.isEmpty {
             return .applied(await apply([]))
         }
@@ -325,11 +344,17 @@ final class NotificationService {
 
     /// Der Alarm übernimmt den eigentlichen Termin, eine normale Vorwarnung
     /// macht zusätzlich auf den beginnenden Countdown aufmerksam.
+    ///
+    /// Minuten-Vorwarnung und wiederholte Ersatz-Erinnerung gelten nur für
+    /// Alarm-Termine. Vorsorge meldet sich ausschließlich über die normalen
+    /// Mitteilungen aus `base` — eine Wurmkur soll nicht alle zehn Minuten
+    /// nachfragen.
     private func notificationPlan(
         base: [NotificationPlanner.PlannedNotification], reminders: [MedicationReminder],
         handledByAlarms: Set<String>, settings: AppSettings, asOf: Date
     ) -> [NotificationPlanner.PlannedNotification] {
-        let overdue = reminders.filter { $0.dueAt < asOf && !handledByAlarms.contains($0.id) }
+        let alarmReminders = reminders.filter(\.usesAlarm)
+        let overdue = alarmReminders.filter { $0.dueAt < asOf && !handledByAlarms.contains($0.id) }
         var candidates = base.filter { notification in
             !overdue.contains { $0.sourceID == notification.sourceID && $0.dueAt == notification.dueAt }
         }
@@ -345,7 +370,7 @@ final class NotificationService {
         }
         let lead = settings.medicationAlarmConfiguration.leadMinutes
         if lead > 0 {
-            for reminder in reminders {
+            for reminder in alarmReminders {
                 let fireDate = reminder.dueAt.addingTimeInterval(-Double(lead * 60))
                 guard fireDate >= asOf else { continue }
                 candidates.append(NotificationPlanner.PlannedNotification(
@@ -394,12 +419,16 @@ final class NotificationService {
         var cycles: [DueItemBuilder.CycleInput] = []
         var doseOccurrences: [String: [Date]] = [:]
         var criticalDays: [String: [CriticalDayNotice]] = [:]
+        var appointments: [DueItemBuilder.AppointmentInput] = []
 
         for pet in pets {
+            // Nur geplante Termine; erledigte und abgesagte liefern `nil`.
+            appointments.append(contentsOf: pet.vetAppointments.compactMap { $0.engineInput() })
+
             for plan in pet.medicationPlans {
                 // Alle Pläne an die Engine: ob ein abgesetzter Plan ein Item
                 // erzeugt, entscheidet `DueItemBuilder` über `isActive`.
-                medications.append(plan.engineInput())
+                medications.append(plan.engineInput(asOf: asOf, dayMath: dayMath))
 
                 // Einzelgaben dagegen müssen hier gefiltert werden — der Planner
                 // bekommt sie als fertige Terminliste und kann `isActive` nicht
@@ -455,10 +484,16 @@ final class NotificationService {
             }
         }
 
+        // Mindestens der bisherige Standard von 30 Tagen, sonst fielen
+        // Fälligkeiten heraus, deren 7-Tage-Vorwarnung noch ins Fenster fällt.
+        // Ein Tag Zugabe für die Vortags-Mitteilung eines Termins knapp hinter
+        // dem Fenster. Was außerhalb des Fensters feuert, verwirft der Planer.
         let dueItems = DueItemBuilder(dayMath: dayMath).build(
             medications: medications,
             cycles: cycles,
-            asOf: asOf
+            appointments: appointments,
+            asOf: asOf,
+            forecastHorizonDays: max(30, plannerSettings.horizonDays + 1)
         )
 
         let medicationReminders = reminders ?? ((try? MedicationReminderData(dayMath: dayMath).reminders(
@@ -469,14 +504,16 @@ final class NotificationService {
             doseOccurrences: doseOccurrences,
             medicationReminders: medicationReminders,
             criticalDays: criticalDays,
-            alarmHandledReminders: medicationReminders.filter { handledByAlarms.contains($0.id) },
+            // Eine Vorsorge-ID im Alarm-Satz darf deren Mitteilung nicht schlucken.
+            alarmHandledReminders: medicationReminders.filter { $0.usesAlarm && handledByAlarms.contains($0.id) },
             settings: plannerSettings,
             asOf: asOf
         )
         return notificationPlan(base: base, reminders: medicationReminders, handledByAlarms: handledByAlarms, settings: settings, asOf: asOf)
     }
 
-    /// Ist diese Einzelgabe schon abgehakt?
+    /// Ist diese Einzelgabe schon abgehakt? Eine ausgelassene Gabe zählt
+    /// absichtlich mit — sie ist erledigt und soll nicht weiter erinnern.
     ///
     /// Vergleich auf Minutengenauigkeit statt auf Gleichheit: `scheduledAt` und
     /// der von der Engine berechnete Termin entstehen an verschiedenen Stellen,

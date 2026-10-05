@@ -83,15 +83,20 @@ public struct NotificationPlanner: Sendable {
         public var reminderTime: TimeOfDay
         /// Länge des rollierenden Fensters in Tagen.
         public var horizonDays: Int
+        /// Wie viele Minuten vor einem Tierarzttermin zusätzlich zur Mitteilung
+        /// am Vortag erinnert wird. Negative Werte werden zu 0 (zum Terminbeginn).
+        public var appointmentLeadMinutes: Int
 
         public init(
             leadDays: [Int] = [7, 1, 0],
             reminderTime: TimeOfDay = TimeOfDay(hour: 9),
-            horizonDays: Int = 14
+            horizonDays: Int = 14,
+            appointmentLeadMinutes: Int = 120
         ) {
             self.leadDays = leadDays.sorted(by: >)
             self.reminderTime = reminderTime
             self.horizonDays = max(1, horizonDays)
+            self.appointmentLeadMinutes = max(0, appointmentLeadMinutes)
         }
     }
 
@@ -129,11 +134,13 @@ public struct NotificationPlanner: Sendable {
     /// 1. Tage, an denen eine Deckung möglich ist (höchste Priorität — die
     ///    einzige Kategorie, deren Versäumnis irreversibel ist)
     /// 2. Überfällige und heute fällige Fälligkeiten
-    /// 3. Heutige Einzelgaben
-    /// 4. Läufigkeit läuft, Deckung aber noch nicht bzw. nicht mehr zu erwarten
-    /// 5. Fälligkeiten innerhalb der Vorwarnzeit, näher = wichtiger
-    /// 6. Künftige Einzelgaben, chronologisch
-    /// 7. Zyklus-Prognosen (unscharf, deshalb zuletzt)
+    /// 3. Tierarzttermine (Vortag und kurz vorher)
+    /// 4. Heutige Einzelgaben
+    /// 5. Läufigkeit läuft, Deckung aber noch nicht bzw. nicht mehr zu erwarten
+    /// 6. Fälligkeiten innerhalb der Vorwarnzeit, näher = wichtiger
+    /// 7. Vorrat geht zur Neige (höchstens eine Mitteilung pro Plan und Lauf)
+    /// 8. Künftige Einzelgaben, chronologisch
+    /// 9. Zyklus-Prognosen (unscharf, deshalb zuletzt)
     ///
     /// Innerhalb gleicher Priorität gewinnt der frühere Termin. Die Rückgabe
     /// ist chronologisch sortiert und enthält höchstens `budget` Einträge.
@@ -161,7 +168,7 @@ public struct NotificationPlanner: Sendable {
         // geschlüsselt und trägt weder Tiernamen noch Präparat — beides kommt
         // nur aus einem `DueItem` derselben Quelle.
         var metaBySource: [String: DueItem] = [:]
-        for item in dueItems {
+        for item in dueItems where item.category != .restock {
             // Ein `.dose`-Item beschreibt die Gabe am genauesten; sonst reicht
             // jedes Item derselben Quelle für Name und Bezeichnung.
             if let known = metaBySource[item.sourceID], known.category == .dose { continue }
@@ -287,12 +294,20 @@ public struct NotificationPlanner: Sendable {
     private static let priorityCriticalDay = 55
     /// Überfällig oder heute fällig.
     private static let priorityDueNow = 50
+    /// Tierarzttermin. Über den heutigen Gaben, weil ein verpasster Termin
+    /// Wochen kostet, eine verspätete Gabe meist nur Stunden; unter „fällig
+    /// jetzt", weil der Termin feststeht und die Praxis notfalls anruft.
+    private static let priorityAppointment = 45
     /// Einzelgabe heute.
     private static let priorityDoseToday = 40
     /// Läufigkeit läuft, Deckung aber noch nicht bzw. nicht mehr zu erwarten.
     private static let priorityHeatWatch = 35
     /// Fälligkeit innerhalb der Vorwarnzeit.
     private static let priorityDueUpcoming = 30
+    /// Vorrat geht zur Neige. Unter fälligen Behandlungen — nachkaufen hat
+    /// meist ein paar Tage Luft —, aber vor künftigen Einzelgaben, die bis
+    /// zu ihrem Tag ohnehin neu geplant werden.
+    private static let priorityRestock = 25
     /// Einzelgabe in der Zukunft.
     private static let priorityDoseFuture = 20
     /// Zyklus-Prognose — unscharf, deshalb zuletzt.
@@ -305,6 +320,18 @@ public struct NotificationPlanner: Sendable {
         settings: Settings,
         asOf: Date
     ) -> [PlannedNotification] {
+        // Eigener Zweig, bevor der generische Pfad greift: ein begonnener Termin
+        // steht bis zum Abschluss als `.dueToday` auf dem Dashboard, und der
+        // „nächster Slot"-Rückfall unten würde dann täglich erinnern.
+        if item.category == .vetAppointment {
+            return appointmentNotifications(for: item, settings: settings, asOf: asOf)
+        }
+        // Ebenfalls eigener Zweig: der Vorrat hat keine Vorwarnzeiten, und die
+        // Vorwarnungen des generischen Pfads ergäben mehrere Mitteilungen.
+        if item.category == .restock {
+            return restockNotifications(for: item, settings: settings, asOf: asOf)
+        }
+
         // Einzelgaben tragen ihre Uhrzeit selbst (siehe `Settings.reminderTime`:
         // „Dosis-Erinnerungen nutzen die Zeiten aus dem Dosierschema"). Eine
         // Gabe um 08:00 darf nicht um 09:00 erinnert werden, und eine Vorwarnung
@@ -336,12 +363,20 @@ public struct NotificationPlanner: Sendable {
             fireDates = [nextReminderSlot(settings.reminderTime, notBefore: asOf)]
         }
 
+        // Ohne geplanten Termin ist der nächste Schritt der Anruf in der Praxis,
+        // nicht die Gabe — das muss schon in der Überschrift stehen.
+        let title = item.needsVetAppointment
+            ? headline(petName: item.petName, subject: "Tierarzttermin vereinbaren")
+            : headline(petName: item.petName, subject: subject(for: item))
+
         return fireDates.map { fireDate in
-            PlannedNotification(
+            var text = body(for: item, firingAt: fireDate)
+            if item.needsVetAppointment { text += " Termin beim Tierarzt vereinbaren." }
+            return PlannedNotification(
                 id: notificationID(sourceID: item.sourceID, category: item.category, fireDate: fireDate),
                 fireDate: fireDate,
-                title: headline(petName: item.petName, subject: subject(for: item)),
-                body: body(for: item, firingAt: fireDate),
+                title: title,
+                body: text,
                 petID: item.petID,
                 category: item.category,
                 priority: priority(for: item),
@@ -349,6 +384,103 @@ public struct NotificationPlanner: Sendable {
                 dueAt: at(settings.reminderTime, on: item.dueOn)
             )
         }
+    }
+
+    /// Mitteilungen zu einem Tierarzttermin: am Vortag zur Erinnerungszeit und
+    /// `appointmentLeadMinutes` vor Beginn.
+    ///
+    /// Beide nur, wenn sie noch kommen und im Fenster liegen. Nach Terminbeginn
+    /// gibt es nichts mehr — anders als bei einer Fälligkeit wäre „überfällig"
+    /// hier falsch: der Termin hat stattgefunden oder ist verpasst, beides klärt
+    /// der Abschluss in der App, nicht eine Mitteilung.
+    private func appointmentNotifications(
+        for item: DueItem,
+        settings: Settings,
+        asOf: Date
+    ) -> [PlannedNotification] {
+        let start = item.dueOn
+        guard start >= asOf else { return [] }
+
+        let dayBefore = at(settings.reminderTime, on: dayMath.adding(days: -1, to: start))
+        let shortlyBefore = start.addingTimeInterval(-TimeInterval(settings.appointmentLeadMinutes * 60))
+
+        return [dayBefore, shortlyBefore]
+            .filter { $0 >= asOf && dayMath.days(from: asOf, to: $0) <= settings.horizonDays }
+            .map { fireDate in
+                PlannedNotification(
+                    id: notificationID(sourceID: item.sourceID, category: .vetAppointment, fireDate: fireDate),
+                    fireDate: fireDate,
+                    title: headline(petName: item.petName, subject: "Tierarzttermin"),
+                    body: appointmentBody(for: item, firingAt: fireDate),
+                    petID: item.petID,
+                    category: .vetAppointment,
+                    priority: Self.priorityAppointment,
+                    sourceID: item.sourceID,
+                    dueAt: start
+                )
+            }
+    }
+
+    /// Genau eine Mitteilung zum nächsten Erinnerungszeitpunkt. Weil jeder
+    /// Planungslauf nur diese eine setzt und ihre ID am Zeitpunkt hängt, kommt
+    /// höchstens eine pro Tag — und nur, solange der Vorrat knapp bleibt.
+    /// Nie ein Alarm: das Item gelangt nicht in `MedicationReminderPlanner`.
+    private func restockNotifications(
+        for item: DueItem,
+        settings: Settings,
+        asOf: Date
+    ) -> [PlannedNotification] {
+        let fireDate = nextReminderSlot(settings.reminderTime, notBefore: asOf)
+        guard dayMath.days(from: asOf, to: fireDate) <= settings.horizonDays else { return [] }
+
+        return [
+            PlannedNotification(
+                id: notificationID(sourceID: item.sourceID, category: .restock, fireDate: fireDate),
+                fireDate: fireDate,
+                title: headline(petName: item.petName, subject: baseSubject(for: item)),
+                body: restockBody(for: item, firingAt: fireDate),
+                petID: item.petID,
+                category: .restock,
+                priority: Self.priorityRestock,
+                sourceID: item.sourceID
+            )
+        ]
+    }
+
+    /// „Reicht noch etwa 5 Tage. Rezept beim Tierarzt anfordern." Die Tage
+    /// zählen ab der Mitteilung, nicht ab dem Planungslauf.
+    private func restockBody(for item: DueItem, firingAt fireDate: Date) -> String {
+        let days = dayMath.days(from: fireDate, to: item.dueOn)
+        var text: String
+        switch days {
+        case ..<1: text = "Reicht nicht mehr für die nächste Gabe."
+        case 1: text = "Reicht noch etwa 1 Tag."
+        default: text = "Reicht noch etwa \(days) Tage."
+        }
+        if item.stock?.needsPrescription == true {
+            text += " Rezept beim Tierarzt anfordern."
+        }
+        return text
+    }
+
+    /// „Morgen um 10:30 · Impfung · Praxis am Park." Der Tag ergibt sich aus dem
+    /// Abstand zwischen Mitteilung und Termin, nicht daraus, welche der beiden
+    /// Mitteilungen es ist: zwei Stunden vor einem Termin um 01:00 ist noch
+    /// der Vorabend.
+    private func appointmentBody(for item: DueItem, firingAt fireDate: Date) -> String {
+        let days = dayMath.days(from: fireDate, to: item.dueOn)
+        let dayWord: String
+        switch days {
+        case 0: dayWord = "Heute"
+        case 1: dayWord = "Morgen"
+        default: dayWord = "Am \(dateText(item.dueOn))"
+        }
+
+        var parts = ["\(dayWord) um \(timeText(item.dueOn))"]
+        // Der Titel steht nur im Text, wenn er mehr sagt als die Überschrift.
+        if let title = trimmed(item.title), title != "Tierarzttermin" { parts.append(title) }
+        if let detail = trimmed(item.detail) { parts.append(detail) }
+        return sentence(parts.joined(separator: " · "))
     }
 
     /// Erinnerung an eine Einzelgabe zum Termin `fireDate`.
@@ -455,6 +587,13 @@ public struct NotificationPlanner: Sendable {
             return item.urgency >= .dueToday ? Self.priorityDueNow : Self.priorityDueUpcoming
         case .cycleForecast:
             return Self.priorityCycleForecast
+        case .vetAppointment:
+            // Nur der Vollständigkeit wegen: Termine laufen über
+            // `appointmentNotifications`.
+            return Self.priorityAppointment
+        case .restock:
+            // Nur der Vollständigkeit wegen: läuft über `restockNotifications`.
+            return Self.priorityRestock
         case .criticalDays:
             // Erreichbar nur, wenn irgendwann ein `DueItem` mit dieser Kategorie
             // gebaut wird — Tageshinweise laufen über `criticalDayNotification`.
@@ -518,18 +657,35 @@ public struct NotificationPlanner: Sendable {
         case .dose: return "Medikament"
         case .cycleForecast: return "Läufigkeit"
         case .criticalDays: return "Kritische Tage"
+        case .vetAppointment: return "Tierarzttermin"
+        case .restock: return "Vorrat"
         }
+    }
+
+    /// Ist `dueOn` eines Schutz-Items wirklich das Ende des Schutzes?
+    ///
+    /// Nur, wenn `protectionEndsOn` auf denselben Tag fällt. Auslassung und
+    /// Zurückstellung — auch eine schon verstrichene — schieben `dueOn` hinter
+    /// das Schutzende; „der Schutz läuft am 1. März ab" wäre dann falsch, er ist
+    /// längst weg. Ohne Gabe gab es nie einen Schutz, der ablaufen könnte.
+    private func dueOnIsProtectionEnd(_ item: DueItem) -> Bool {
+        guard let protectionEndsOn = item.protectionEndsOn else { return false }
+        return dayMath.isSameDay(protectionEndsOn, item.dueOn)
     }
 
     private func subject(for item: DueItem) -> String {
         let base = baseSubject(for: item)
         switch item.category {
         case .medication: return appending("fällig", to: base)
-        case .protectionExpiry: return appending("läuft ab", to: base)
+        case .protectionExpiry:
+            return appending(dueOnIsProtectionEnd(item) ? "läuft ab" : "fällig", to: base)
         case .dose: return appending("geben", to: base)
         case .cycleForecast: return appending("erwartet", to: base)
         // Kein Verb: „Kritische Tage" beschreibt einen Zustand, keine Fälligkeit.
         case .criticalDays: return base
+        // Kein Verb: ein Termin ist weder fällig noch läuft er ab.
+        case .vetAppointment: return base
+        case .restock: return base
         }
     }
 
@@ -554,6 +710,8 @@ public struct NotificationPlanner: Sendable {
                 + " Prognose, keine Gewissheit — bitte auf erste Anzeichen achten"
         } else {
             switch item.category {
+            case .protectionExpiry where !dueOnIsProtectionEnd(item):
+                text = "\(base) \(duenessPhrase(days: days, dueOn: item.dueOn))"
             case .protectionExpiry:
                 text = "\(base): \(protectionPhrase(days: days, expiresOn: item.dueOn))"
             case .criticalDays:
@@ -562,6 +720,12 @@ public struct NotificationPlanner: Sendable {
                 text = "\(base): \(relativeDayText(days))"
             case .medication, .dose, .cycleForecast:
                 text = "\(base) \(duenessPhrase(days: days, dueOn: item.dueOn))"
+            case .vetAppointment:
+                // Unerreichbar über `plan`: Termine texten in `appointmentBody`.
+                text = "\(base) \(relativeDayText(days)) um \(timeText(item.dueOn))"
+            case .restock:
+                // Unerreichbar über `plan`: Vorrat textet in `restockBody`.
+                text = "\(base) reicht bis \(dateText(item.dueOn))"
             }
         }
 

@@ -47,7 +47,9 @@ private func item(
         dueOn: dueOn,
         daysUntilDue: days,
         urgency: urgency ?? Urgency(daysUntilDue: days),
-        isForecast: isForecast
+        isForecast: isForecast,
+        // Ein laufender Schutz: Fälligkeit und Schutzende fallen zusammen.
+        protectionEndsOn: category == .protectionExpiry ? dueOn : nil
     )
 }
 

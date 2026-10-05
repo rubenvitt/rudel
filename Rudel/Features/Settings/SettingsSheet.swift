@@ -32,6 +32,9 @@ struct SettingsSheet: View {
     /// Vorwarnzeiten zur Auswahl. 0 = am Fälligkeitstag selbst.
     private static let leadDayChoices = [14, 7, 3, 1, 0]
 
+    /// Vorlauf der Mitteilung vor einem Tierarzttermin, in Minuten.
+    private static let appointmentLeadChoices = [30, 60, 120, 180, 240]
+
     var body: some View {
         NavigationStack {
             Group {
@@ -41,6 +44,7 @@ struct SettingsSheet: View {
                     ProgressView()
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Einstellungen")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -70,6 +74,7 @@ struct SettingsSheet: View {
                 medicationAlarmSection(settings)
                 leadDaysSection(settings)
                 timeSection(settings)
+                appointmentSection(settings)
                 windowSection(settings)
                 if pets.contains(where: { $0.tracksCycle }) {
                     criticalDaysSection(settings)
@@ -113,7 +118,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Medikamentengabe")
         } footer: {
-            Text("Vor dem Termin zeigt eine Live Activity den Countdown. Schlummern und Stopp verschieben den Alarm; die Gabe bleibt offen, bis du sie bestätigst. Ohne Alarmberechtigung kommen nur normale Mitteilungen.")
+            Text("Alarme gibt es nur für zeitkritische Medikamente; Wurmkur, Zeckenschutz und Impfung melden sich per Mitteilung. Vor dem Termin zeigt eine Live Activity den Countdown. Schlummern und Stopp verschieben den Alarm; die Gabe bleibt offen, bis du sie bestätigst. Ohne Alarmberechtigung kommen nur normale Mitteilungen.")
         }
     }
 
@@ -299,6 +304,38 @@ struct SettingsSheet: View {
                 markChanged()
             }
         )
+    }
+
+    // MARK: - Tierarzttermine
+
+    @ViewBuilder
+    private func appointmentSection(_ settings: AppSettings) -> some View {
+        @Bindable var bound = settings
+
+        Section {
+            Picker("Termin-Erinnerung vorher", selection: $bound.appointmentLeadMinutes) {
+                ForEach(appointmentLeadOptions(settings), id: \.self) { minutes in
+                    Text(Self.appointmentLeadLabel(minutes)).tag(minutes)
+                }
+            }
+            .onChange(of: settings.appointmentLeadMinutes) { markChanged() }
+        } header: {
+            Text("Tierarzttermine")
+        } footer: {
+            Text("Zusätzlich kommt am Vortag eine Mitteilung zur Erinnerungszeit.")
+        }
+    }
+
+    /// Wie bei den Vorwarnzeiten: ein gespeicherter Wert außerhalb der Auswahl
+    /// bleibt sichtbar, statt unsichtbar weiterzuwirken.
+    private func appointmentLeadOptions(_ settings: AppSettings) -> [Int] {
+        Set(Self.appointmentLeadChoices).union([settings.appointmentLeadMinutes]).sorted()
+    }
+
+    private static func appointmentLeadLabel(_ minutes: Int) -> String {
+        if minutes < 60 || minutes % 60 != 0 { return "\(minutes) Minuten" }
+        let hours = minutes / 60
+        return hours == 1 ? "1 Stunde" : "\(hours) Stunden"
     }
 
     // MARK: - Planungsfenster

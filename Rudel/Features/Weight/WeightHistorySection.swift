@@ -22,20 +22,22 @@ struct WeightHistorySection: View {
 
     var body: some View {
         if entries.isEmpty {
-            ContentUnavailableView {
-                Label("Kein Gewicht", systemImage: "scalemass")
-            } description: {
-                Text("Wiege \(petName) und trage den Wert ein. Ab dem zweiten Wert zeichnet Rudel den Verlauf.")
-            } actions: {
-                Button("Gewicht erfassen") {
-                    appState.present(.logWeight(petID: pet.id))
-                }
-                .buttonStyle(.borderedProminent)
+            RudelEmptyState(
+                title: "Kein Gewicht",
+                detail: "Wiege \(petName) und halte den ersten Wert fest. Mit dem zweiten Eintrag beginnt euer Gewichtsverlauf.",
+                symbol: "scalemass",
+                actionTitle: "Gewicht erfassen"
+            ) {
+                appState.present(.logWeight(petID: pet.id))
             }
         } else {
             List {
                 Section {
                     latestValue
+                        .padding(22)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RudelTheme.softSage, in: .rect(cornerRadius: RudelTheme.cardRadius))
+                        .rudelFeatureRow()
                 }
 
                 Section("Verlauf") {
@@ -55,7 +57,7 @@ struct WeightHistorySection: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
+            .rudelListStyle()
         }
     }
 
@@ -90,8 +92,13 @@ struct WeightHistorySection: View {
     private var latestValue: some View {
         if let latest = entries.last {
             VStack(alignment: .leading, spacing: 6) {
+                Label("ZULETZT GEWOGEN", systemImage: "scalemass")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RudelTheme.muted)
+                    .padding(.bottom, 8)
                 Text(Format.weight(latest.valueKg))
-                    .font(.system(.largeTitle, design: .rounded, weight: .semibold))
+                    .font(RudelTheme.display())
+                    .foregroundStyle(RudelTheme.ink)
 
                 Text("Gewogen \(Format.date(latest.date))")
                     .font(.footnote)

@@ -43,7 +43,23 @@ final class Pet {
     /// (`StudyConstants.intervalBiasDays(for:)`).
     var sizeClassOverride: DogSizeClass?
 
+    // MARK: Notfallkarte
+
+    /// Transpondernummer, 15 Ziffern nach ISO 11784. Freitext, weil alte
+    /// Chips und ausländische Register abweichen.
+    var microchipNumber: String = ""
+    /// Allergien und Unverträglichkeiten, die eine fremde Praxis wissen muss.
+    var allergies: String = ""
+    /// Versicherung mit Policennummer, Freitext.
+    var insuranceInfo: String = ""
+
     var createdAt: Date = Date.distantPast
+
+    /// Haustierarzt. Gegenstück: `VetPractice.primaryForPets`.
+    var primaryPractice: VetPractice?
+
+    @Relationship(deleteRule: .cascade, inverse: \VetAppointment.pet)
+    var vetAppointments: [VetAppointment] = []
 
     @Relationship(deleteRule: .cascade, inverse: \MedicationPlan.pet)
     var medicationPlans: [MedicationPlan] = []

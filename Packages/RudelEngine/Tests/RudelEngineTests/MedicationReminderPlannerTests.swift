@@ -177,4 +177,159 @@ struct MedicationReminderPlannerTests {
         #expect(reminder.title == "Wurmkur")
         #expect(reminder.detail == "Milbemax")
     }
+
+    // MARK: - Erinnerungsklasse und Zurückstellung
+
+    private func dewormer(
+        careClass: MedicationCareClass? = nil,
+        hasOpenAppointment: Bool = false
+    ) -> DueItemBuilder.MedicationInput {
+        DueItemBuilder.MedicationInput(
+            sourceID: "worm-1",
+            petID: "pet-1",
+            petName: "Zola",
+            kind: .dewormer,
+            productName: "Milbemax",
+            lastGivenOn: moment(2026, 9, 1),
+            intervalDays: 7,
+            careClass: careClass,
+            hasOpenAppointment: hasOpenAppointment
+        )
+    }
+
+    @Test("Nur zeitkritische Pläne dürfen einen Alarm auslösen, geplant werden alle")
+    func usesAlarmFollowsCareClass() {
+        var preventiveDose = ongoing(sourceID: "med-2", startDate: moment(2026, 9, 5))
+        preventiveDose.careClass = .preventive
+
+        let reminders = planner.plan(
+            medications: [
+                ongoing(startDate: moment(2026, 9, 5)),
+                preventiveDose,
+                dewormer(),
+            ],
+            loggedDoses: [:],
+            reminderTime: TimeOfDay(hour: 9),
+            horizonDays: 7,
+            asOf: moment(2026, 9, 5, 7)
+        )
+
+        let bySource = Dictionary(grouping: reminders, by: \.sourceID)
+        #expect(bySource["med-1"]?.isEmpty == false)
+        #expect(bySource["med-1"]?.allSatisfy(\.usesAlarm) == true)
+        // Vorsorge bleibt in der Liste — `NotificationPlanner` nimmt
+        // Dosis-Mitteilungen nur von hier.
+        #expect(bySource["med-2"]?.isEmpty == false)
+        #expect(bySource["med-2"]?.allSatisfy { !$0.usesAlarm } == true)
+        #expect(bySource["worm-1"]?.map(\.usesAlarm) == [false])
+    }
+
+    @Test("Eine auf zeitkritisch gestellte Wurmkur darf einen Alarm auslösen")
+    func timeCriticalDewormerUsesAlarm() {
+        let reminders = planner.plan(
+            medications: [dewormer(careClass: .timeCritical)],
+            loggedDoses: [:],
+            reminderTime: TimeOfDay(hour: 9),
+            horizonDays: 7,
+            asOf: moment(2026, 9, 5, 7)
+        )
+        #expect(reminders.map(\.usesAlarm) == [true])
+    }
+
+    @Test("Ein offener Tierarzttermin ersetzt die Fälligkeit auch im Plan")
+    func openAppointmentSuppressesReminder() {
+        let reminders = planner.plan(
+            medications: [dewormer(hasOpenAppointment: true)],
+            loggedDoses: [:],
+            reminderTime: TimeOfDay(hour: 9),
+            horizonDays: 7,
+            asOf: moment(2026, 9, 5, 7)
+        )
+        #expect(reminders.isEmpty)
+    }
+
+    @Test("Ein zurückgestelltes Dauermedikament hat vor dem Datum keine Gaben")
+    func deferredOngoingStartsOnDeferralDay() {
+        var medication = ongoing(startDate: moment(2026, 9, 1))
+        medication.deferredUntil = moment(2026, 9, 7, 18)
+
+        let reminders = planner.plan(
+            medications: [medication],
+            loggedDoses: [:],
+            reminderTime: TimeOfDay(hour: 9),
+            horizonDays: 3,
+            asOf: moment(2026, 9, 5, 7)
+        )
+
+        #expect(reminders.map(\.dueAt) == [moment(2026, 9, 7, 8), moment(2026, 9, 8, 8)])
+    }
+
+    @Test("Eine Zurückstellung hinter dem Horizont ergibt einen leeren Plan statt eines Absturzes")
+    func deferralBeyondHorizonIsEmpty() {
+        var medication = ongoing(startDate: moment(2026, 9, 1))
+        medication.deferredUntil = moment(2027, 3, 1)
+
+        let reminders = planner.plan(
+            medications: [medication],
+            loggedDoses: [:],
+            reminderTime: TimeOfDay(hour: 9),
+            horizonDays: 3,
+            asOf: moment(2026, 9, 5, 7)
+        )
+
+        #expect(reminders.isEmpty)
+    }
+
+    // MARK: - Codable
+
+    @Test("Registry-Dateien ohne usesAlarm decodieren als Alarm")
+    func decodingWithoutUsesAlarmDefaultsToTrue() throws {
+        let reminder = MedicationReminder(
+            id: "rudel.dose.med-1.1",
+            sourceID: "med-1",
+            petID: "pet-1",
+            petName: "Zola",
+            title: "Metacam",
+            detail: "1/2 Tablette",
+            category: .dose,
+            dueAt: moment(2026, 9, 5, 8),
+            usesAlarm: false
+        )
+        // Über denselben Coder hin und zurück, statt JSON von Hand zu schreiben:
+        // so hängt der Test nicht an der Datumsstrategie.
+        let encoded = try JSONEncoder().encode(reminder)
+        var object = try #require(try JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        #expect(object["usesAlarm"] as? Bool == false)
+        object.removeValue(forKey: "usesAlarm")
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(MedicationReminder.self, from: legacy)
+        #expect(decoded.usesAlarm)
+        #expect(decoded.id == reminder.id)
+        #expect(decoded.dueAt == reminder.dueAt)
+        #expect(decoded.detail == reminder.detail)
+
+        // Ist das Feld da, gewinnt es.
+        let roundTrip = try JSONDecoder().decode(MedicationReminder.self, from: encoded)
+        #expect(roundTrip == reminder)
+    }
+
+    @Test("Ein fehlendes detail bleibt nil")
+    func decodingWithoutDetail() throws {
+        let reminder = MedicationReminder(
+            id: "x",
+            sourceID: "med-1",
+            petID: "pet-1",
+            petName: "Zola",
+            title: "Metacam",
+            category: .dose,
+            dueAt: moment(2026, 9, 5, 8)
+        )
+        let decoded = try JSONDecoder().decode(
+            MedicationReminder.self,
+            from: try JSONEncoder().encode(reminder)
+        )
+        #expect(decoded == reminder)
+        #expect(decoded.usesAlarm)
+    }
 }

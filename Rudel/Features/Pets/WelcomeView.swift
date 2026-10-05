@@ -1,122 +1,75 @@
-import RudelEngine
 import SwiftUI
 
-/// Erster Start: es existiert noch kein Tier. `RootView` zeigt diesen Screen,
-/// solange `pets.isEmpty` — er ist damit auch die einzige Stelle, an der Rudel
-/// erklärt, wofür es gut ist.
-///
-/// Bewusst **kein mehrseitiges Onboarding**: der einzige sinnvolle nächste
-/// Schritt ist, ein Tier anzulegen. Alles andere erklärt die App dort, wo es
-/// gebraucht wird. Ein Tap führt ins Formular; das Sheet präsentiert `RootView`.
+/// Ein Einstieg, eine Aktion; keine Beispieldaten im persönlichen Journal.
 struct WelcomeView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                header
-                features
-                privacyNote
+            VStack(alignment: .leading, spacing: 28) {
+                Label {
+                    Text("rudel").font(.system(.title2, design: .serif, weight: .bold))
+                } icon: {
+                    Image(systemName: "pawprint.fill").font(.title3)
+                }
+                .foregroundStyle(RudelTheme.accent)
+
+                VStack(alignment: .leading, spacing: 24) {
+                    HStack(spacing: 12) {
+                        RudelIcon(symbol: "dog", color: RudelTheme.forest, fill: RudelTheme.sage, size: 68)
+                        RudelIcon(symbol: "cat", color: RudelTheme.forest, fill: RudelTheme.apricot, size: 68)
+                    }
+                    Text("Für alles,\nwas euch gut tut.")
+                        .font(RudelTheme.display())
+                        .foregroundStyle(RudelTheme.cream)
+                    Text("Medikamente, kleine Beobachtungen und große Entwicklungen. Ein Platz für die Gesundheit deines Rudels.")
+                        .font(.body)
+                        .foregroundStyle(RudelTheme.sage)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(28)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RudelTheme.forest, in: .rect(cornerRadius: 28))
+
+                RudelSectionHeading(title: "Euer Alltag. Gut im Blick.")
+                VStack(alignment: .leading, spacing: 22) {
+                    feature("Gaben im richtigen Moment", detail: "Medikamente und Schutzintervalle mit Erinnerungen.", symbol: "pills")
+                    feature("Veränderungen festhalten", detail: "Symptome, Fotos und Gewicht im Verlauf.", symbol: "heart.text.square")
+                    feature("Zyklen besser kennenlernen", detail: "Läufigkeit dokumentieren und Spannen einschätzen.", symbol: "circle.hexagonpath")
+                }
+                Label("Alle Einträge bleiben auf diesem Gerät.", systemImage: "lock")
+                    .font(.footnote)
+                    .foregroundStyle(RudelTheme.muted)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 48)
-            .padding(.bottom, 24)
-            // Auf dem iPad soll der Text nicht über die ganze Breite laufen.
-            .frame(maxWidth: 560, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: 600, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .bottom) { createButton }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: "pawprint.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.tint)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Willkommen bei Rudel")
-                    .font(.largeTitle.weight(.bold))
-
-                Text("Tierarzt-Apps verwalten Termine. Rudel verwaltet, was dazwischen passiert — und behält die Historie, aus der sich das Nächste ausrechnen lässt.")
-                    .foregroundStyle(.secondary)
+        .background(RudelTheme.canvas)
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                appState.present(.editPet(petID: nil))
+            } label: {
+                HStack {
+                    Text("Tier anlegen")
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                }
             }
+            .buttonStyle(RudelPrimaryButtonStyle())
+            .frame(maxWidth: 552)
+            .padding(.horizontal, 24).padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(RudelTheme.canvas)
         }
     }
 
-    private var features: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            WelcomeFeatureRow(
-                systemImage: "pills",
-                title: "Intervalle statt Kalendernotizen",
-                detail: "Wurmkur, Zeckenschutz, Tollwut: Rudel rechnet aus letzter Gabe und Wirkdauer, wann die nächste fällig ist — und erinnert vorher, nicht erst am Tag danach."
-            )
-            WelcomeFeatureRow(
-                systemImage: "circle.hexagonpath",
-                title: "Läufigkeit als Spanne",
-                detail: "Tag 1 eintragen genügt. Die Prognose kommt als Zeitraum mit Konfidenzangabe und rückt mit jedem geloggten Zyklus näher an dein Tier heran."
-            )
-            WelcomeFeatureRow(
-                systemImage: "stethoscope",
-                title: "Symptome belegen",
-                detail: "Die dritte Ohrenentzündung in diesem Jahr — mit Datum, Schweregrad und Foto dokumentiert, statt sie beim Tierarzt aus dem Gedächtnis zu rekonstruieren."
-            )
-            WelcomeFeatureRow(
-                systemImage: "scalemass",
-                title: "Gewicht im Blick",
-                detail: "Verlauf, Zielbereich und Futtermenge an einer Stelle. So fällt ein halbes Kilo auf, bevor es zwei sind."
-            )
-        }
-    }
-
-    private var privacyNote: some View {
-        Label(
-            "Alle Einträge bleiben auf diesem Gerät.",
-            systemImage: "lock"
-        )
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-    }
-
-    private var createButton: some View {
-        Button {
-            appState.present(.editPet(petID: nil))
-        } label: {
-            Text("Tier anlegen")
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(.bar)
-    }
-}
-
-/// Eine Zeile der Kurzvorstellung. Icon und Text nebeneinander, wobei das Icon
-/// eine feste Breite hat — so bleibt die Liste auch bei großer Schrift bündig,
-/// ohne dass der Text abgeschnitten wird.
-private struct WelcomeFeatureRow: View {
-    let systemImage: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 28)
-                .accessibilityHidden(true)
-
+    private func feature(_ title: String, detail: String, symbol: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            RudelIcon(symbol: symbol)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                Text(detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(RudelTheme.ink)
+                Text(detail).font(.subheadline).foregroundStyle(RudelTheme.muted)
             }
         }
         .accessibilityElement(children: .combine)
@@ -124,6 +77,5 @@ private struct WelcomeFeatureRow: View {
 }
 
 #Preview {
-    WelcomeView()
-        .environment(AppState())
+    WelcomeView().environment(AppState())
 }

@@ -48,13 +48,14 @@ private struct MedicationPlanList: View {
             }
     }
 
-    /// Gruppen in fester Reihenfolge über `MedicationKind.allCases`, damit die
-    /// Abschnitte nicht die Plätze tauschen, wenn sich eine Fälligkeit ändert.
-    private var groups: [KindGroup] {
+    /// Gruppen in fester Reihenfolge, damit die Abschnitte nicht die Plätze
+    /// tauschen, wenn sich eine Fälligkeit ändert. Tollwut und die übrigen
+    /// Impfungen teilen sich den Abschnitt „Impfungen".
+    private var groups: [PlanGroup] {
         let plans = activePlans
-        return MedicationKind.allCases.compactMap { kind in
-            let matching = plans.filter { $0.kindValue == kind }
-            return matching.isEmpty ? nil : KindGroup(kind: kind, plans: matching)
+        return PlanSection.allCases.compactMap { section in
+            let matching = plans.filter { PlanSection(kind: $0.kindValue) == section }
+            return matching.isEmpty ? nil : PlanGroup(section: section, plans: matching)
         }
     }
 
@@ -84,30 +85,37 @@ private struct MedicationPlanList: View {
                     Label("Gabe erfassen", systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(RudelPrimaryButtonStyle())
                 .controlSize(.large)
                 .padding(.horizontal, 16).padding(.vertical, 8)
-                .background(.bar)
+                .background(RudelTheme.canvas)
             }
         }
         .sensoryFeedback(.success, trigger: logPulse)
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Keine Medikamente", systemImage: "pills")
-        } description: {
-            Text("Lege einen Plan an — Wurmkur, Zeckenschutz, Tollwut-Impfung oder ein Dauermedikament.")
-        } actions: {
-            Button("Plan anlegen") {
-                appState.present(.editMedicationPlan(planID: nil, petID: pet.id))
-            }
-            .buttonStyle(.borderedProminent)
+        RudelEmptyState(
+            title: "Keine Medikamente",
+            detail: "Von der Wurmkur bis zur täglichen Gabe: Lege den ersten Plan für \(pet.name.isEmpty ? "dein Tier" : pet.name) an. Rudel behält die Intervalle im Blick.",
+            symbol: "pills",
+            actionTitle: "Plan anlegen"
+        ) {
+            appState.present(.editMedicationPlan(planID: nil, petID: pet.id))
         }
     }
 
     private var list: some View {
         List {
+            Section {
+                RudelFeatureHeading(
+                    eyebrow: pet.name.isEmpty ? "MEDIKAMENTENPLÄNE" : "FÜR \(pet.name.uppercased())",
+                    title: "Gaben & Schutz",
+                    detail: "\(activePlans.count) \(activePlans.count == 1 ? "aktiver Plan" : "aktive Pläne") · Intervalle und Verlauf",
+                    symbol: "pills"
+                )
+                .rudelFeatureRow()
+            }
             ForEach(groups) { group in
                 Section {
                     ForEach(group.plans) { plan in
@@ -118,12 +126,14 @@ private struct MedicationPlanList: View {
                         if plan.kindValue == .ongoing {
                             doseRow(for: plan)
                         }
+                        appointmentRow(for: plan)
+                        stockRow(for: plan)
                         if expandedPlanIDs.contains(plan.id) {
                             detailRows(for: plan)
                         }
                     }
                 } header: {
-                    Label(Format.label(group.kind), systemImage: Format.symbolName(group.kind))
+                    Label(group.section.title, systemImage: group.section.symbolName)
                         .labelStyle(.titleAndIcon)
                 }
             }
@@ -151,7 +161,7 @@ private struct MedicationPlanList: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .rudelListStyle()
     }
 
     // MARK: Planzeile
@@ -166,8 +176,9 @@ private struct MedicationPlanList: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(MedicationDisplay.title(for: plan))
+                    Text(plan.kindValue.isVaccination ? MedicationDisplay.vaccineName(for: plan) : MedicationDisplay.title(for: plan))
                         .font(.body.weight(.medium))
+                    reminderBadge(plan)
                     Spacer(minLength: 8)
                     if let urgency = status.urgency {
                         UrgencyBadge(urgency: urgency)
@@ -176,6 +187,18 @@ private struct MedicationPlanList: View {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+
+                // Impfpass: Präparat und letztes Impfdatum stehen mit in der Zeile.
+                if let product = MedicationDisplay.vaccineProduct(for: plan) {
+                    Text(product)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if plan.kindValue.isVaccination {
+                    Text(plan.lastGivenOn.map { "Zuletzt geimpft \(Format.date($0))" } ?? "Keine Impfung dokumentiert")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
 
                 Text(status.dueText)
@@ -199,13 +222,139 @@ private struct MedicationPlanList: View {
             }
             .tint(.green)
         }
-        .swipeActions(edge: .trailing) {
+        // Kein Vollwisch: ein versehentliches Auslassen wäre ein stiller
+        // Journal-Eintrag.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button {
                 appState.present(.editMedicationPlan(planID: plan.id, petID: pet.id))
             } label: {
                 Label("Bearbeiten", systemImage: "pencil")
             }
             .tint(.blue)
+            if isPreventive(plan) {
+                Button {
+                    appState.present(.deferMedication(planID: plan.id))
+                } label: {
+                    Label("Zurückstellen", systemImage: "moon.zzz")
+                }
+                .tint(.indigo)
+                Button {
+                    skip(plan)
+                } label: {
+                    Label("Auslassen", systemImage: "forward")
+                }
+                .tint(.orange)
+            }
+        }
+        .contextMenu {
+            Button {
+                logGiven(plan)
+            } label: {
+                Label(plan.usesFecalSampleInstead ? "Abgegeben" : "Gegeben", systemImage: "checkmark.circle")
+            }
+            if isPreventive(plan) {
+                Button {
+                    skip(plan)
+                } label: {
+                    Label("Auslassen", systemImage: "forward")
+                }
+                Button {
+                    appState.present(.deferMedication(planID: plan.id))
+                } label: {
+                    Label("Zurückstellen", systemImage: "moon.zzz")
+                }
+            }
+            if needsAppointment(plan) {
+                Button {
+                    appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
+                } label: {
+                    Label("Termin anlegen", systemImage: "calendar.badge.plus")
+                }
+            }
+            Button {
+                appState.present(.editMedicationPlan(planID: plan.id, petID: pet.id))
+            } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+        }
+    }
+
+    /// Dezenter Hinweis, wie erinnert wird: Wecker für zeitkritische Gaben,
+    /// Glocke für Vorsorge. Nur ein Symbol — die Erklärung steht im Plan.
+    private func reminderBadge(_ plan: MedicationPlan) -> some View {
+        let timeCritical = plan.careClass == .timeCritical
+        return Image(systemName: timeCritical ? "alarm" : "bell")
+            .font(.caption)
+            .foregroundStyle(RudelTheme.muted)
+            .accessibilityLabel(timeCritical ? "Mit Alarm" : "Nur Mitteilung")
+    }
+
+    /// Auslassen und Zurückstellen gibt es nur für Vorsorge. Ein
+    /// Dauermedikament wird Gabe für Gabe abgehakt oder ausgelassen.
+    private func isPreventive(_ plan: MedicationPlan) -> Bool {
+        plan.careClass == .preventive && plan.kindValue != .ongoing
+    }
+
+    /// Die Engine wertet „Termin nötig" bei Dauermedikamenten nicht aus.
+    private func needsAppointment(_ plan: MedicationPlan) -> Bool {
+        plan.kindValue != .ongoing && plan.requiresVetVisit && plan.openAppointment == nil
+    }
+
+    /// Eigene Zeile unter dem Plan: ein Button in der Planzeile bekäme keine
+    /// Taps ab. Mit offenem Termin führt sie zum Termin, sonst bietet sie ihn
+    /// an — aber erst, wenn die Gabe in Reichweite ist; eine drei Jahre gültige
+    /// Impfung soll nicht dauerhaft „Termin anlegen" rufen. Früher geht es über
+    /// das Kontextmenü.
+    @ViewBuilder
+    private func appointmentRow(for plan: MedicationPlan) -> some View {
+        if plan.kindValue != .ongoing, let appointment = plan.openAppointment {
+            Button {
+                appState.present(.editAppointment(appointmentID: appointment.id, petID: pet.id, planID: plan.id))
+            } label: {
+                HStack {
+                    Label(MedicationDisplay.appointmentText(appointment), systemImage: appointment.reasonValue.symbolName)
+                        .font(.footnote)
+                        .foregroundStyle(RudelTheme.ink)
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+        } else if needsAppointment(plan),
+                  let urgency = MedicationDisplay.status(for: plan, asOf: now, dayMath: appState.dayMath).urgency,
+                  urgency >= .upcoming {
+            Button {
+                appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
+            } label: {
+                Label("Termin anlegen", systemImage: "calendar.badge.plus")
+                    .font(.footnote.weight(.medium))
+            }
+        }
+    }
+
+    /// Eigene Zeile wie der Termin: ein Button in der Planzeile bekäme keine
+    /// Taps ab. Knapper Vorrat steht in Warnfarbe und mit Symbol.
+    @ViewBuilder
+    private func stockRow(for plan: MedicationPlan) -> some View {
+        if let text = MedicationDisplay.stockText(for: plan, asOf: now, dayMath: appState.dayMath) {
+            let isLow = MedicationDisplay.stockProjection(for: plan, asOf: now, dayMath: appState.dayMath)?.needsRestock == true
+            HStack(spacing: 8) {
+                Label(text, systemImage: isLow ? "exclamationmark.triangle.fill" : "shippingbox")
+                    .font(.footnote)
+                    .foregroundStyle(isLow ? RudelTheme.warning : RudelTheme.ink)
+                Spacer(minLength: 8)
+                Button("Aufgefüllt") {
+                    appState.present(.restockMedication(planID: plan.id))
+                }
+                .buttonStyle(.borderless)
+                .font(.footnote.weight(.medium))
+                .accessibilityLabel("Aufgefüllt: \(MedicationDisplay.title(for: plan))")
+                .accessibilityIdentifier("restock-\(MedicationDisplay.title(for: plan))")
+            }
         }
     }
 
@@ -262,35 +411,40 @@ private struct MedicationPlanList: View {
     }
 
     private func doseCapsule(plan: MedicationPlan, occurrence: Date) -> some View {
-        let isDone = doseLog(for: plan, at: occurrence) != nil
+        let log = doseLog(for: plan, at: occurrence)
+        let isSkipped = log?.wasSkipped == true
+        let isDone = log != nil && !isSkipped
+        // Eine ausgelassene Gabe ist erledigt, aber nicht gegeben — sie darf
+        // nicht wie ein grünes Häkchen aussehen.
+        let symbol = isSkipped ? "forward.fill" : (isDone ? "checkmark.circle.fill" : "circle")
+        let tint: Color = isSkipped ? RudelTheme.muted : (isDone ? Color.green : Color.primary)
         return Button {
             toggleDose(plan: plan, occurrence: occurrence)
         } label: {
-            Label(Format.time(occurrence), systemImage: isDone ? "checkmark.circle.fill" : "circle")
-                .labelStyle(.titleAndIcon)
-                .font(.caption.weight(.medium))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    isDone ? Color.green.opacity(0.15) : Color.secondary.opacity(0.12),
-                    in: .capsule
-                )
-                .foregroundStyle(isDone ? Color.green : Color.primary)
+            Label {
+                Text(Format.time(occurrence)).strikethrough(isSkipped)
+            } icon: {
+                Image(systemName: symbol)
+            }
+            .labelStyle(.titleAndIcon)
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                isDone ? Color.green.opacity(0.15) : Color.secondary.opacity(0.12),
+                in: .capsule
+            )
+            .foregroundStyle(tint)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Gabe \(Format.time(occurrence))")
-        .accessibilityValue(isDone ? "abgehakt" : "offen")
-        .accessibilityHint(isDone ? "Abhaken zurücknehmen" : "Als gegeben abhaken")
+        .accessibilityValue(isSkipped ? "ausgelassen" : (isDone ? "abgehakt" : "offen"))
+        .accessibilityHint(isSkipped ? "Auslassung zurücknehmen" : (isDone ? "Abhaken zurücknehmen" : "Als gegeben abhaken"))
     }
 
-    /// Die für heute geplanten Gaben. Das Ende der Spanne liegt eine Sekunde vor
-    /// Mitternacht, damit eine auf 00:00 gelegte Gabe von morgen nicht mitkommt.
+    /// Die für heute geplanten Gaben — keine, solange der Plan zurückgestellt ist.
     private func todaysDoses(for plan: MedicationPlan) -> [Date] {
-        guard let schedule = plan.doseSchedule else { return [] }
-        let start = appState.dayMath.startOfDay(now)
-        let end = appState.dayMath.adding(days: 1, to: start).addingTimeInterval(-1)
-        return MedicationCalculator(dayMath: appState.dayMath)
-            .doseOccurrences(schedule: schedule, in: start...end)
+        MedicationDisplay.todaysDoseOccurrences(for: plan, asOf: now, dayMath: appState.dayMath)
     }
 
     /// Toleranz von einer Minute: der Termin kommt aus der Engine, der
@@ -315,8 +469,17 @@ private struct MedicationPlanList: View {
                 .foregroundStyle(.secondary)
         }
 
+        if needsAppointment(plan) {
+            Button {
+                appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
+            } label: {
+                Label("Termin anlegen", systemImage: "calendar.badge.plus")
+                    .font(.footnote)
+            }
+        }
+
         let history = MedicationDisplay.history(for: plan)
-        Text("Gaben")
+        Text("Verlauf")
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
 
@@ -333,7 +496,7 @@ private struct MedicationPlanList: View {
         if plan.kindValue == .ongoing {
             let doses = MedicationDisplay.doseHistory(for: plan)
             if !doses.isEmpty {
-                Text("Abgehakte Einzelgaben")
+                Text("Einzelgaben")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 ForEach(doses) { entry in
@@ -357,6 +520,12 @@ private struct MedicationPlanList: View {
             HStack {
                 Text(Format.date(event.givenOn))
                     .font(.footnote)
+                if event.outcomeValue == .skipped {
+                    Label("Ausgelassen", systemImage: "forward")
+                        .labelStyle(.titleAndIcon)
+                        .font(.caption)
+                        .foregroundStyle(RudelTheme.muted)
+                }
                 Spacer(minLength: 8)
                 Text(Format.relativePast(days: appState.dayMath.days(from: event.givenOn, to: now)))
                     .font(.caption)
@@ -387,7 +556,7 @@ private struct MedicationPlanList: View {
             Text(Format.dateTime(entry.scheduledAt))
                 .font(.footnote)
             Spacer(minLength: 8)
-            Text("abgehakt \(Format.dateTime(entry.takenAt))")
+            Text("\(entry.wasSkipped ? "ausgelassen" : "abgehakt") \(Format.dateTime(entry.takenAt))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -427,9 +596,14 @@ private struct MedicationPlanList: View {
         logPulse += 1
     }
 
+    private func skip(_ plan: MedicationPlan) {
+        MedicationActions.skip(plan, context: context, dayMath: appState.dayMath)
+        logPulse += 1
+    }
+
     private func toggleDose(plan: MedicationPlan, occurrence: Date) {
         if let existing = doseLog(for: plan, at: occurrence) {
-            // Kein Häkchen heißt „nicht gegeben" — also wird das Abhaken
+            // Kein Eintrag heißt „offen" — also wird das Abhaken oder Auslassen
             // zurückgenommen, indem der Eintrag verschwindet.
             context.delete(existing)
             try? context.save()
@@ -453,11 +627,47 @@ private struct MedicationPlanList: View {
     }
 }
 
-/// Ein Abschnitt der Liste: eine Art und ihre Pläne.
-private struct KindGroup: Identifiable {
-    let kind: MedicationKind
+/// Abschnitte der Liste. Fast eine Art je Abschnitt — nur die Impfungen
+/// fassen Tollwut und alle übrigen zum Impfpass zusammen.
+private enum PlanSection: CaseIterable, Hashable {
+    case dewormer
+    case tickProtection
+    case ongoing
+    case vaccinations
+
+    init(kind: MedicationKind) {
+        switch kind {
+        case .dewormer: self = .dewormer
+        case .tickProtection: self = .tickProtection
+        case .ongoing: self = .ongoing
+        case .rabiesVaccination, .vaccination: self = .vaccinations
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .dewormer: return Format.label(MedicationKind.dewormer)
+        case .tickProtection: return Format.label(MedicationKind.tickProtection)
+        case .ongoing: return Format.label(MedicationKind.ongoing)
+        case .vaccinations: return "Impfungen"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .dewormer: return Format.symbolName(MedicationKind.dewormer)
+        case .tickProtection: return Format.symbolName(MedicationKind.tickProtection)
+        case .ongoing: return Format.symbolName(MedicationKind.ongoing)
+        case .vaccinations: return Format.symbolName(MedicationKind.vaccination)
+        }
+    }
+}
+
+/// Ein Abschnitt der Liste und seine Pläne.
+private struct PlanGroup: Identifiable {
+    let section: PlanSection
     let plans: [MedicationPlan]
-    var id: MedicationKind { kind }
+    var id: PlanSection { section }
 }
 
 // Kein `#Preview`: die Zeilen rufen `MedicationCalculator` auf, dessen Bodies

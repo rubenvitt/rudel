@@ -28,18 +28,25 @@ struct SymptomHistorySection: View {
 
     var body: some View {
         if petEntries.isEmpty {
-            ContentUnavailableView {
-                Label("Keine Symptome", systemImage: "heart.text.square")
-            } description: {
-                Text("Hier sammelt Rudel Auffälligkeiten mit Datum, Schweregrad und Foto — damit beim Tierarzt nichts fehlt.")
-            } actions: {
-                Button("Symptom erfassen") {
-                    appState.present(.logSymptom(petID: pet.id))
-                }
-                .buttonStyle(.borderedProminent)
+            RudelEmptyState(
+                title: "Keine Symptome",
+                detail: "Eine kleine Auffälligkeit, ein Foto, eine Beobachtung. Hier entsteht die Geschichte, die dir beim Tierarzt hilft.",
+                symbol: "heart.text.square",
+                actionTitle: "Symptom erfassen"
+            ) {
+                appState.present(.logSymptom(petID: pet.id))
             }
         } else {
             List {
+                Section {
+                    RudelFeatureHeading(
+                        eyebrow: "GESUNDHEITSJOURNAL",
+                        title: "Aufmerksam begleitet",
+                        detail: "\(petEntries.count) \(petEntries.count == 1 ? "Beobachtung" : "Beobachtungen") für \(pet.name.isEmpty ? "dein Tier" : pet.name)",
+                        symbol: "heart.text.square"
+                    )
+                    .rudelFeatureRow()
+                }
                 ForEach(groups) { group in
                     Section {
                         // Ein einzelner Punkt ist kein Verlauf — bei genau einem
@@ -67,7 +74,7 @@ struct SymptomHistorySection: View {
                     }
                 }
             }
-            .listStyle(.insetGrouped)
+            .rudelListStyle()
         }
     }
 
@@ -301,6 +308,7 @@ private struct SymptomDetailView: View {
                 }
             }
         }
+        .rudelListStyle()
         .navigationTitle(entry.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }

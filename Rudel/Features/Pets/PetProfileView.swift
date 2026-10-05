@@ -26,6 +26,25 @@ struct PetProfileView: View {
     }
 }
 
+extension PetProfileView {
+    /// Beide Journale zusammen: eine Einzeldosis eines Dauermedikaments ist für
+    /// den Nutzer genauso „eine Gabe" wie eine Wurmkur. Auslassungen stehen
+    /// ebenfalls im Journal, sind aber keine Gaben und werden getrennt gezählt.
+    static func medicationCounts(of pet: Pet) -> (given: Int, skipped: Int) {
+        var given = 0
+        var skipped = 0
+        for plan in pet.medicationPlans {
+            for event in plan.events {
+                if event.outcomeValue == .given { given += 1 } else { skipped += 1 }
+            }
+            for log in plan.doseLogs {
+                if log.wasSkipped { skipped += 1 } else { given += 1 }
+            }
+        }
+        return (given, skipped)
+    }
+}
+
 private struct PetProfileContent: View {
     let pet: Pet
 
@@ -35,9 +54,14 @@ private struct PetProfileContent: View {
     /// Momentaufnahme für den Löschdialog. Siehe `PetDeletionSummary`.
     @State private var pendingDeletion: PetDeletionSummary?
 
+    /// Notfallkliniken gelten für alle Tiere, deshalb die Abfrage über alle
+    /// Praxen statt über das Tier.
+    @Query(sort: \VetPractice.name) private var practices: [VetPractice]
+
     var body: some View {
         List {
             headerSection
+            emergencySection
             baseDataSection
             if pet.speciesValue == .dog {
                 sizeClassSection
@@ -46,7 +70,7 @@ private struct PetProfileContent: View {
             actionsSection
             deleteSection
         }
-        .listStyle(.insetGrouped)
+        .rudelListStyle()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -76,26 +100,17 @@ private struct PetProfileContent: View {
 
     private var headerSection: some View {
         Section {
-            HStack(spacing: 16) {
-                PetAvatar(pet: pet, size: 76)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(displayName)
-                        .font(.title2.weight(.semibold))
-
-                    Text(speciesAndBreed)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    if let ageText {
-                        Text(ageText)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+            RudelPetHero(pet: pet, eyebrow: "DEIN RUDEL") {
+                HStack(alignment: .firstTextBaseline) {
+                    Label(pet.speciesValue.label, systemImage: pet.speciesValue.symbolName)
+                    Spacer(minLength: 12)
+                    Text(ageText ?? "Geburtstag noch nicht erfasst")
+                        .multilineTextAlignment(.trailing)
                 }
+                .font(.subheadline)
+                .foregroundStyle(RudelTheme.sage)
             }
-            .padding(.vertical, 8)
-            .accessibilityElement(children: .combine)
+            .rudelFeatureRow()
         }
     }
 
@@ -151,6 +166,103 @@ private struct PetProfileContent: View {
         }
     }
 
+    /// Notfallkarte: was man in der Hektik braucht, ohne zu suchen. Fehlende
+    /// Angaben bleiben sichtbar, damit klar ist, was noch einzutragen wäre.
+    private var emergencySection: some View {
+        Section {
+            primaryPracticeRow
+
+            ForEach(emergencyClinics) { clinic in
+                EmergencyPracticeRow(
+                    role: "Notdienst",
+                    practice: clinic,
+                    number: clinic.emergencyPhone.isEmpty ? clinic.phone : clinic.emergencyPhone
+                )
+            }
+
+            emergencyValueRow(
+                label: "Chipnummer",
+                value: pet.microchipNumber,
+                systemImage: "wave.3.right",
+                monospaced: true
+            )
+            emergencyValueRow(label: "Allergien", value: pet.allergies, systemImage: "allergens")
+            emergencyValueRow(label: "Versicherung", value: pet.insuranceInfo, systemImage: "doc.text")
+
+            if hasMissingEmergencyData {
+                Button {
+                    appState.present(.editPet(petID: pet.id))
+                } label: {
+                    Label("Notfalldaten ergänzen", systemImage: "square.and.pencil")
+                }
+            }
+        } header: {
+            RudelSectionHeading(title: "Notfall")
+        }
+    }
+
+    @ViewBuilder
+    private var primaryPracticeRow: some View {
+        if let practice = pet.primaryPractice {
+            EmergencyPracticeRow(role: "Haustierarzt", practice: practice, number: practice.phone)
+            if !practice.emergencyPhone.isEmpty {
+                HStack {
+                    LabeledValueRow(
+                        label: "Notfallnummer",
+                        value: practice.emergencyPhone,
+                        systemImage: "phone.badge.waveform"
+                    )
+                    VetCallButton(
+                        number: practice.emergencyPhone,
+                        accessibilityName: "Notfallnummer von \(VetDisplay.practiceName(practice)) anrufen"
+                    )
+                }
+            }
+        } else {
+            LabeledValueRow(label: "Haustierarzt", value: "Nicht hinterlegt", systemImage: "stethoscope")
+        }
+    }
+
+    /// Die Hauspraxis steht schon oben, auch wenn sie Notdienst hat.
+    private var emergencyClinics: [VetPractice] {
+        practices.filter { $0.isEmergencyClinic && $0.id != pet.primaryPractice?.id }
+    }
+
+    /// Allergien und Versicherung dürfen zu Recht leer sein; der Einstieg
+    /// erscheint nur für die Angaben, die praktisch jedes Tier hat.
+    private var hasMissingEmergencyData: Bool {
+        pet.primaryPractice == nil || pet.microchipNumber.isEmpty
+    }
+
+    /// Wert einer Notfallangabe. Text auswählbar, damit sich etwa die
+    /// Chipnummer kopieren und in ein Register einfügen lässt.
+    private func emergencyValueRow(
+        label: String,
+        value: String,
+        systemImage: String,
+        monospaced: Bool = false
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: systemImage)
+                .foregroundStyle(RudelTheme.accent)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+            Text(label)
+            Spacer(minLength: 12)
+            if value.isEmpty {
+                Text("Nicht erfasst")
+                    .foregroundStyle(RudelTheme.muted)
+            } else {
+                Text(value)
+                    .monospaced(monospaced)
+                    .foregroundStyle(RudelTheme.ink)
+                    .multilineTextAlignment(.trailing)
+                    .textSelection(.enabled)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     /// Die Größenklasse ist eine Hunde-Größe (`DogSizeClass`) und wirkt allein
     /// auf den Startwert der Zyklusprognose. Für Katzen wird der Abschnitt
     /// deshalb gar nicht gezeigt — dort wäre der Wert eine Zahl ohne Bedeutung.
@@ -172,7 +284,7 @@ private struct PetProfileContent: View {
         Section {
             LabeledValueRow(
                 label: "Gaben",
-                value: "\(medicationEntryCount)",
+                value: "\(medicationCounts.given)",
                 systemImage: "pills"
             )
 
@@ -210,6 +322,8 @@ private struct PetProfileContent: View {
                 Label("Bearbeiten", systemImage: "square.and.pencil")
             }
 
+            VetReportShareLink(petID: pet.id, petName: pet.name, title: "Tierarzt-Bericht teilen")
+
             Button {
                 appState.present(.editPet(petID: nil))
             } label: {
@@ -226,7 +340,7 @@ private struct PetProfileContent: View {
                 Label("Tier löschen", systemImage: "trash")
             }
         } footer: {
-            Text("Löscht das Profil samt aller Gaben, Läufigkeiten, Symptome und Gewichtseinträge.")
+            Text("Löscht das Profil samt aller Gaben, Tierarzttermine, Läufigkeiten, Symptome und Gewichtseinträge.")
         }
     }
 
@@ -234,10 +348,6 @@ private struct PetProfileContent: View {
 
     private var displayName: String {
         pet.name.isEmpty ? "Unbenannt" : pet.name
-    }
-
-    private var speciesAndBreed: String {
-        pet.breed.isEmpty ? pet.speciesValue.label : "\(pet.speciesValue.label) · \(pet.breed)"
     }
 
     /// Alter als „3 Jahre, 4 Monate". Kein `Format`-Helfer vorhanden, deshalb
@@ -307,10 +417,8 @@ private struct PetProfileContent: View {
 
     // MARK: - Zählungen
 
-    /// Beide Journale zusammen: eine Einzeldosis eines Dauermedikaments ist für
-    /// den Nutzer genauso „eine Gabe" wie eine Wurmkur.
-    private var medicationEntryCount: Int {
-        pet.medicationPlans.reduce(0) { $0 + $1.events.count + $1.doseLogs.count }
+    private var medicationCounts: (given: Int, skipped: Int) {
+        PetProfileView.medicationCounts(of: pet)
     }
 
     private var showsCycleCount: Bool {
@@ -337,9 +445,18 @@ private struct PetProfileContent: View {
             parts.append("\(planCount) \(planCount == 1 ? "Medikamentenplan" : "Medikamentenpläne")")
         }
 
-        let doses = medicationEntryCount
-        if doses > 0 {
-            parts.append("\(doses) \(doses == 1 ? "Gabe" : "Gaben")")
+        let counts = medicationCounts
+        if counts.given > 0 {
+            parts.append("\(counts.given) \(counts.given == 1 ? "Gabe" : "Gaben")")
+        }
+        // Die Kaskade löscht Auslassungen mit — der Dialog muss sie nennen.
+        if counts.skipped > 0 {
+            parts.append("\(counts.skipped) \(counts.skipped == 1 ? "Auslassung" : "Auslassungen")")
+        }
+
+        let appointments = pet.vetAppointments.count
+        if appointments > 0 {
+            parts.append("\(appointments) \(appointments == 1 ? "Tierarzttermin" : "Tierarzttermine")")
         }
 
         let periods = pet.cyclePeriods.count
@@ -393,6 +510,47 @@ private struct PetProfileContent: View {
         context.delete(pet)
         try? context.save()
         pendingDeletion = nil
+    }
+}
+
+/// Eine Praxis auf der Notfallkarte: Rolle, Name, Ansprechpartner und
+/// Anruf-Knopf.
+private struct EmergencyPracticeRow: View {
+    let role: String
+    let practice: VetPractice
+    let number: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(role)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(RudelTheme.muted)
+                Text(VetDisplay.practiceName(practice))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(RudelTheme.ink)
+                if let detail {
+                    Text(detail)
+                        .font(.subheadline)
+                        .foregroundStyle(RudelTheme.muted)
+                        .textSelection(.enabled)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 8)
+            VetCallButton(
+                number: number,
+                accessibilityName: "\(VetDisplay.practiceName(practice)) anrufen"
+            )
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var detail: String? {
+        let parts = [practice.veterinarian, number]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

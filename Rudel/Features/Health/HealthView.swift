@@ -1,11 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Gesundheits-Tab: Symptome und Gewicht (PRD §5.4, §5.5).
+/// Gesundheits-Tab: Symptome, Gewicht und Tierarzt (PRD §5.4, §5.5).
 ///
-/// Zwei Bereiche in einem Tab statt zwei Tabs. Beides sind Beobachtungen am
-/// Tier, die oft beim selben Anlass entstehen — und die Tab-Leiste hat mit
-/// Zyklus schon fünf Einträge.
+/// Drei Bereiche in einem Tab statt drei Tabs. Symptome und Gewicht sind
+/// Beobachtungen am Tier, die oft beim selben Anlass entstehen, und der
+/// Tierarzt ist der Ort, an dem sie gebraucht werden. Die Tab-Leiste hat mit
+/// Zyklus schon fünf Einträge; ein sechster zwänge iOS in „Mehr".
 struct HealthView: View {
     @Environment(AppState.self) private var appState
 
@@ -19,6 +20,8 @@ struct HealthView: View {
                     SymptomHistorySection(pet: pet)
                 case .weight:
                     WeightHistorySection(pet: pet)
+                case .vet:
+                    VetSection(pet: pet)
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -26,14 +29,40 @@ struct HealthView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        appState.present(section.addSheet(petID: pet.id))
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel(section.addLabel)
+                    addButton(petID: pet.id)
                 }
             }
+        }
+    }
+
+    /// Im Tierarzt-Bereich gibt es zwei Dinge anzulegen; dort wird das Plus
+    /// zum Menü, statt einen der beiden Einstiege zu verstecken.
+    @ViewBuilder
+    private func addButton(petID: UUID) -> some View {
+        if section == .vet {
+            Menu {
+                Button {
+                    appState.present(.editAppointment(appointmentID: nil, petID: petID))
+                } label: {
+                    Label("Termin", systemImage: "calendar.badge.plus")
+                }
+                Button {
+                    appState.present(.editPractice(practiceID: nil))
+                } label: {
+                    Label("Praxis", systemImage: "building.2")
+                }
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel(section.addLabel)
+            .accessibilityIdentifier("vet-add-menu")
+        } else if let sheet = section.addSheet(petID: petID) {
+            Button {
+                appState.present(sheet)
+            } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel(section.addLabel)
         }
     }
 
@@ -46,20 +75,18 @@ struct HealthView: View {
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.bar)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(RudelTheme.canvas)
     }
 }
 
-/// Die zwei Bereiche des Tabs. Eigener Typ auf Datei-Ebene statt verschachtelt,
+/// Die Bereiche des Tabs. Eigener Typ auf Datei-Ebene statt verschachtelt,
 /// damit `Section` in den Listen nicht verdeckt wird.
 private enum HealthSection: Hashable, Identifiable, CaseIterable {
     case symptoms
     case weight
+    case vet
 
     var id: Self { self }
 
@@ -67,6 +94,7 @@ private enum HealthSection: Hashable, Identifiable, CaseIterable {
         switch self {
         case .symptoms: return "Symptome"
         case .weight: return "Gewicht"
+        case .vet: return "Tierarzt"
         }
     }
 
@@ -75,13 +103,16 @@ private enum HealthSection: Hashable, Identifiable, CaseIterable {
         switch self {
         case .symptoms: return "Symptom erfassen"
         case .weight: return "Gewicht erfassen"
+        case .vet: return "Termin oder Praxis anlegen"
         }
     }
 
-    func addSheet(petID: UUID) -> AppState.Sheet {
+    /// `nil` für den Tierarzt-Bereich: dort öffnet das Plus ein Menü.
+    func addSheet(petID: UUID) -> AppState.Sheet? {
         switch self {
         case .symptoms: return .logSymptom(petID: petID)
         case .weight: return .logWeight(petID: petID)
+        case .vet: return nil
         }
     }
 }

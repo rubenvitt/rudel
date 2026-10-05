@@ -41,6 +41,7 @@ struct WeightLogSheet: View {
                     form
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Gewicht erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

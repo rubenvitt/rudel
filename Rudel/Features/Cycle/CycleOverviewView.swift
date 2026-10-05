@@ -10,9 +10,26 @@ import SwiftUI
 /// laut PRD §6 nicht zulässig.
 struct CycleOverviewView: View {
     var body: some View {
-        // Nur unkastrierte Hündinnen — Katzen modelliert die Engine nicht.
-        PetScope(title: "Zyklus", cycleTrackingOnly: true) { pet in
-            CycleOverviewContent(pet: pet)
+        // Die Tierauswahl bleibt über alle Tabs gleich. Ob das Modul für das
+        // gewählte Tier verfügbar ist, entscheidet erst der Inhalt.
+        PetScope(title: "Zyklus") { pet in
+            if pet.tracksCycle {
+                CycleOverviewContent(pet: pet)
+                    .id(pet.id)
+            } else {
+                ScrollView {
+                    RudelFeatureHeading(
+                        eyebrow: "Nur für unkastrierte Hündinnen",
+                        title: "Kein Zyklustracking",
+                        detail: "Für \(pet.name) ist kein Zyklustracking verfügbar.",
+                        symbol: pet.speciesValue.symbolName
+                    )
+                    .frame(maxWidth: 560)
+                    .padding(20)
+                    .frame(maxWidth: .infinity)
+                }
+                .background(RudelTheme.canvas)
+            }
         }
     }
 }
@@ -163,20 +180,13 @@ private struct CycleOverviewContent: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Kein Zyklus erfasst", systemImage: "circle.hexagonpath")
-        } description: {
-            Text(
-                "Erfasse Tag 1 — den ersten Tag, an dem die Läufigkeit erkennbar war. "
-                    + "Er ist der Anker, auf dem jede Prognose und jede Risikostufe beruht."
-            )
-        } actions: {
-            Button {
-                appState.present(.startCyclePeriod(petID: pet.id))
-            } label: {
-                Text("Läufigkeit begonnen")
-            }
-            .buttonStyle(.borderedProminent)
+        RudelEmptyState(
+            title: "Kein Zyklus erfasst",
+            detail: "Alles beginnt mit Tag 1: dem ersten erkennbaren Tag der Läufigkeit. Mit deinen Beobachtungen lernt Rudel den Zyklus deines Tiers besser kennen.",
+            symbol: "circle.hexagonpath",
+            actionTitle: "Läufigkeit begonnen"
+        ) {
+            appState.present(.startCyclePeriod(petID: pet.id))
         }
     }
 
@@ -205,7 +215,7 @@ private struct CycleOverviewContent: View {
 
             historySection
         }
-        .listStyle(.insetGrouped)
+        .rudelListStyle()
         .safeAreaInset(edge: .bottom) { actionBar }
         .sensoryFeedback(.success, trigger: quickLogFeedback)
     }
@@ -228,7 +238,7 @@ private struct CycleOverviewContent: View {
                 )
             }
         } header: {
-            Text("Wie sehr aufpassen?")
+            RudelSectionHeading(title: "Wie sehr aufpassen?")
         }
     }
 
@@ -269,7 +279,7 @@ private struct CycleOverviewContent: View {
                 }
             }
         } header: {
-            Text("Läuft gerade")
+            RudelSectionHeading(title: "Läuft gerade")
         } footer: {
             Text("Die Phase ist geschätzt, kein Befund. Eigene Beobachtungen verschieben sie — sie schlagen den Kalender.")
         }
@@ -338,7 +348,7 @@ private struct CycleOverviewContent: View {
                 }
             }
         } header: {
-            Text("Nächste Läufigkeit")
+            RudelSectionHeading(title: "Nächste Läufigkeit")
         } footer: {
             Text("Die Spanne ist die Prognose. Die Punktschätzung ist nur ihre Mitte und für sich genommen Scheingenauigkeit.")
         }
@@ -466,12 +476,12 @@ private struct CycleOverviewContent: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 2)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(RudelPrimaryButtonStyle())
         .controlSize(.large)
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 8)
-        .background(.bar)
+        .background(RudelTheme.canvas)
     }
 
     // MARK: Schreiben
@@ -520,9 +530,10 @@ private struct ActiveHeatHeaderRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Tag \(phase.dayInCycle)")
-                    .font(.title2.weight(.semibold))
+                    .font(RudelTheme.display())
+                    .foregroundStyle(RudelTheme.ink)
                     .monospacedDigit()
                 Label(Format.label(phase.phase), systemImage: CycleLabel.symbolName(phase.phase))
                     .font(.caption.weight(.semibold))
@@ -537,7 +548,7 @@ private struct ActiveHeatHeaderRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             ConfidenceLabel(confidence: phase.confidence, detail: CycleLabel.source(phase.source))
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 12)
     }
 }
 
@@ -557,7 +568,8 @@ private struct RiskHeaderRow: View {
                 .font(.headline)
                 .foregroundStyle(tint)
             Text(CycleLabel.riskHeadline(notice.risk))
-                .font(.title3.weight(.semibold))
+                .font(RudelTheme.display(.title2))
+                .foregroundStyle(RudelTheme.ink)
             Text(notice.body)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -588,7 +600,7 @@ private struct QuickStandingHeatRow: View {
                 } label: {
                     Text("Ja").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(RudelPrimaryButtonStyle())
                 .accessibilityLabel("Duldung heute: ja")
 
                 Button {
@@ -614,7 +626,8 @@ private struct NextHeatHeaderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(Format.dateRange(prediction.range))
-                .font(.title3.weight(.semibold))
+                .font(RudelTheme.display(.title2))
+                .foregroundStyle(RudelTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text("\(CycleLabel.predictionTiming(days: daysUntil)) · \(Format.bandWidth(prediction))")
                 .font(.footnote)

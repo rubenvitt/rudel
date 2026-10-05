@@ -18,7 +18,7 @@ final class MedicationPlan {
     /// Wiederholungsintervall in Tagen — für `.dewormer`. `0` = nicht gesetzt.
     var intervalDays: Int = 0
 
-    /// Wirkdauer in Tagen — für `.tickProtection` und `.rabiesVaccination`.
+    /// Wirkdauer in Tagen — für `.tickProtection` und die Impfungen.
     /// `0` = nicht gesetzt.
     var effectiveDays: Int = 0
 
@@ -48,7 +48,53 @@ final class MedicationPlan {
     var notes: String = ""
     var createdAt: Date = Date.distantPast
 
+    // MARK: Vorsorge oder zeitkritisch
+
+    /// `nil` = Standard der Art (`MedicationKind.defaultCareClass`). Als
+    /// Override gespeichert, damit Bestandspläne ohne Migration den Standard
+    /// erhalten — Vorsorge verliert dadurch ihren Wecker.
+    var careClassOverride: MedicationCareClass?
+
+    /// `nil` = Standard der Art (`MedicationKind.defaultRequiresVetVisit`).
+    /// Aus demselben Grund optional: bestehende Tollwut-Pläne sollen den
+    /// Standard „Termin nötig" bekommen, nicht `false`.
+    var requiresVetVisitOverride: Bool?
+
+    /// Manuell zurückgestellt bis zu diesem Tag (Zeckenschutz im Winter).
+    var deferredUntil: Date?
+    /// Wann zurückgestellt wurde. Ein danach erfasster Journal-Eintrag hebt
+    /// die Zurückstellung auf, siehe `engineInput()`.
+    var deferredAt: Date?
+
+    // MARK: Impfung
+
+    /// Welche Impfung — nur bei `.vaccination`. Tollwut bleibt die eigene Art
+    /// `.rabiesVaccination` und hat hier `nil`.
+    var vaccineValue: VaccineType?
+
+    // MARK: Vorrat
+    //
+    // Der Restbestand wird nicht heruntergezählt, sondern aus dem Journal
+    // abgeleitet (`remainingStock`) — so bleibt das Journal append-only, und ein
+    // gelöschter Fehleintrag korrigiert den Bestand von selbst.
+
+    /// Zeitpunkt der letzten Zählung. `nil` = keine Vorratsverwaltung.
+    var stockCountedAt: Date?
+    /// Bestand bei dieser Zählung.
+    var stockAmount: Double = 0
+    /// Einheit, z. B. „Tabletten".
+    var stockUnit: String = ""
+    var amountPerGiving: Double = 1
+    /// Packungsgröße für „+ 1 Packung". `0` = unbekannt.
+    var packageSize: Double = 0
+    /// Ab welcher Reichweite in Tagen erinnert wird.
+    var restockLeadDays: Int = 7
+    var needsPrescription: Bool = false
+
     var pet: Pet?
+
+    @Relationship(deleteRule: .nullify, inverse: \VetAppointment.medicationPlan)
+    var appointments: [VetAppointment] = []
 
     @Relationship(deleteRule: .cascade, inverse: \MedicationEvent.plan)
     var events: [MedicationEvent] = []
@@ -89,12 +135,72 @@ final class MedicationPlan {
 }
 
 extension MedicationPlan {
-    /// Letzte dokumentierte Gabe.
+    /// Letzte dokumentierte **Gabe**. Ausgelassene Termine zählen nicht — eine
+    /// ausgelassene Zeckentablette schützt nicht.
     var lastEvent: MedicationEvent? {
-        events.max(by: { $0.givenOn < $1.givenOn })
+        events.filter { $0.outcomeValue == .given }.max(by: { $0.givenOn < $1.givenOn })
     }
 
     var lastGivenOn: Date? { lastEvent?.givenOn }
+
+    /// Letzter bewusst ausgelassener Termin. Ab hier rechnet das Intervall neu.
+    var lastSkippedOn: Date? {
+        events.filter { $0.outcomeValue == .skipped }.map(\.givenOn).max()
+    }
+
+    var careClass: MedicationCareClass { careClassOverride ?? kindValue.defaultCareClass }
+
+    var requiresVetVisit: Bool { requiresVetVisitOverride ?? kindValue.defaultRequiresVetVisit }
+
+    /// Ein verknüpfter, noch nicht abgeschlossener Termin — unabhängig vom
+    /// Datum. Sonst tauchte nach Terminbeginn, aber vor dem Abschluss wieder
+    /// „Termin vereinbaren" auf.
+    var openAppointment: VetAppointment? {
+        appointments.filter(\.isOpen).min(by: { $0.date < $1.date })
+    }
+
+    /// Die Zurückstellung gilt nur, solange seitdem nichts erfasst wurde.
+    var activeDeferral: Date? {
+        guard let deferredUntil else { return nil }
+        if let deferredAt, events.contains(where: { $0.loggedAt > deferredAt }) { return nil }
+        if let deferredAt, doseLogs.contains(where: { $0.takenAt > deferredAt }) { return nil }
+        return deferredUntil
+    }
+
+    var managesStock: Bool { stockCountedAt != nil }
+
+    /// Gaben seit der letzten Zählung: echte Gaben (nach Erfassungszeitpunkt,
+    /// weil `givenOn` auf Mitternacht steht) und abgehakte, nicht ausgelassene
+    /// Einzelgaben. Gelöschte Einträge fallen von selbst heraus.
+    var givingsSinceStockCount: Int {
+        guard let countedAt = stockCountedAt else { return 0 }
+        let events = events.filter { $0.outcomeValue == .given && $0.loggedAt > countedAt }.count
+        let doses = doseLogs.filter { !$0.wasSkipped && $0.takenAt > countedAt }.count
+        return events + doses
+    }
+
+    /// Abgeleiteter Restbestand. `nil` ohne Vorratsverwaltung. Kann negativ
+    /// werden, wenn mehr erfasst als gezählt wurde.
+    var remainingStock: Double? {
+        guard managesStock else { return nil }
+        return stockAmount - Double(givingsSinceStockCount) * max(0, amountPerGiving)
+    }
+
+    /// Vorrat für die Engine. `asOf` und `dayMath` bestimmen nur, welche
+    /// heutigen Einzelgaben schon erfasst sind.
+    func stockInput(asOf: Date, dayMath: DayMath) -> StockInput? {
+        guard managesStock else { return nil }
+        let handledToday = doseLogs.filter { dayMath.isSameDay($0.scheduledAt, asOf) }.count
+        return StockInput(
+            amountAtCount: stockAmount,
+            givingsSinceCount: givingsSinceStockCount,
+            amountPerGiving: amountPerGiving,
+            unit: stockUnit,
+            restockLeadDays: restockLeadDays,
+            needsPrescription: needsPrescription,
+            dosesHandledToday: handledToday
+        )
+    }
 
     /// Setzt das Dosierschema für die Engine zusammen. `nil`, wenn der Plan
     /// kein `.ongoing` ist oder keine Gabezeiten hinterlegt sind.
@@ -115,7 +221,7 @@ extension MedicationPlan {
     /// Mappt den Plan auf den Engine-Input. Diese Umsetzung ist die
     /// fehleranfälligste Stelle der App-Schicht und deshalb in
     /// `Tests/RudelTests` abgedeckt.
-    func engineInput() -> DueItemBuilder.MedicationInput {
+    func engineInput(asOf: Date = Date(), dayMath: DayMath = .current()) -> DueItemBuilder.MedicationInput {
         DueItemBuilder.MedicationInput(
             sourceID: engineID,
             petID: pet?.engineID ?? "",
@@ -126,9 +232,22 @@ extension MedicationPlan {
             intervalDays: intervalDays > 0 ? intervalDays : nil,
             effectiveDays: effectiveDays > 0 ? effectiveDays : nil,
             schedule: doseSchedule,
-            isActive: isActive
+            isActive: isActive,
+            careClass: careClass,
+            lastSkippedOn: lastSkippedOn,
+            deferredUntil: activeDeferral,
+            requiresVetVisit: requiresVetVisit,
+            hasOpenAppointment: openAppointment != nil,
+            vaccine: kindValue == .vaccination ? (vaccineValue ?? .other) : nil,
+            stock: stockInput(asOf: asOf, dayMath: dayMath)
         )
     }
+}
+
+/// Ob ein Termin wahrgenommen oder bewusst ausgelassen wurde.
+enum MedicationEventOutcome: String, Codable, CaseIterable, Hashable, Sendable {
+    case given
+    case skipped
 }
 
 /// Eine konkrete Gabe. **Append-only** — Einträge werden nicht bearbeitet,
@@ -143,6 +262,9 @@ final class MedicationEvent {
     var productNameOverride: String = ""
     var note: String = ""
     var loggedAt: Date = Date.distantPast
+    /// `.skipped` = bewusst ausgelassen. Dann ist `givenOn` der Tag der
+    /// Entscheidung, nicht einer Gabe.
+    var outcomeValue: MedicationEventOutcome = MedicationEventOutcome.given
 
     var plan: MedicationPlan?
 
@@ -150,12 +272,14 @@ final class MedicationEvent {
         givenOn: Date,
         productNameOverride: String = "",
         note: String = "",
+        outcome: MedicationEventOutcome = .given,
         loggedAt: Date = Date()
     ) {
         self.id = UUID()
         self.givenOn = givenOn
         self.productNameOverride = productNameOverride
         self.note = note
+        self.outcomeValue = outcome
         self.loggedAt = loggedAt
     }
 }
@@ -173,13 +297,19 @@ final class DoseLogEntry {
     /// Wann tatsächlich abgehakt wurde.
     var takenAt: Date = Date.distantPast
     var note: String = ""
+    /// Bewusst ausgelassen (z. B. auf Anweisung der Praxis). Gilt wie eine
+    /// abgehakte Gabe als erledigt — sonst re-armiert der Alarm endlos —, wird
+    /// aber als „ausgelassen" angezeigt. `takenAt` ist dann der Zeitpunkt der
+    /// Entscheidung.
+    var wasSkipped: Bool = false
 
     var plan: MedicationPlan?
 
-    init(scheduledAt: Date, takenAt: Date = Date(), note: String = "") {
+    init(scheduledAt: Date, takenAt: Date = Date(), note: String = "", wasSkipped: Bool = false) {
         self.id = UUID()
         self.scheduledAt = scheduledAt
         self.takenAt = takenAt
         self.note = note
+        self.wasSkipped = wasSkipped
     }
 }

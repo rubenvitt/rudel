@@ -15,6 +15,8 @@ struct RudelApp: App {
         CycleObservation.self,
         SymptomEntry.self,
         WeightEntry.self,
+        VetPractice.self,
+        VetAppointment.self,
         AppSettings.self,
     ])
 

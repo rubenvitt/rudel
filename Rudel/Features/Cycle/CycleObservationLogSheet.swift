@@ -162,6 +162,7 @@ struct CycleObservationLogSheet: View {
                     form
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Beobachtung")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -189,7 +190,7 @@ struct CycleObservationLogSheet: View {
             Button("Tag 1 erfassen") {
                 appState.present(.startCyclePeriod(petID: petID))
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(RudelPrimaryButtonStyle())
         }
     }
 

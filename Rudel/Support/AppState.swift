@@ -38,6 +38,14 @@ final class AppState {
         case logSymptom(petID: UUID)
         case logWeight(petID: UUID)
         case editPet(petID: UUID?)
+        /// Zurückstellen eines Vorsorge-Plans (Datum wählen).
+        case deferMedication(planID: UUID)
+        /// Vorrat aufgefüllt: neuen Bestand erfassen.
+        case restockMedication(planID: UUID)
+        /// `appointmentID == nil` ⇒ neuer Termin, optional vorbelegt mit dem
+        /// Plan, für den er vereinbart wird.
+        case editAppointment(appointmentID: UUID?, petID: UUID, planID: UUID? = nil)
+        case editPractice(practiceID: UUID?)
         case settings
 
         var id: String {
@@ -51,6 +59,11 @@ final class AppState {
             case .logSymptom(let petID): return "logSymptom-\(petID)"
             case .logWeight(let petID): return "logWeight-\(petID)"
             case .editPet(let petID): return "editPet-\(petID?.uuidString ?? "new")"
+            case .deferMedication(let planID): return "deferMedication-\(planID)"
+            case .restockMedication(let planID): return "restockMedication-\(planID)"
+            case .editAppointment(let appointmentID, let petID, let planID):
+                return "editAppointment-\(appointmentID?.uuidString ?? "new")-\(petID)-\(planID?.uuidString ?? "")"
+            case .editPractice(let practiceID): return "editPractice-\(practiceID?.uuidString ?? "new")"
             case .settings: return "settings"
             }
         }

@@ -92,6 +92,18 @@ enum Format {
         kg.formatted(.number.precision(.fractionLength(0...2))) + " kg"
     }
 
+    /// Vorratsmenge: „12", „1,5". Ohne Tausendertrenner, weil der Wert auch
+    /// als Eingabe vorbelegt wird und „1.000" sonst als 1 zurückkäme.
+    static func amount(_ value: Double) -> String {
+        value.formatted(.number.grouping(.never).precision(.fractionLength(0...2)))
+    }
+
+    /// „12 Tabletten", ohne Einheit nur die Zahl.
+    static func amount(_ value: Double, unit: String) -> String {
+        let unit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        return unit.isEmpty ? amount(value) : "\(amount(value)) \(unit)"
+    }
+
     static func grams(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0))) + " g"
     }
@@ -135,6 +147,7 @@ enum Format {
         case .tickProtection: return "Zeckenschutz"
         case .ongoing: return "Laufendes Medikament"
         case .rabiesVaccination: return "Tollwut-Impfung"
+        case .vaccination: return "Impfung"
         }
     }
 
@@ -143,7 +156,7 @@ enum Format {
         case .dewormer: return "pill"
         case .tickProtection: return "shield.lefthalf.filled"
         case .ongoing: return "calendar.badge.clock"
-        case .rabiesVaccination: return "syringe"
+        case .rabiesVaccination, .vaccination: return "syringe"
         }
     }
 

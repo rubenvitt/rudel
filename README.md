@@ -46,6 +46,13 @@ Anforderungen: iOS 26.0, Swift 6 (Language Mode, `SWIFT_STRICT_CONCURRENCY = com
 
 ## Medikamentenerinnerungen
 
+Jeder Plan ist entweder **zeitkritisch** (Standard für laufende Medikamente)
+oder **Vorsorge** (Standard für Wurmkur, Zeckenschutz und Tollwut). Nur
+zeitkritische Pläne bekommen Alarme; Vorsorge meldet sich ausschließlich per
+Mitteilung, lässt sich auslassen oder bis zu einem Datum zurückstellen und kann
+einen Tierarzttermin voraussetzen. Details:
+[Vorsorge und Tierarzt](docs/superpowers/specs/2026-10-05-vorsorge-und-tierarzt-design.md).
+
 Medikamentenalarme sind standardmäßig eingeschaltet. Rudel plant die konkreten
 Gaben unabhängig davon, was gerade auf dem Dashboard sichtbar ist. Auch bei
 mehrtägigen Einnahmeabständen werden die nächsten Gabetage berücksichtigt.

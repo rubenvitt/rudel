@@ -7,6 +7,8 @@ zur expliziten Bestätigung. Ein Alarmstopp ist keine dokumentierte Gabe.
 ## Verhalten
 
 - Gilt für laufende Medikamente sowie Wurmkur, Zeckenschutz und Tollwut-Fälligkeiten.
+  **Seit 05.10.2026 nur noch für zeitkritische Pläne** — Vorsorge bekommt keinen
+  Alarm, siehe [Vorsorge und Tierarzt](2026-10-05-vorsorge-und-tierarzt-design.md).
 - Der Countdown zeigt Tier, Präparat, Dosis und planmäßigen Termin. Die Live
   Activity führt direkt zur Bestätigung der konkreten Gabe.
 - AlarmKit plant lokal, auch wenn die App geschlossen ist. Schlummern startet

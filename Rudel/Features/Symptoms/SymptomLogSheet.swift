@@ -48,6 +48,7 @@ struct SymptomLogSheet: View {
                     form
                 }
             }
+            .rudelFormStyle()
             .navigationTitle("Symptom erfassen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

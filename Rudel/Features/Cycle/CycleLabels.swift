@@ -46,7 +46,7 @@ enum CycleLabel {
 
     static func tint(_ phase: CyclePhase) -> Color {
         switch phase {
-        case .proestrus: return .red
+        case .proestrus: return RudelTheme.danger
         case .estrus: return .pink
         case .diestrus: return .indigo
         case .anestrus: return .secondary
@@ -102,9 +102,9 @@ enum CycleLabel {
 
     static func riskTint(_ risk: HeatRiskLevel) -> Color {
         switch risk {
-        case .elevated: return .orange
-        case .critical: return .red
-        case .subsiding: return .yellow
+        case .elevated: return RudelTheme.warning
+        case .critical: return RudelTheme.danger
+        case .subsiding: return RudelTheme.warning
         }
     }
 

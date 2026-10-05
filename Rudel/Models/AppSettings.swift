@@ -28,6 +28,10 @@ final class AppSettings {
     /// deshalb wird nicht der ganze Horizont geplant.
     var notificationHorizonDays: Int = 14
 
+    /// Vorlauf der Termin-Mitteilung am Tag eines Tierarzttermins, in Minuten.
+    /// Dazu kommt immer eine Mitteilung am Vortag zur Erinnerungszeit.
+    var appointmentLeadMinutes: Int = 120
+
     /// Tägliche Hinweise während einer laufenden Läufigkeit (siehe
     /// `CriticalDaysAdvisor`).
     ///
@@ -69,7 +73,8 @@ extension AppSettings {
         NotificationPlanner.Settings(
             leadDays: leadDays,
             reminderTime: reminderTime,
-            horizonDays: notificationHorizonDays
+            horizonDays: notificationHorizonDays,
+            appointmentLeadMinutes: appointmentLeadMinutes
         )
     }
 
