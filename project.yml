@@ -1,7 +1,7 @@
 name: Rudel
 
 options:
-  bundleIdPrefix: email.rubeen
+  bundleIdPrefix: dev.rubeen.apps
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
@@ -37,7 +37,7 @@ targets:
       - target: RudelWidgets
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.Rudel
+        PRODUCT_BUNDLE_IDENTIFIER: dev.rubeen.apps.rudel
         PRODUCT_NAME: Rudel
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -57,7 +57,7 @@ targets:
         NSAlarmKitUsageDescription: "Rudel erinnert dich mit Alarmen an offene Medikamentengaben."
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
-          - CFBundleURLName: email.rubeen.Rudel.reminders
+          - CFBundleURLName: dev.rubeen.apps.rudel.reminders
             CFBundleURLSchemes: [rudel]
 
   RudelWidgets:
@@ -68,7 +68,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.Rudel.Widgets
+        PRODUCT_BUNDLE_IDENTIFIER: dev.rubeen.apps.rudel.widgets
         GENERATE_INFOPLIST_FILE: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
@@ -92,7 +92,7 @@ targets:
         product: RudelEngine
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.RudelTests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.rubeen.apps.rudel.tests
         GENERATE_INFOPLIST_FILE: YES
 
   # Smoke-Test, der die Screens tatsächlich ausführt. Der Compiler prüft nur,
@@ -108,7 +108,7 @@ targets:
       - target: Rudel
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: email.rubeen.RudelUITests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.rubeen.apps.rudel.uitests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
