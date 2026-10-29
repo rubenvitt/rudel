@@ -205,7 +205,8 @@ final class SmokeTests: XCTestCase {
         // Termin abschließen.
         upcoming.tap()
         let doneButton = app.buttons["Als erledigt markieren"]
-        XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "Abschluss fehlt im Termin-Sheet")
+        // Im kleineren Formular-Sheet des iPad liegt der Status unterhalb.
+        XCTAssertTrue(revealInForm(doneButton, in: app), "Abschluss fehlt im Termin-Sheet")
         doneButton.tap()
         let findings = app.textFields["appointment-findings"]
         XCTAssertTrue(revealInForm(findings, in: app), "Befundfeld erscheint nicht")

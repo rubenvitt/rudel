@@ -79,7 +79,9 @@ final class MedicationCareSmokeTests: XCTestCase {
         reveal(app.buttons["Zeitkritisch"], in: app)
         XCTAssertTrue(app.buttons["Zeitkritisch"].exists)
         XCTAssertTrue(app.buttons["Vorsorge"].isSelected)
-        XCTAssertTrue(app.switches["Tierarzttermin nötig"].exists)
+        let vetToggle = app.switches["Tierarzttermin nötig"]
+        reveal(vetToggle, in: app)
+        XCTAssertTrue(vetToggle.exists)
         attachScreenshot(of: app, named: "vorsorge-plan-bearbeiten")
         let deactivate = app.buttons["Medikament absetzen"]
         reveal(deactivate, in: app)
