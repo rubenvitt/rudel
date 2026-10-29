@@ -108,7 +108,7 @@ private struct PetProfileContent: View {
                         .multilineTextAlignment(.trailing)
                 }
                 .font(.subheadline)
-                .foregroundStyle(RudelTheme.sage)
+                .foregroundStyle(pet.colorValue.soft)
             }
             .rudelFeatureRow()
         }

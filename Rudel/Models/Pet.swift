@@ -31,6 +31,11 @@ final class Pet {
     /// SQLite-Datei landen.
     @Attribute(.externalStorage) var photoData: Data?
 
+    /// Eigene Farbe, siehe `PetColor`.
+    var colorValue: PetColor = PetColor.forest
+    /// SF-Symbol für den Avatar ohne Foto. Leer = Art-Symbol.
+    var symbolName: String = ""
+
     /// Kastriert/sterilisiert. Steuert, ob das Zyklus-Modul überhaupt
     /// angezeigt wird.
     var isNeutered: Bool = false

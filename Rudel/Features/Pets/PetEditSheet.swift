@@ -30,6 +30,8 @@ struct PetEditSheet: View {
     @State private var isNeutered = false
     @State private var sizeClassOverride: DogSizeClass?
     @State private var photoData: Data?
+    @State private var color: PetColor = .forest
+    @State private var symbolName = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var isProcessingPhoto = false
     @State private var microchipNumber = ""
@@ -53,6 +55,7 @@ struct PetEditSheet: View {
         NavigationStack {
             Form {
                 photoAndNameSection
+                appearanceSection
                 speciesSection
                 baseDataSection
                 sexSection
@@ -94,7 +97,7 @@ struct PetEditSheet: View {
 
         return Section {
             HStack(spacing: 16) {
-                PetPhotoThumbnail(photoData: photoData, species: species)
+                PetPhotoThumbnail(photoData: photoData, color: color, symbol: displaySymbol)
 
                 VStack(alignment: .leading, spacing: 10) {
                     PhotosPicker(selection: $photoItem, matching: .images) {
@@ -134,6 +137,68 @@ struct PetEditSheet: View {
             if trimmedName.isEmpty {
                 Text("Ein Name genügt zum Anlegen — alles andere kannst du jederzeit ergänzen.")
             }
+        }
+    }
+
+    private var displaySymbol: String {
+        symbolName.isEmpty ? species.symbolName : symbolName
+    }
+
+    /// Farbe und, ohne Foto, ein Symbol. Bewusst ohne Erklärtext: die Vorschau
+    /// oben zeigt sofort, was die Wahl bewirkt.
+    private var appearanceSection: some View {
+        Section {
+            ScrollView(.horizontal) {
+                HStack(spacing: 12) {
+                    ForEach(PetColor.allCases) { option in
+                        Button { color = option } label: {
+                            Circle()
+                                .fill(option.deep)
+                                .frame(width: 36, height: 36)
+                                .overlay {
+                                    if option == color {
+                                        Image(systemName: "checkmark")
+                                            .font(.footnote.weight(.bold))
+                                            .foregroundStyle(option.soft)
+                                    }
+                                }
+                                .padding(3)
+                                .overlay(Circle().strokeBorder(option == color ? option.deep : .clear, lineWidth: 2))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(option.label)
+                        .accessibilityAddTraits(option == color ? [.isSelected] : [])
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
+
+            if photoData == nil {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 10) {
+                        ForEach(PetSymbol.all, id: \.self) { symbol in
+                            let selected = symbol == displaySymbol
+                            Button {
+                                symbolName = symbol == species.symbolName ? "" : symbol
+                            } label: {
+                                Image(systemName: symbol)
+                                    .font(.title3)
+                                    .frame(width: 40, height: 40)
+                                    .foregroundStyle(selected ? color.soft : RudelTheme.ink)
+                                    .background(selected ? color.deep : RudelTheme.softSage, in: .circle)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(PetSymbol.label(symbol))
+                            .accessibilityAddTraits(selected ? [.isSelected] : [])
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .scrollIndicators(.hidden)
+            }
+        } header: {
+            Text("Aussehen")
         }
     }
 
@@ -351,6 +416,8 @@ struct PetEditSheet: View {
         isNeutered = pet.isNeutered
         sizeClassOverride = pet.sizeClassOverride
         photoData = pet.photoData
+        color = pet.colorValue
+        symbolName = pet.symbolName
         microchipNumber = pet.microchipNumber
         allergies = pet.allergies
         insuranceInfo = pet.insuranceInfo
@@ -399,6 +466,8 @@ struct PetEditSheet: View {
             pet.isNeutered = isNeutered
             pet.sizeClassOverride = override
             pet.photoData = photoData
+            pet.colorValue = color
+            pet.symbolName = symbolName
             applyEmergencyData(to: pet, practice: practice)
             try? context.save()
         } else if isNew {
@@ -414,6 +483,8 @@ struct PetEditSheet: View {
                 sizeClassOverride: override
             )
             pet.photoData = photoData
+            pet.colorValue = color
+            pet.symbolName = symbolName
             context.insert(pet)
             applyEmergencyData(to: pet, practice: practice)
             try? context.save()
@@ -515,7 +586,8 @@ private enum PetPhoto {
 /// `Pet`, und beim Anlegen gibt es noch keines.
 private struct PetPhotoThumbnail: View {
     let photoData: Data?
-    let species: Species
+    let color: PetColor
+    let symbol: String
 
     private let size: CGFloat = 76
 
@@ -527,10 +599,10 @@ private struct PetPhotoThumbnail: View {
                     .scaledToFill()
             } else {
                 ZStack {
-                    Color.accentColor.opacity(0.15)
-                    Image(systemName: species.symbolName)
+                    color.soft
+                    Image(systemName: symbol)
                         .font(.system(size: size * 0.45))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(color.deep)
                 }
             }
         }
