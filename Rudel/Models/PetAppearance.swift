@@ -21,6 +21,14 @@ enum PetColor: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// Die ersten vier gibt es ohne Plus.
+    var isFree: Bool {
+        switch self {
+        case .forest, .lake, .berry, .rust: true
+        case .slate, .plum, .olive, .cocoa: false
+        }
+    }
+
     var label: String {
         switch self {
         case .forest: "Tanne"

@@ -88,13 +88,31 @@ struct VetReportShareLink: View {
 
     @Environment(\.modelContext) private var context
     @Environment(AppState.self) private var appState
+    @Environment(PlusStore.self) private var plus
+
+    /// Eigenes Sheet statt `appState.present`: der Link sitzt auch im
+    /// Termin-Formular, das selbst ein Sheet ist und offen bleiben soll.
+    @State private var showsPlus = false
 
     var body: some View {
-        ShareLink(
-            item: VetReportRequest(petID: petID, occasion: occasion, container: context.container, dayMath: appState.dayMath),
-            preview: SharePreview("Tierarzt-Bericht \(petName)", image: Image(systemName: "doc.text"))
-        ) {
-            Label(title, systemImage: "doc.text")
+        Group {
+            if plus.isPlus {
+                ShareLink(
+                    item: VetReportRequest(petID: petID, occasion: occasion, container: context.container, dayMath: appState.dayMath),
+                    preview: SharePreview("Tierarzt-Bericht \(petName)", image: Image(systemName: "doc.text"))
+                ) {
+                    Label(title, systemImage: "doc.text")
+                }
+            } else {
+                Button { showsPlus = true } label: {
+                    Label(title, systemImage: "doc.text")
+                }
+                .sheet(isPresented: $showsPlus) {
+                    PlusPaywallView()
+                        .tint(RudelTheme.accent)
+                        .presentationCornerRadius(28)
+                }
+            }
         }
         .accessibilityIdentifier(accessibilityID)
     }

@@ -23,7 +23,7 @@ final class MedicationCareSmokeTests: XCTestCase {
 
     @MainActor
     func testPreventivePlanCanBeDeferredSkippedAndConfigured() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.withPlus()
         let productName = "Zeckentablette \(UUID().uuidString.prefix(6))"
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))

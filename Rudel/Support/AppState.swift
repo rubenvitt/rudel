@@ -21,6 +21,10 @@ final class AppState {
     /// `@State`-Booleans, damit sich nie zwei Sheets überlagern können.
     var presentedSheet: Sheet?
 
+    /// Anzahl angelegter Tiere, von `RootView` gepflegt. Entscheidet beim
+    /// Öffnen, ob ein neues Tier das Formular oder das Plus-Angebot zeigt.
+    var petCount = 0
+
     enum Tab: Hashable {
         case today
         case medication
@@ -47,6 +51,7 @@ final class AppState {
         case editAppointment(appointmentID: UUID?, petID: UUID, planID: UUID? = nil)
         case editPractice(practiceID: UUID?)
         case settings
+        case plus
 
         var id: String {
             switch self {
@@ -65,6 +70,7 @@ final class AppState {
                 return "editAppointment-\(appointmentID?.uuidString ?? "new")-\(petID)-\(planID?.uuidString ?? "")"
             case .editPractice(let practiceID): return "editPractice-\(practiceID?.uuidString ?? "new")"
             case .settings: return "settings"
+            case .plus: return "plus"
             }
         }
     }
@@ -73,7 +79,13 @@ final class AppState {
     /// entsprechen, was der Nutzer auf dem Bildschirm sieht.
     let dayMath = DayMath.current()
 
-    func present(_ sheet: Sheet) {
+    /// Die Plus-Prüfung fällt hier, einmal beim Öffnen: Entschiede das Sheet
+    /// selbst, würde es nach dem Speichern des ersten Tiers aufs Angebot springen.
+    func present(_ sheet: Sheet, plus: PlusStore = .shared) {
+        if case .editPet(petID: nil) = sheet, !plus.canAddPet(existing: petCount) {
+            presentedSheet = .plus
+            return
+        }
         presentedSheet = sheet
     }
 

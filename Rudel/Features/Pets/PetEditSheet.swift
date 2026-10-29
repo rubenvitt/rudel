@@ -31,6 +31,10 @@ struct PetEditSheet: View {
     @State private var sizeClassOverride: DogSizeClass?
     @State private var photoData: Data?
     @State private var color: PetColor = .forest
+    /// Farbe beim Öffnen. Bleibt wählbar, auch wenn Plus inzwischen ausgelaufen ist.
+    @State private var savedColor: PetColor = .forest
+    @State private var showsPlus = false
+    @Environment(PlusStore.self) private var plus
     @State private var symbolName = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var isProcessingPhoto = false
@@ -151,7 +155,10 @@ struct PetEditSheet: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 12) {
                     ForEach(PetColor.allCases) { option in
-                        Button { color = option } label: {
+                        let locked = !option.isFree && !plus.isPlus && option != savedColor
+                        Button {
+                            if locked { showsPlus = true } else { color = option }
+                        } label: {
                             Circle()
                                 .fill(option.deep)
                                 .frame(width: 36, height: 36)
@@ -160,13 +167,17 @@ struct PetEditSheet: View {
                                         Image(systemName: "checkmark")
                                             .font(.footnote.weight(.bold))
                                             .foregroundStyle(option.soft)
+                                    } else if locked {
+                                        Image(systemName: "lock.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(option.soft)
                                     }
                                 }
                                 .padding(3)
                                 .overlay(Circle().strokeBorder(option == color ? option.deep : .clear, lineWidth: 2))
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel(option.label)
+                        .accessibilityLabel(locked ? "\(option.label), mit Rudel Plus" : option.label)
                         .accessibilityAddTraits(option == color ? [.isSelected] : [])
                     }
                 }
@@ -199,6 +210,11 @@ struct PetEditSheet: View {
             }
         } header: {
             Text("Aussehen")
+        }
+        .sheet(isPresented: $showsPlus) {
+            PlusPaywallView()
+                .tint(RudelTheme.accent)
+                .presentationCornerRadius(28)
         }
     }
 
@@ -417,6 +433,7 @@ struct PetEditSheet: View {
         sizeClassOverride = pet.sizeClassOverride
         photoData = pet.photoData
         color = pet.colorValue
+        savedColor = pet.colorValue
         symbolName = pet.symbolName
         microchipNumber = pet.microchipNumber
         allergies = pet.allergies

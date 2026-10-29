@@ -118,6 +118,8 @@ schemes:
         Rudel: all
     run:
       config: Debug
+      # Lokale Käufe im Simulator, ohne App Store Connect.
+      storeKitConfiguration: Rudel.storekit
     test:
       config: Debug
       gatherCoverageData: true
