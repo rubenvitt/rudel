@@ -50,7 +50,7 @@ jobs:
           TEST_RUNNER_SCREENSHOTS: "1"
         run: |
           xcodebuild test -scheme Rudel -destination "id=$UDID" \
-            -only-testing:RudelUITests/SmokeTests/testAppStoreScreenshots \
+            -only-testing:RudelUITests/AppStoreScreenshots/testAppStoreScreenshots \
             -resultBundlePath "$RUNNER_TEMP/screenshots.xcresult" CODE_SIGNING_ALLOWED=NO
       - name: Export PNGs
         run: |

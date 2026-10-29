@@ -33,7 +33,12 @@ struct RootView: View {
                 tabs
             }
         }
-        .task { syncSelection() }
+        .task {
+            #if DEBUG
+            DemoData.seedIfRequested(in: modelContext)
+            #endif
+            syncSelection()
+        }
         .onChange(of: pets.count, initial: true) {
             appState.petCount = pets.count
             syncSelection()
