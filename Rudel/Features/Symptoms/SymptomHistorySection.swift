@@ -299,7 +299,7 @@ private struct SymptomDetailView: View {
                 //
                 // Gelöscht wird bewusst nur in der Liste: ein Löschen-Knopf hier
                 // müsste das Objekt entfernen, auf dem diese Ansicht noch steht.
-                Text("Einträge lassen sich nicht bearbeiten. Zum Korrigieren in der Liste nach links wischen und neu erfassen.")
+                Text("Zum Korrigieren in der Liste nach links wischen und neu erfassen.")
             }
 
             if !entry.note.isEmpty {

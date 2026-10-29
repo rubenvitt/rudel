@@ -128,7 +128,7 @@ struct SymptomLogSheet: View {
                         }
                     }
                 } footer: {
-                    Text("Verknüpft die Beobachtung mit einer laufenden Behandlung — so ist später nachvollziehbar, ob sie gewirkt hat.")
+                    Text("So siehst du später, ob die Behandlung geholfen hat.")
                 }
             }
         }

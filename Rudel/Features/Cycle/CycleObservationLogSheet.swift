@@ -204,7 +204,7 @@ struct CycleObservationLogSheet: View {
                 }
                 if sameDayCount > 0 {
                     CycleNoticeRow(
-                        text: "Für diesen Tag ist bereits eine Beobachtung erfasst. Die neue kommt hinzu, sie ersetzt nichts.",
+                        text: "Für heute gibt es schon eine Beobachtung. Diese kommt dazu.",
                         systemImage: "info.circle.fill",
                         tint: .secondary
                     )

@@ -394,7 +394,7 @@ private struct PetProfileContent: View {
     /// Hinweis für unkastrierte Katzen: hier fehlt das Zyklus-Modul mit Absicht.
     private var baseDataFooter: String? {
         guard pet.speciesValue == .cat, pet.isFemale, !pet.isNeutered else { return nil }
-        return "Für Katzen führt Rudel keine Zyklusprognose: Katzen sind saisonal polyöstrisch mit induzierter Ovulation, innerhalb der Saison folgt der Östrus alle zwei bis drei Wochen. Dieses Muster rechnet die App nicht."
+        return "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen."
     }
 
     private var sizeClassFooter: String {

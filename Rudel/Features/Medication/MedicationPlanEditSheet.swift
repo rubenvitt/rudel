@@ -203,7 +203,7 @@ struct MedicationPlanEditSheet: View {
         case .dewormer:
             return "Fällig wird die nächste Gabe aus der letzten Gabe plus Intervall."
         case .tickProtection:
-            return "Der Schutz läuft ab der Gabe für die eingestellte Wirkdauer, die Restwirksamkeit steht als Balken in der Liste."
+            return "Der Balken in der Liste zeigt, wie lange der Schutz noch hält."
         case .ongoing:
             return "Ein Dauermedikament wird nicht als Ganzes fällig, sondern Gabe für Gabe abgehakt."
         case .rabiesVaccination, .vaccination:

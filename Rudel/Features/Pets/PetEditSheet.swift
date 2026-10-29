@@ -139,7 +139,7 @@ struct PetEditSheet: View {
                 .submitLabel(.done)
         } footer: {
             if trimmedName.isEmpty {
-                Text("Ein Name genügt zum Anlegen — alles andere kannst du jederzeit ergänzen.")
+                Text("Ein Name reicht. Den Rest kannst du später ergänzen.")
             }
         }
     }
@@ -255,8 +255,6 @@ struct PetEditSheet: View {
             }
         } header: {
             Text("Stammdaten")
-        } footer: {
-            Text("Die Rasse ist reine Information — gerechnet wird mit dem Gewicht.")
         }
     }
 
@@ -309,7 +307,7 @@ struct PetEditSheet: View {
         } header: {
             Text("Größenklasse")
         } footer: {
-            Text("Automatisch heißt: aus dem letzten Gewichtseintrag abgeleitet. Die Klasse verschiebt nur den Startwert der Zyklusprognose und wird von eigenen geloggten Intervallen schnell überstimmt.")
+            Text("Automatisch nimmt das letzte Gewicht. Wichtig nur für die erste Zyklusprognose.")
         }
     }
 
@@ -366,7 +364,7 @@ struct PetEditSheet: View {
         case .dog:
             return "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt. Für andere Tiere ist kein Zyklustracking verfügbar."
         case .cat:
-            return "Für Katzen gibt es in Rudel keine Zyklusprognose. Katzen sind saisonal polyöstrisch: innerhalb der Saison folgt der Östrus alle zwei bis drei Wochen, und der Eisprung wird erst durch die Paarung ausgelöst. Dieses Muster lässt sich nicht wie der Zyklus einer Hündin vorhersagen — deshalb fehlen hier die zyklusbezogenen Felder."
+            return "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen."
         }
     }
 
@@ -374,7 +372,7 @@ struct PetEditSheet: View {
         if case .invalid = parsedWeightMin { return "Bitte eine Zahl eingeben, z. B. 22,5." }
         if case .invalid = parsedWeightMax { return "Bitte eine Zahl eingeben, z. B. 22,5." }
         if !isWeightRangeOrdered { return "Der untere Wert muss kleiner sein als der obere." }
-        return "Optional. Dient als Vergleichsmaßstab im Gewichtsverlauf; die Größenklasse leitet Rudel aus dem tatsächlich gewogenen Gewicht ab, nicht aus dem Zielbereich."
+        return "Optional. Dient als Vergleich im Gewichtsverlauf."
     }
 
     // MARK: - Gültigkeit
