@@ -307,7 +307,7 @@ struct PetEditSheet: View {
         } header: {
             Text("Größenklasse")
         } footer: {
-            Text("Automatisch nimmt das letzte Gewicht. Wichtig nur für die erste Zyklusprognose.")
+            Text("Automatisch nimmt das letzte Gewicht. Prägt vor allem die ersten Zyklusprognosen, mit jeder erfassten Läufigkeit weniger.")
         }
     }
 

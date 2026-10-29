@@ -32,6 +32,9 @@ final class PlusStore {
     private static let cacheKey = "rudel.plus.active"
     private let defaults: UserDefaults
     private var updates: Task<Void, Never>?
+    /// Läuft ein Abo ohne Verlängerung aus, meldet `Transaction.updates`
+    /// nichts. Deshalb zum Ablauf einmal neu prüfen.
+    private var expiryCheck: Task<Void, Never>?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -63,19 +66,40 @@ final class PlusStore {
         if ProcessInfo.processInfo.arguments.contains("-rudelPlus") { return }
         #endif
         var active = false
+        var nextExpiry: Date?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   Self.ProductID.all.contains(transaction.productID),
                   transaction.revocationDate == nil
             else { continue }
             active = true
+            if let expiry = transaction.expirationDate {
+                nextExpiry = max(nextExpiry ?? expiry, expiry)
+            } else {
+                nextExpiry = nil // Einmalkauf: läuft nie ab
+                break
+            }
         }
         isPlus = active
         defaults.set(active, forKey: Self.cacheKey)
+        scheduleExpiryCheck(at: nextExpiry)
     }
 
-    func restore() async {
-        try? await AppStore.sync()
+    private func scheduleExpiryCheck(at date: Date?) {
+        expiryCheck?.cancel()
+        guard let date else { return }
+        expiryCheck = Task { [weak self] in
+            let delay = max(0, date.timeIntervalSinceNow) + 1
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            await self?.refresh()
+        }
+    }
+
+    /// Wirft, wenn der App Store nicht erreichbar ist oder die Anmeldung
+    /// abgebrochen wurde, damit das Angebot es anzeigen kann.
+    func restore() async throws {
+        try await AppStore.sync()
         await refresh()
     }
 

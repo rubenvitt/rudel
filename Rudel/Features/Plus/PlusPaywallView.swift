@@ -8,6 +8,7 @@ struct PlusPaywallView: View {
     @Environment(PlusStore.self) private var plus
 
     @State private var isRestoring = false
+    @State private var errorMessage: String?
 
     private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     private static let privacyURL = URL(string: "https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md")!
@@ -33,9 +34,27 @@ struct PlusPaywallView: View {
             }
         }
         .onInAppPurchaseCompletion { _, result in
-            if case .success(.success(let verification)) = result {
+            switch result {
+            case .success(.success(let verification)):
                 await plus.handle(verification)
+                if case .unverified = verification {
+                    errorMessage = "Der Kauf ließ sich nicht bestätigen. Versuch es mit „Käufe wiederherstellen“."
+                }
+            case .success(.pending):
+                errorMessage = "Der Kauf wartet noch auf eine Freigabe. Rudel Plus schaltet sich danach von selbst frei."
+            case .success(.userCancelled), .success:
+                break
+            case .failure:
+                errorMessage = "Der Kauf hat nicht geklappt. Prüf deine Verbindung und versuch es noch einmal."
             }
+        }
+        .alert("Rudel Plus", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
         .onChange(of: plus.isPlus) { _, active in
             if active { dismiss() }
@@ -101,7 +120,14 @@ struct PlusPaywallView: View {
             Button(isRestoring ? "Wird geprüft …" : "Käufe wiederherstellen") {
                 isRestoring = true
                 Task {
-                    await plus.restore()
+                    do {
+                        try await plus.restore()
+                        if !plus.isPlus {
+                            errorMessage = "Es wurde kein Kauf gefunden."
+                        }
+                    } catch {
+                        errorMessage = "Wiederherstellen hat nicht geklappt. Prüf deine Verbindung und versuch es noch einmal."
+                    }
                     isRestoring = false
                 }
             }
