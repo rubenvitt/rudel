@@ -11,3 +11,10 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Signierung / Upload — nie einchecken (Repo ist öffentlich)
+*.p8
+*.ipa
+*.xcarchive
+fastlane/report.xml
+fastlane/screenshots/

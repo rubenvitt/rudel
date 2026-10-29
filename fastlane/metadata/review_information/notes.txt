@@ -1,0 +1,5 @@
+No login or demo account needed. The app works fully offline and collects no data. The UI is German.
+
+To try it: create a pet on the welcome screen, then add a medication under "Medikamente". Time-critical medications use AlarmKit alarms (with a Live Activity countdown shortly before); stopping an alarm does not confirm the dose, only "Gabe bestätigen" does. Preventive care (deworming, tick protection) only sends notifications.
+
+The cycle tab appears only for intact female dogs. Predictions are always shown as a range and the app states that it is not a medical device.
