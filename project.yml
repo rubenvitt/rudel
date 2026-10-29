@@ -56,6 +56,8 @@ targets:
       properties:
         NSAlarmKitUsageDescription: "Rudel erinnert dich mit Alarmen an offene Medikamentengaben."
         NSSupportsLiveActivities: true
+        # Nur Standard-Verschlüsselung (HTTPS); erspart die Exportfrage bei jedem Build.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: dev.rubeen.apps.rudel.reminders
             CFBundleURLSchemes: [rudel]
