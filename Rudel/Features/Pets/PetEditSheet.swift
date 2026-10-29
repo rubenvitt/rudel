@@ -155,7 +155,7 @@ struct PetEditSheet: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 12) {
                     ForEach(PetColor.allCases) { option in
-                        let locked = !option.isFree && !plus.isPlus && option != savedColor
+                        let locked = !option.isAvailable(withPlus: plus.isPlus, saved: savedColor)
                         Button {
                             if locked { showsPlus = true } else { color = option }
                         } label: {
@@ -307,7 +307,7 @@ struct PetEditSheet: View {
         } header: {
             Text("Größenklasse")
         } footer: {
-            Text("Automatisch nimmt das letzte Gewicht. Prägt vor allem die ersten Zyklusprognosen, mit jeder erfassten Läufigkeit weniger.")
+            Text("Automatisch nimmt das letzte Gewicht, ohne Gewicht „Mittel“. Prägt vor allem die ersten Zyklusprognosen, mit jeder erfassten Läufigkeit weniger.")
         }
     }
 
@@ -462,6 +462,11 @@ struct PetEditSheet: View {
 
     private func save() {
         guard canSave else { return }
+        // Plus kann ablaufen, während das Formular offen ist.
+        guard color.isAvailable(withPlus: plus.isPlus, saved: savedColor) else {
+            showsPlus = true
+            return
+        }
 
         let minKg = parsedWeightMin.kilograms
         let maxKg = parsedWeightMax.kilograms

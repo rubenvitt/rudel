@@ -18,6 +18,14 @@ struct PetAppearanceTests {
         ])
     }
 
+    @Test("Plus-Farben nur mit Plus, gespeicherte bleiben wählbar")
+    func plusColorsNeedPlus() {
+        #expect(PetColor.lake.isAvailable(withPlus: false, saved: .forest))
+        #expect(!PetColor.plum.isAvailable(withPlus: false, saved: .forest))
+        #expect(PetColor.plum.isAvailable(withPlus: true, saved: .forest))
+        #expect(PetColor.plum.isAvailable(withPlus: false, saved: .plum))
+    }
+
     @Test("Neues Tier ist tannengrün und zeigt sein Art-Symbol")
     func defaultsFollowSpecies() throws {
         let context = try makeContext()
