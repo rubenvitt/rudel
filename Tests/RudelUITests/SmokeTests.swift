@@ -29,7 +29,7 @@ final class SmokeTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
-        app.tabBars.buttons["Profil"].tap()
+        app.tab("Profil").tap()
         app.buttons["Einstellungen"].tap()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(true, in: app)
@@ -55,12 +55,12 @@ final class SmokeTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
-        app.tabBars.buttons["Profil"].tap()
+        app.tab("Profil").tap()
         app.buttons["Einstellungen"].tap()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
         app.buttons["Fertig"].tap()
-        app.tabBars.buttons["Medikamente"].tap()
+        app.tab("Medikamente").tap()
         app.buttons["Plan anlegen"].firstMatch.tap()
         app.buttons["Art"].tap()
         app.buttons["Laufendes Medikament"].tap()
@@ -108,7 +108,7 @@ final class SmokeTests: XCTestCase {
         // "Zyklus" ist optional: er erscheint nur für unkastrierte Hündinnen,
         // und ob das Anlege-Formular so vorbelegt war, hängt an dessen Defaults.
         for tab in ["Heute", "Medikamente", "Zyklus", "Gesundheit", "Profil"] {
-            let button = app.tabBars.buttons[tab]
+            let button = app.tab(tab)
             guard button.waitForExistence(timeout: 5) else {
                 if tab == "Zyklus" { continue }
                 XCTFail("Tab \(tab) nicht gefunden")
@@ -151,13 +151,13 @@ final class SmokeTests: XCTestCase {
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
         // Termine erzeugen Mitteilungen — im Test nicht.
-        app.tabBars.buttons["Profil"].tap()
+        app.tab("Profil").tap()
         app.buttons["Einstellungen"].tap()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
         app.buttons["Fertig"].tap()
 
-        app.tabBars.buttons["Gesundheit"].tap()
+        app.tab("Gesundheit").tap()
         let vetSegment = app.segmentedControls.buttons["Tierarzt"]
         XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
         vetSegment.tap()
@@ -224,7 +224,7 @@ final class SmokeTests: XCTestCase {
         attachScreenshot(of: app, named: "tierarzt-verlauf")
 
         // Notfallkarte im Profil.
-        app.tabBars.buttons["Profil"].tap()
+        app.tab("Profil").tap()
         XCTAssertTrue(app.staticTexts["Notfall"].waitForExistence(timeout: 5), "Abschnitt „Notfall“ fehlt")
         XCTAssertTrue(app.staticTexts["Chipnummer"].exists)
         attachScreenshot(of: app, named: "profil-notfall")
@@ -244,13 +244,13 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
-        app.tabBars.buttons["Profil"].tap()
+        app.tab("Profil").tap()
         app.buttons["Einstellungen"].tap()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
         app.buttons["Fertig"].tap()
 
-        app.tabBars.buttons["Gesundheit"].tap()
+        app.tab("Gesundheit").tap()
         let vetSegment = app.segmentedControls.buttons["Tierarzt"]
         XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
         vetSegment.tap()
@@ -319,7 +319,7 @@ final class SmokeTests: XCTestCase {
 
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
-        let cycleTab = app.tabBars.buttons["Zyklus"]
+        let cycleTab = app.tab("Zyklus")
         // Der Tab erscheint nur für unkastrierte Hündinnen. Ist das Anlege-
         // Formular anders vorbelegt, ist hier nichts zu prüfen.
         guard cycleTab.waitForExistence(timeout: 5) else { return }
@@ -374,7 +374,7 @@ final class SmokeTests: XCTestCase {
         createPetIfNeeded(in: app, named: "Hegel", breed: "Hauskatze")
 
         for tab in ["Heute", "Medikamente", "Gesundheit", "Profil"] {
-            let tabButton = app.tabBars.buttons[tab]
+            let tabButton = app.tab(tab)
             guard tabButton.waitForExistence(timeout: 5) else { continue }
             tabButton.tap()
 
@@ -543,7 +543,7 @@ final class SmokeTests: XCTestCase {
         saveButton.tap()
 
         XCTAssertTrue(
-            app.tabBars.firstMatch.waitForExistence(timeout: 10),
+            app.tab("Heute").waitForExistence(timeout: 10),
             "Nach dem Anlegen erscheint keine Tab-Leiste"
         )
     }

@@ -59,7 +59,6 @@ struct PetEditSheet: View {
         NavigationStack {
             Form {
                 photoAndNameSection
-                appearanceSection
                 speciesSection
                 baseDataSection
                 sexSection
@@ -67,6 +66,7 @@ struct PetEditSheet: View {
                 if species == .dog {
                     sizeClassSection
                 }
+                appearanceSection
                 emergencySection
             }
             .rudelFormStyle()

@@ -8,6 +8,14 @@ extension XCUIApplication {
         app.launchArguments += ["-rudelPlus"]
         return app
     }
+
+    /// Ein Tab der Hauptnavigation. Auf dem iPad zeigt iOS 26 die Tabs
+    /// schwebend oben, dort findet XCTest keine TabBar, nur Buttons.
+    func tab(_ name: String) -> XCUIElement {
+        UIDevice.current.userInterfaceIdiom == .pad
+            ? buttons[name].firstMatch
+            : tabBars.buttons[name]
+    }
 }
 
 /// Ohne Plus führt ein zweites Tier zum Angebot, nicht ins Formular.
@@ -34,7 +42,7 @@ final class PlusTests: XCTestCase {
             app.buttons["Speichern"].tap()
         }
 
-        let profile = app.tabBars.buttons["Profil"]
+        let profile = app.tab("Profil")
         XCTAssertTrue(profile.waitForExistence(timeout: 10))
         profile.tap()
         let add = app.buttons["Weiteres Tier anlegen"]
