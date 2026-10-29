@@ -69,6 +69,8 @@ jobs:
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8
+          # Jeder Build geht direkt an die öffentliche TestFlight-Gruppe.
+          TESTFLIGHT_GROUP: Öffentlich
         run: |
           export ASC_KEY_PATH="$RUNNER_TEMP/asc_key.p8"
           set -- "$RUNNER_TEMP"/export/*.ipa
