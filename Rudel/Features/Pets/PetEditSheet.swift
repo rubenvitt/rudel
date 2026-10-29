@@ -30,6 +30,12 @@ struct PetEditSheet: View {
     @State private var isNeutered = false
     @State private var sizeClassOverride: DogSizeClass?
     @State private var photoData: Data?
+    @State private var color: PetColor = .forest
+    /// Farbe beim Öffnen. Bleibt wählbar, auch wenn Plus inzwischen ausgelaufen ist.
+    @State private var savedColor: PetColor = .forest
+    @State private var showsPlus = false
+    @Environment(PlusStore.self) private var plus
+    @State private var symbolName = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var isProcessingPhoto = false
     @State private var microchipNumber = ""
@@ -60,6 +66,7 @@ struct PetEditSheet: View {
                 if species == .dog {
                     sizeClassSection
                 }
+                appearanceSection
                 emergencySection
             }
             .rudelFormStyle()
@@ -94,7 +101,7 @@ struct PetEditSheet: View {
 
         return Section {
             HStack(spacing: 16) {
-                PetPhotoThumbnail(photoData: photoData, species: species)
+                PetPhotoThumbnail(photoData: photoData, color: color, symbol: displaySymbol)
 
                 VStack(alignment: .leading, spacing: 10) {
                     PhotosPicker(selection: $photoItem, matching: .images) {
@@ -132,8 +139,82 @@ struct PetEditSheet: View {
                 .submitLabel(.done)
         } footer: {
             if trimmedName.isEmpty {
-                Text("Ein Name genügt zum Anlegen — alles andere kannst du jederzeit ergänzen.")
+                Text("Ein Name reicht. Den Rest kannst du später ergänzen.")
             }
+        }
+    }
+
+    private var displaySymbol: String {
+        symbolName.isEmpty ? species.symbolName : symbolName
+    }
+
+    /// Farbe und, ohne Foto, ein Symbol. Bewusst ohne Erklärtext: die Vorschau
+    /// oben zeigt sofort, was die Wahl bewirkt.
+    private var appearanceSection: some View {
+        Section {
+            ScrollView(.horizontal) {
+                HStack(spacing: 12) {
+                    ForEach(PetColor.allCases) { option in
+                        let locked = !option.isAvailable(withPlus: plus.isPlus, saved: savedColor)
+                        Button {
+                            if locked { showsPlus = true } else { color = option }
+                        } label: {
+                            Circle()
+                                .fill(option.deep)
+                                .frame(width: 36, height: 36)
+                                .overlay {
+                                    if option == color {
+                                        Image(systemName: "checkmark")
+                                            .font(.footnote.weight(.bold))
+                                            .foregroundStyle(option.soft)
+                                    } else if locked {
+                                        Image(systemName: "lock.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(option.soft)
+                                    }
+                                }
+                                .padding(3)
+                                .overlay(Circle().strokeBorder(option == color ? option.deep : .clear, lineWidth: 2))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(locked ? "\(option.label), mit Rudel Plus" : option.label)
+                        .accessibilityAddTraits(option == color ? [.isSelected] : [])
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
+
+            if photoData == nil {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 10) {
+                        ForEach(PetSymbol.all, id: \.self) { symbol in
+                            let selected = symbol == displaySymbol
+                            Button {
+                                symbolName = symbol == species.symbolName ? "" : symbol
+                            } label: {
+                                Image(systemName: symbol)
+                                    .font(.title3)
+                                    .frame(width: 40, height: 40)
+                                    .foregroundStyle(selected ? color.soft : RudelTheme.ink)
+                                    .background(selected ? color.deep : RudelTheme.softSage, in: .circle)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel(PetSymbol.label(symbol))
+                            .accessibilityAddTraits(selected ? [.isSelected] : [])
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .scrollIndicators(.hidden)
+            }
+        } header: {
+            Text("Aussehen")
+        }
+        .sheet(isPresented: $showsPlus) {
+            PlusPaywallView()
+                .tint(RudelTheme.accent)
+                .presentationCornerRadius(28)
         }
     }
 
@@ -174,8 +255,6 @@ struct PetEditSheet: View {
             }
         } header: {
             Text("Stammdaten")
-        } footer: {
-            Text("Die Rasse ist reine Information — gerechnet wird mit dem Gewicht.")
         }
     }
 
@@ -228,7 +307,7 @@ struct PetEditSheet: View {
         } header: {
             Text("Größenklasse")
         } footer: {
-            Text("Automatisch heißt: aus dem letzten Gewichtseintrag abgeleitet. Die Klasse verschiebt nur den Startwert der Zyklusprognose und wird von eigenen geloggten Intervallen schnell überstimmt.")
+            Text("Automatisch nimmt das letzte Gewicht, ohne Gewicht „Mittel“. Prägt vor allem die ersten Zyklusprognosen, mit jeder erfassten Läufigkeit weniger.")
         }
     }
 
@@ -285,7 +364,7 @@ struct PetEditSheet: View {
         case .dog:
             return "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt. Für andere Tiere ist kein Zyklustracking verfügbar."
         case .cat:
-            return "Für Katzen gibt es in Rudel keine Zyklusprognose. Katzen sind saisonal polyöstrisch: innerhalb der Saison folgt der Östrus alle zwei bis drei Wochen, und der Eisprung wird erst durch die Paarung ausgelöst. Dieses Muster lässt sich nicht wie der Zyklus einer Hündin vorhersagen — deshalb fehlen hier die zyklusbezogenen Felder."
+            return "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen."
         }
     }
 
@@ -293,7 +372,7 @@ struct PetEditSheet: View {
         if case .invalid = parsedWeightMin { return "Bitte eine Zahl eingeben, z. B. 22,5." }
         if case .invalid = parsedWeightMax { return "Bitte eine Zahl eingeben, z. B. 22,5." }
         if !isWeightRangeOrdered { return "Der untere Wert muss kleiner sein als der obere." }
-        return "Optional. Dient als Vergleichsmaßstab im Gewichtsverlauf; die Größenklasse leitet Rudel aus dem tatsächlich gewogenen Gewicht ab, nicht aus dem Zielbereich."
+        return "Optional. Dient als Vergleich im Gewichtsverlauf."
     }
 
     // MARK: - Gültigkeit
@@ -351,6 +430,9 @@ struct PetEditSheet: View {
         isNeutered = pet.isNeutered
         sizeClassOverride = pet.sizeClassOverride
         photoData = pet.photoData
+        color = pet.colorValue
+        savedColor = pet.colorValue
+        symbolName = pet.symbolName
         microchipNumber = pet.microchipNumber
         allergies = pet.allergies
         insuranceInfo = pet.insuranceInfo
@@ -380,6 +462,11 @@ struct PetEditSheet: View {
 
     private func save() {
         guard canSave else { return }
+        // Plus kann ablaufen, während das Formular offen ist.
+        guard color.isAvailable(withPlus: plus.isPlus, saved: savedColor) else {
+            showsPlus = true
+            return
+        }
 
         let minKg = parsedWeightMin.kilograms
         let maxKg = parsedWeightMax.kilograms
@@ -399,6 +486,8 @@ struct PetEditSheet: View {
             pet.isNeutered = isNeutered
             pet.sizeClassOverride = override
             pet.photoData = photoData
+            pet.colorValue = color
+            pet.symbolName = symbolName
             applyEmergencyData(to: pet, practice: practice)
             try? context.save()
         } else if isNew {
@@ -414,6 +503,8 @@ struct PetEditSheet: View {
                 sizeClassOverride: override
             )
             pet.photoData = photoData
+            pet.colorValue = color
+            pet.symbolName = symbolName
             context.insert(pet)
             applyEmergencyData(to: pet, practice: practice)
             try? context.save()
@@ -515,7 +606,8 @@ private enum PetPhoto {
 /// `Pet`, und beim Anlegen gibt es noch keines.
 private struct PetPhotoThumbnail: View {
     let photoData: Data?
-    let species: Species
+    let color: PetColor
+    let symbol: String
 
     private let size: CGFloat = 76
 
@@ -527,10 +619,10 @@ private struct PetPhotoThumbnail: View {
                     .scaledToFill()
             } else {
                 ZStack {
-                    Color.accentColor.opacity(0.15)
-                    Image(systemName: species.symbolName)
+                    color.soft
+                    Image(systemName: symbol)
                         .font(.system(size: size * 0.45))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(color.deep)
                 }
             }
         }

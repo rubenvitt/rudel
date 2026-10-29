@@ -22,7 +22,7 @@ final class MedicationStockSmokeTests: XCTestCase {
 
     @MainActor
     func testVaccinationAndStockCanBeCreatedAndRestocked() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.withPlus()
         let suffix = String(UUID().uuidString.prefix(6))
         let vaccineProduct = "Nobivac \(suffix)"
         let stockProduct = "Apoquel \(suffix)"
@@ -31,7 +31,7 @@ final class MedicationStockSmokeTests: XCTestCase {
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
         // Impfung „Leptospirose“ anlegen: eine Art „Impfung", darunter die Auswahl.
-        app.tabBars.buttons["Medikamente"].tap()
+        app.tab("Medikamente").tap()
         app.buttons["Plan anlegen"].firstMatch.tap()
         app.buttons["Art"].tap()
         app.buttons["Impfung"].firstMatch.tap()
@@ -86,12 +86,12 @@ final class MedicationStockSmokeTests: XCTestCase {
         )
 
         // Heute muss die Liste samt Vorrat bauen können.
-        app.tabBars.buttons["Heute"].tap()
+        app.tab("Heute").tap()
         XCTAssertEqual(app.state, .runningForeground, "Absturz auf Heute")
         attachScreenshot(of: app, named: "vorrat-heute")
 
         // Aufräumen: beide Pläne absetzen.
-        app.tabBars.buttons["Medikamente"].tap()
+        app.tab("Medikamente").tap()
         for product in [stockProduct, vaccineProduct] {
             openRowAction("Bearbeiten", on: planRow(product, in: app), in: app)
             XCTAssertTrue(app.navigationBars["Plan bearbeiten"].waitForExistence(timeout: 5))
@@ -176,7 +176,7 @@ final class MedicationStockSmokeTests: XCTestCase {
         saveButton.tap()
 
         XCTAssertTrue(
-            app.tabBars.firstMatch.waitForExistence(timeout: 10),
+            app.tab("Heute").waitForExistence(timeout: 10),
             "Nach dem Anlegen erscheint keine Tab-Leiste"
         )
     }

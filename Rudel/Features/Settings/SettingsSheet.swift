@@ -118,7 +118,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Medikamentengabe")
         } footer: {
-            Text("Alarme gibt es nur für zeitkritische Medikamente; Wurmkur, Zeckenschutz und Impfung melden sich per Mitteilung. Vor dem Termin zeigt eine Live Activity den Countdown. Schlummern und Stopp verschieben den Alarm; die Gabe bleibt offen, bis du sie bestätigst. Ohne Alarmberechtigung kommen nur normale Mitteilungen.")
+            Text("Alarme gibt es nur für zeitkritische Medikamente. Eine Gabe ist erst erledigt, wenn du sie bestätigst.")
         }
     }
 
@@ -234,8 +234,8 @@ struct SettingsSheet: View {
         } footer: {
             Text(
                 settings.leadDays.isEmpty
-                    ? "Zusätzliche Mitteilungen vor Intervall-Fälligkeiten sind aus. Medikamentenalarme, Einzelgaben und die Vorwarnung in Minuten bleiben separat einstellbar."
-                    : "Jede Vorwarnzeit erzeugt eine eigene Erinnerung — drei Werte heißt drei Mitteilungen pro Fälligkeit."
+                    ? "Keine zusätzlichen Vorab-Mitteilungen. Alarme und Einzelgaben bleiben."
+                    : "Jede Vorwarnzeit ist eine eigene Mitteilung."
             )
         }
     }
@@ -280,7 +280,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Uhrzeit der Erinnerungen")
         } footer: {
-            Text("Gilt für Fälligkeiten. Einzelgaben eines Dauermedikaments melden sich zu den Zeiten aus ihrem Dosierschema.")
+            Text("Gilt für Fälligkeiten wie Wurmkur oder Impfung.")
         }
     }
 
@@ -400,7 +400,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Diagnose")
         } footer: {
-            Text(statusMessage ?? "Rudel setzt die Erinnerungen bei jedem Start und nach jedem Eintrag neu. Der Knopf ist für den Fall, dass die Zahl oben nicht zu den Einträgen passt.")
+            Text(statusMessage ?? "Nur nötig, wenn eine Erinnerung fehlt.")
         }
     }
 
@@ -419,7 +419,7 @@ struct SettingsSheet: View {
             Label("Abgelehnt", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
         } footer: {
-            Text("Diese Erinnerungen hat iOS nicht angenommen. Sie stehen hier, statt verschluckt zu werden — eine unbemerkt fehlende Erinnerung wäre schlimmer als eine sichtbare Meldung.")
+            Text("Diese Erinnerungen hat iOS nicht angenommen.")
         }
     }
 
@@ -432,7 +432,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Datenschutz")
         } footer: {
-            Text("Rudel hat kein Benutzerkonto, keinen Server und keine Auswertung. iCloud-Sync ist in Version 1 bewusst abgeschaltet — deshalb gibt es hier auch keinen Schalter dafür. Ein verschlüsseltes Geräte-Backup enthält die Einträge mit; ohne Backup sind sie mit dem Gerät verloren.")
+            Text("Alles bleibt auf diesem iPhone. Kein Konto, kein Server. Dein iCloud- oder Geräte-Backup sichert die Einträge mit.")
         }
     }
 

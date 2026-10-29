@@ -118,7 +118,7 @@ private struct DashboardContent: View {
         if let latest = history.first {
             HStack(alignment: .firstTextBaseline) {
                 Image(systemName: "scalemass")
-                    .foregroundStyle(RudelTheme.sage)
+                    .foregroundStyle(pet.colorValue.soft)
                     .frame(width: 20)
                 Text("Gewicht")
                 Spacer(minLength: 8)
@@ -128,7 +128,7 @@ private struct DashboardContent: View {
                     if let trend = weightTrend(history) {
                         Label(trend.text, systemImage: trend.symbolName)
                             .font(.caption)
-                            .foregroundStyle(RudelTheme.sage)
+                            .foregroundStyle(pet.colorValue.soft)
                             .labelStyle(.titleAndIcon)
                     }
                 }
@@ -136,7 +136,7 @@ private struct DashboardContent: View {
             .accessibilityElement(children: .combine)
         } else {
             Label("Gewicht noch nicht erfasst", systemImage: "scalemass")
-                .font(.subheadline).foregroundStyle(RudelTheme.sage)
+                .font(.subheadline).foregroundStyle(pet.colorValue.soft)
         }
     }
 

@@ -232,7 +232,7 @@ struct RudelPetHero<Detail: View>: View {
             Text(eyebrow)
                 .font(.caption.weight(.semibold))
                 .tracking(1)
-                .foregroundStyle(RudelTheme.sage)
+                .foregroundStyle(pet.colorValue.soft)
 
             let layout = dynamicTypeSize.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 18))
@@ -249,26 +249,26 @@ struct RudelPetHero<Detail: View>: View {
                     if !pet.breed.isEmpty {
                         Text(pet.breed)
                             .font(.subheadline)
-                            .foregroundStyle(RudelTheme.sage)
+                            .foregroundStyle(pet.colorValue.soft)
                             .padding(.top, 6)
                     }
                     if let subtitle {
-                        Text(subtitle).font(.footnote).foregroundStyle(RudelTheme.sage)
+                        Text(subtitle).font(.footnote).foregroundStyle(pet.colorValue.soft)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 PetAvatar(pet: pet, size: 88)
                     .padding(7)
-                    .overlay(Circle().strokeBorder(RudelTheme.sage.opacity(0.35), lineWidth: 1))
+                    .overlay(Circle().strokeBorder(pet.colorValue.soft.opacity(0.35), lineWidth: 1))
                     .accessibilityHidden(true)
             }
 
-            Rectangle().fill(RudelTheme.sage.opacity(0.25)).frame(height: 1)
+            Rectangle().fill(pet.colorValue.soft.opacity(0.25)).frame(height: 1)
             detail
         }
         .padding(24)
         .foregroundStyle(RudelTheme.cream)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RudelTheme.forest, in: .rect(cornerRadius: RudelTheme.cardRadius))
+        .background(pet.colorValue.deep, in: .rect(cornerRadius: RudelTheme.cardRadius))
     }
 }

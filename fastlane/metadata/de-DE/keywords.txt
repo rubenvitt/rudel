@@ -1,0 +1,1 @@
+hund,katze,tierarzt,medikamente,wurmkur,impfpass,läufigkeit,erinnerung,haustier,gewicht,zecken

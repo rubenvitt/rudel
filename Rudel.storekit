@@ -1,0 +1,107 @@
+{
+  "identifier" : "6C6A3F0E-2D4B-4D6B-9C8E-5B1E2B7A9F10",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "34.99",
+      "familyShareable" : true,
+      "internalID" : "6743000003",
+      "localizations" : [
+        {
+          "description" : "Rudel Plus für immer, ohne Abo.",
+          "displayName" : "Rudel Plus für immer",
+          "locale" : "de"
+        }
+      ],
+      "productID" : "rudel.plus.lifetime",
+      "referenceName" : "Rudel Plus Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6743000000",
+    "_developerTeamID" : "H95J852PKP",
+    "_locale" : "de",
+    "_storefront" : "DEU"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21600000",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "Rudel Plus",
+          "locale" : "de"
+        }
+      ],
+      "name" : "Rudel Plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "14.99",
+          "familyShareable" : true,
+          "groupNumber" : 1,
+          "internalID" : "6743000001",
+          "introductoryOffer" : {
+            "internalID" : "6743000011",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Alle Tiere, Bericht und Farben, jährlich.",
+              "displayName" : "Rudel Plus jährlich",
+              "locale" : "de"
+            }
+          ],
+          "productID" : "rudel.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Rudel Plus Jahr",
+          "subscriptionGroupID" : "21600000",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "1.99",
+          "familyShareable" : true,
+          "groupNumber" : 2,
+          "internalID" : "6743000002",
+          "localizations" : [
+            {
+              "description" : "Alle Tiere, Bericht und Farben, monatlich.",
+              "displayName" : "Rudel Plus monatlich",
+              "locale" : "de"
+            }
+          ],
+          "productID" : "rudel.plus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Rudel Plus Monat",
+          "subscriptionGroupID" : "21600000",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

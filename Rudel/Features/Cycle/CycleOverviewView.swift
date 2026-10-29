@@ -281,7 +281,7 @@ private struct CycleOverviewContent: View {
         } header: {
             RudelSectionHeading(title: "Läuft gerade")
         } footer: {
-            Text("Die Phase ist geschätzt, kein Befund. Eigene Beobachtungen verschieben sie — sie schlagen den Kalender.")
+            Text("Geschätzt, kein Befund. Deine Beobachtungen zählen mehr als der Kalender.")
         }
     }
 
@@ -350,7 +350,7 @@ private struct CycleOverviewContent: View {
         } header: {
             RudelSectionHeading(title: "Nächste Läufigkeit")
         } footer: {
-            Text("Die Spanne ist die Prognose. Die Punktschätzung ist nur ihre Mitte und für sich genommen Scheingenauigkeit.")
+            Text("Verlass dich auf die Spanne, der einzelne Tag ist nur ihre Mitte.")
         }
     }
 
@@ -455,7 +455,7 @@ private struct CycleOverviewContent: View {
         } header: {
             Text("Läufigkeiten")
         } footer: {
-            Text("Beobachtungen werden nur ergänzt, nie überschrieben — die Historie bleibt nachvollziehbar.")
+            Text("Beobachtungen kommen dazu, nichts wird überschrieben.")
         }
     }
 

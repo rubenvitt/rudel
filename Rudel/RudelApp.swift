@@ -44,6 +44,7 @@ struct RudelApp: App {
             case .success(let container):
                 RootView()
                     .environment(appState)
+                    .environment(PlusStore.shared)
                     .modelContainer(container)
             case .failure(let error):
                 StoreFailureView(error: error)

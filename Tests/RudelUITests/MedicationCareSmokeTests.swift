@@ -23,7 +23,7 @@ final class MedicationCareSmokeTests: XCTestCase {
 
     @MainActor
     func testPreventivePlanCanBeDeferredSkippedAndConfigured() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.withPlus()
         let productName = "Zeckentablette \(UUID().uuidString.prefix(6))"
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
@@ -31,7 +31,7 @@ final class MedicationCareSmokeTests: XCTestCase {
 
         // Zeckenschutz-Plan anlegen. Das Formular zeigt die Erinnerungsklasse
         // schon beim Anlegen, mit „Vorsorge" als Standard der Art.
-        app.tabBars.buttons["Medikamente"].tap()
+        app.tab("Medikamente").tap()
         app.buttons["Plan anlegen"].firstMatch.tap()
         app.buttons["Art"].tap()
         app.buttons["Zeckenschutz"].firstMatch.tap()
@@ -67,19 +67,21 @@ final class MedicationCareSmokeTests: XCTestCase {
         attachScreenshot(of: app, named: "vorsorge-ausgelassen")
 
         // Der Heute-Screen muss den Plan samt Vorsorge-Aktionen bauen können.
-        app.tabBars.buttons["Heute"].tap()
+        app.tab("Heute").tap()
         XCTAssertEqual(app.state, .runningForeground, "Absturz auf Heute")
         attachScreenshot(of: app, named: "vorsorge-heute")
 
         // Das Bearbeiten-Sheet zeigt die Erinnerungsklasse. Danach den Plan
         // absetzen, damit der dauerhafte Store nicht mit Testplänen vollläuft.
-        app.tabBars.buttons["Medikamente"].tap()
+        app.tab("Medikamente").tap()
         openRowAction("Bearbeiten", on: planRow(productName, in: app), in: app)
         XCTAssertTrue(app.navigationBars["Plan bearbeiten"].waitForExistence(timeout: 5))
         reveal(app.buttons["Zeitkritisch"], in: app)
         XCTAssertTrue(app.buttons["Zeitkritisch"].exists)
         XCTAssertTrue(app.buttons["Vorsorge"].isSelected)
-        XCTAssertTrue(app.switches["Tierarzttermin nötig"].exists)
+        let vetToggle = app.switches["Tierarzttermin nötig"]
+        reveal(vetToggle, in: app)
+        XCTAssertTrue(vetToggle.exists)
         attachScreenshot(of: app, named: "vorsorge-plan-bearbeiten")
         let deactivate = app.buttons["Medikament absetzen"]
         reveal(deactivate, in: app)
@@ -162,7 +164,7 @@ final class MedicationCareSmokeTests: XCTestCase {
         saveButton.tap()
 
         XCTAssertTrue(
-            app.tabBars.firstMatch.waitForExistence(timeout: 10),
+            app.tab("Heute").waitForExistence(timeout: 10),
             "Nach dem Anlegen erscheint keine Tab-Leiste"
         )
     }

@@ -88,7 +88,7 @@ struct QuickLogMedicationSheet: View {
         ContentUnavailableView {
             Label("Kein aktiver Plan", systemImage: "pills")
         } description: {
-            Text("Lege im Tab „Medikamente“ zuerst einen Plan an — eine Gabe hängt immer an einem Plan, damit die Historie zusammenbleibt.")
+            Text("Lege zuerst unter „Medikamente“ ein Medikament an.")
         }
     }
 

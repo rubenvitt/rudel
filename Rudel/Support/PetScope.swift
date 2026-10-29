@@ -94,7 +94,7 @@ struct PetScope<Content: View>: View {
                         }
                         .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 7)
                         .foregroundStyle(selected ? RudelTheme.cream : RudelTheme.ink)
-                        .background(selected ? RudelTheme.forest : RudelTheme.surface, in: .capsule)
+                        .background(selected ? pet.colorValue.deep : RudelTheme.surface, in: .capsule)
                     }
                     .buttonStyle(RudelTileButtonStyle())
                     .accessibilityLabel("Tier wechseln: \(pet.name)")
@@ -121,11 +121,12 @@ struct PetAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
+                let color = pet?.colorValue ?? .forest
                 ZStack {
-                    RudelTheme.sage
-                    Image(systemName: pet?.speciesValue.symbolName ?? "pawprint")
+                    color.soft
+                    Image(systemName: pet?.displaySymbol ?? "pawprint")
                         .font(.system(size: size * 0.45))
-                        .foregroundStyle(RudelTheme.forest)
+                        .foregroundStyle(color.deep)
                 }
             }
         }
