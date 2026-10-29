@@ -89,7 +89,10 @@ final class PlusStore {
         expiryCheck?.cancel()
         guard let date else { return }
         expiryCheck = Task { [weak self] in
-            let delay = max(0, date.timeIntervalSinceNow) + 1
+            // Schon abgelaufen, aber noch berechtigt: Kulanzfrist bei
+            // Zahlungsproblemen. Dann stündlich statt sofort erneut prüfen.
+            let remaining = date.timeIntervalSinceNow
+            let delay = remaining > 0 ? remaining + 1 : 3600
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             await self?.refresh()
