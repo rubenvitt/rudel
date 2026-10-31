@@ -21,3 +21,6 @@ Kein Konto, keine Werbung, kein Tracking. Alles bleibt auf deinem iPhone.
 Ein Tier ist kostenlos, mit allem, was für seine Gesundheit wichtig ist. Rudel Plus schaltet weitere Tiere, den Tierarzt-Bericht und mehr Farben frei.
 
 Rudel ist kein Medizinprodukt und ersetzt keinen Tierarzt.
+
+Nutzungsbedingungen (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Datenschutz: https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md
