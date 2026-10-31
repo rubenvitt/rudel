@@ -11,3 +11,6 @@ Symptoms with photos and weight as a chart, so you notice changes early. Each pe
 No account, no ads, no tracking. One pet is free with everything that matters for its health. Rudel Plus adds more pets, the vet report and more colors.
 
 Rudel is not a medical device and does not replace your vet.
+
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md
