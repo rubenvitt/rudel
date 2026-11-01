@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 import StoreKit
 
 /// Ob Rudel Plus aktiv ist: Abo (Monat/Jahr) oder Einmalkauf.
@@ -11,7 +12,9 @@ import StoreKit
 ///
 /// Der zuletzt bekannte Stand liegt in `UserDefaults`, damit die App offline
 /// und beim Start nicht kurz „kostenlos" zeigt. Die Wahrheit kommt aus
-/// `Transaction.currentEntitlements`.
+/// `Transaction.currentEntitlements`, ergänzt um `Transaction.latest(for:)` und
+/// die Käufe dieser Sitzung: Auf TestFlight (iOS 27) blieb die erste Quelle trotz
+/// verifizierter Käufe leer, das Angebot ließ sich dann nicht mehr verlassen.
 @MainActor
 @Observable
 final class PlusStore {
@@ -30,7 +33,11 @@ final class PlusStore {
     private(set) var isPlus: Bool
 
     private static let cacheKey = "rudel.plus.active"
+    private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "plus")
     private let defaults: UserDefaults
+    /// Verifizierte Käufe seit dem Start, je Produkt. Sie gelten sofort, auch
+    /// wenn StoreKit sie noch nicht als Berechtigung meldet.
+    private var sessionGrants: [String: Transaction] = [:]
     private var updates: Task<Void, Never>?
     /// Läuft ein Abo ohne Verlängerung aus, meldet `Transaction.updates`
     /// nichts. Deshalb zum Ablauf einmal neu prüfen.
@@ -56,33 +63,81 @@ final class PlusStore {
 
     func handle(_ result: VerificationResult<Transaction>) async {
         if case .verified(let transaction) = result {
+            record(transaction)
             await transaction.finish()
         }
         await refresh()
+    }
+
+    private func record(_ transaction: Transaction) {
+        guard Self.ProductID.all.contains(transaction.productID) else { return }
+        let current = isCurrent(transaction)
+        sessionGrants[transaction.productID] = current ? transaction : nil
+        if current { publish(true) }
     }
 
     func refresh() async {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-rudelPlus") { return }
         #endif
-        var active = false
-        var nextExpiry: Date?
+        var active: [Transaction] = []
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   Self.ProductID.all.contains(transaction.productID),
                   transaction.revocationDate == nil
             else { continue }
-            active = true
-            if let expiry = transaction.expirationDate {
-                nextExpiry = max(nextExpiry ?? expiry, expiry)
-            } else {
-                nextExpiry = nil // Einmalkauf: läuft nie ab
-                break
+            active.append(transaction)
+        }
+        let entitlementCount = active.count
+        if active.isEmpty {
+            for id in Self.ProductID.all {
+                if case .verified(let transaction)? = await Transaction.latest(for: id), isCurrent(transaction) {
+                    active.append(transaction)
+                }
             }
         }
+        let latestCount = active.count - entitlementCount
+        // Erst nach allen `await`: ein Kauf während der Abfrage zählt so mit.
+        let grants = sessionGrants.values.filter(isCurrent)
+        active += grants
+        Self.log.info("""
+            refresh entitlements=\(entitlementCount, privacy: .public) \
+            latest=\(latestCount, privacy: .public) \
+            session=\(grants.count, privacy: .public) \
+            products=\(active.map(\.productID).joined(separator: ","), privacy: .public)
+            """)
+
+        publish(!active.isEmpty)
+        let neverExpires = active.contains { $0.expirationDate == nil }
+        scheduleExpiryCheck(at: neverExpires ? nil : active.compactMap(\.expirationDate).max())
+    }
+
+    private func publish(_ active: Bool) {
         isPlus = active
         defaults.set(active, forKey: Self.cacheKey)
-        scheduleExpiryCheck(at: nextExpiry)
+    }
+
+    private func isCurrent(_ transaction: Transaction) -> Bool {
+        Self.isActive(
+            productID: transaction.productID,
+            revocationDate: transaction.revocationDate,
+            expirationDate: transaction.expirationDate,
+            isUpgraded: transaction.isUpgraded,
+            now: .now
+        )
+    }
+
+    /// Für Quellen ohne Apples Berechtigungsprüfung. Kulanzfristen nach Ablauf
+    /// kennt nur `currentEntitlements`, deshalb zählt hier das Ablaufdatum.
+    static func isActive(
+        productID: String,
+        revocationDate: Date?,
+        expirationDate: Date?,
+        isUpgraded: Bool,
+        now: Date
+    ) -> Bool {
+        guard ProductID.all.contains(productID), revocationDate == nil, !isUpgraded else { return false }
+        return expirationDate.map { $0 > now } ?? true
     }
 
     private func scheduleExpiryCheck(at date: Date?) {
