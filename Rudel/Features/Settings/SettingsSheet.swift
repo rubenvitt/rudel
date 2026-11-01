@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// Einstellungen: Erinnerungen, Diagnose, Datenschutz.
+/// Einstellungen: Rudel Plus, Erinnerungen, Diagnose, Datenschutz.
 ///
 /// Änderungen werden gespeichert und über den gemeinsamen Abgleich wirksam.
 /// Der Hauptschalter aktualisiert zusätzlich sofort die Diagnose im Sheet.
@@ -12,6 +12,7 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(PlusStore.self) private var plus
 
     private let service = NotificationService()
 
@@ -28,6 +29,7 @@ struct SettingsSheet: View {
     @State private var lastSuccessAt: Date?
     /// Offene Änderung, die beim Schließen wirksam wird.
     @State private var needsReschedule = false
+    @State private var showsPlus = false
 
     /// Vorwarnzeiten zur Auswahl. 0 = am Fälligkeitstag selbst.
     private static let leadDayChoices = [14, 7, 3, 1, 0]
@@ -66,9 +68,24 @@ struct SettingsSheet: View {
         }
     }
 
+    private var plusSection: some View {
+        Section {
+            LabeledContent("Rudel Plus", value: plus.isPlus ? "Aktiv" : "Nicht aktiv")
+            if !plus.isPlus {
+                Button("Rudel Plus ansehen") { showsPlus = true }
+            }
+        }
+        .sheet(isPresented: $showsPlus) {
+            PlusPaywallView()
+                .tint(RudelTheme.accent)
+                .presentationCornerRadius(28)
+        }
+    }
+
     @ViewBuilder
     private func form(_ settings: AppSettings) -> some View {
         Form {
+            plusSection
             notificationSection(settings)
             if settings.notificationsEnabled {
                 medicationAlarmSection(settings)
