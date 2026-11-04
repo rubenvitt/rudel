@@ -148,15 +148,17 @@ struct PlusPaywallView: View {
     /// deshalb bis zu dreimal mit kurzer Pause versuchen.
     private func loadOffers() async {
         offers = .loading
+        var best: [Product] = []
         for attempt in 1...3 {
             do {
                 let found = try await Product.products(for: Self.order)
                 let sorted = Self.order.compactMap { id in found.first { $0.id == id } }
-                if !sorted.isEmpty {
+                if sorted.count == Self.order.count {
                     offers = .loaded(sorted)
                     return
                 }
-                Self.log.error("paywall: no products (attempt \(attempt, privacy: .public))")
+                if sorted.count > best.count { best = sorted }
+                Self.log.error("paywall: \(sorted.count, privacy: .public) of \(Self.order.count, privacy: .public) products (attempt \(attempt, privacy: .public))")
             } catch {
                 Self.log.error("paywall: load failed (attempt \(attempt, privacy: .public)): \(error.localizedDescription, privacy: .public)")
             }
@@ -165,7 +167,8 @@ struct PlusPaywallView: View {
                 if Task.isCancelled { return }
             }
         }
-        offers = .failed
+        // Fehlt ein Angebot auch nach drei Versuchen, wenigstens die übrigen zeigen.
+        offers = best.isEmpty ? .failed : .loaded(best)
     }
 
     private var footer: some View {
