@@ -1,3 +1,4 @@
+import OSLog
 import StoreKit
 import SwiftUI
 
@@ -9,6 +10,18 @@ struct PlusPaywallView: View {
 
     @State private var isRestoring = false
     @State private var errorMessage: String?
+    @State private var offers: Offers = .loading
+
+    /// Angebote vorab laden, damit ein Ladefehler sichtbar wird und sich
+    /// wiederholen lässt, statt leere Kacheln zu zeigen.
+    private enum Offers {
+        case loading
+        case loaded([Product])
+        case failed
+    }
+
+    private static let order = [PlusStore.ProductID.yearly, PlusStore.ProductID.monthly, PlusStore.ProductID.lifetime]
+    private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "plus")
 
     private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     private static let privacyURL = URL(string: "https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md")!
@@ -27,6 +40,7 @@ struct PlusPaywallView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(RudelTheme.canvas)
+            .task { await loadOffers() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Schließen") { dismiss() }
@@ -100,14 +114,58 @@ struct PlusPaywallView: View {
 
     private var products: some View {
         VStack(spacing: 12) {
-            ForEach([PlusStore.ProductID.yearly, PlusStore.ProductID.monthly, PlusStore.ProductID.lifetime], id: \.self) { id in
-                ProductView(id: id)
-                    .productViewStyle(.compact)
+            switch offers {
+            case .loading:
+                ProgressView("Angebote werden geladen …")
+                    .frame(maxWidth: .infinity)
                     .padding(16)
-                    .background(RudelTheme.surface, in: .rect(cornerRadius: 20))
+            case .loaded(let products):
+                ForEach(products) { product in
+                    ProductView(product)
+                        .productViewStyle(.compact)
+                        .padding(16)
+                        .background(RudelTheme.surface, in: .rect(cornerRadius: 20))
+                }
+            case .failed:
+                VStack(spacing: 12) {
+                    Text("Die Angebote lassen sich gerade nicht laden. Prüf deine Verbindung.")
+                        .foregroundStyle(RudelTheme.muted)
+                        .multilineTextAlignment(.center)
+                    Button("Erneut versuchen") {
+                        Task { await loadOffers() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(RudelTheme.surface, in: .rect(cornerRadius: 20))
             }
         }
         .tint(RudelTheme.accent)
+    }
+
+    /// Der App Store antwortet beim ersten Aufruf manchmal leer oder langsam,
+    /// deshalb bis zu dreimal mit kurzer Pause versuchen.
+    private func loadOffers() async {
+        offers = .loading
+        for attempt in 1...3 {
+            do {
+                let found = try await Product.products(for: Self.order)
+                let sorted = Self.order.compactMap { id in found.first { $0.id == id } }
+                if !sorted.isEmpty {
+                    offers = .loaded(sorted)
+                    return
+                }
+                Self.log.error("paywall: no products (attempt \(attempt, privacy: .public))")
+            } catch {
+                Self.log.error("paywall: load failed (attempt \(attempt, privacy: .public)): \(error.localizedDescription, privacy: .public)")
+            }
+            if attempt < 3 {
+                try? await Task.sleep(for: .seconds(2))
+                if Task.isCancelled { return }
+            }
+        }
+        offers = .failed
     }
 
     private var footer: some View {
