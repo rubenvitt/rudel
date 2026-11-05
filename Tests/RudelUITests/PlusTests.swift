@@ -28,19 +28,27 @@ extension XCUIApplication {
     }
 
     /// Wechselt das Tier über das Tierbild oben links.
+    ///
+    /// Menüeinträge tragen je nach iOS-Version und Schriftgröße das eigene
+    /// Label oder nur den Titel; bei sehr großer Schrift öffnet das Menü auf
+    /// dem iPad gelegentlich erst beim zweiten Tipp.
     func selectPet(_ name: String) {
         let switcher = buttons["pet-switcher"].firstMatch
         XCTAssertTrue(switcher.waitForExistence(timeout: 5), "Tier-Wechsler fehlt")
-        switcher.tap()
-        // Menüeinträge tragen je nach iOS-Version das eigene Label oder nur
-        // den Titel.
-        let labelled = buttons["Tier wechseln: \(name)"].firstMatch
-        let titled = buttons[name].firstMatch
-        XCTAssertTrue(
-            labelled.waitForExistence(timeout: 5) || titled.exists,
-            "Tier \(name) fehlt im Wechsler"
-        )
-        (labelled.exists ? labelled : titled).tap()
+        let entry = buttons.matching(NSPredicate(
+            format: "identifier != %@ AND (label == %@ OR label CONTAINS %@)",
+            "pet-switcher", "Tier wechseln: \(name)", name
+        )).firstMatch
+        for _ in 0..<3 {
+            switcher.tap()
+            if entry.waitForExistence(timeout: 5) {
+                entry.tap()
+                return
+            }
+            // Ein offenes, aber unlesbares Menü schließen, bevor es neu aufgeht.
+            if switcher.isHittable { switcher.tap() }
+        }
+        XCTFail("Tier \(name) fehlt im Wechsler: \(debugDescription)")
     }
 
     /// Öffnet Rudel › Erinnerungen & Alarme.
