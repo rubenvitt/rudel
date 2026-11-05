@@ -64,8 +64,7 @@ final class SmokeTests: XCTestCase {
         app.buttons["Laufendes Medikament"].tap()
         let product = app.textFields["medication-product-name"]
         XCTAssertTrue(product.waitForExistence(timeout: 5))
-        product.tap()
-        product.typeText(productName)
+        typeReliably(productName, into: product)
         app.buttons["Speichern"].tap()
         XCTAssertTrue(app.buttons["Gabe erfassen"].waitForExistence(timeout: 5))
         app.buttons["Gabe erfassen"].tap()
@@ -484,6 +483,25 @@ final class SmokeTests: XCTestCase {
         let entry = app.buttons[item].firstMatch
         XCTAssertTrue(entry.waitForExistence(timeout: 5), "Menüeintrag \(item) fehlt")
         entry.tap()
+    }
+
+    /// Der Simulator verschluckt unter Last gelegentlich die letzten
+    /// Anschläge von `typeText`. Der Test sucht das Präparat danach über den
+    /// vollen Namen, deshalb erst weiter, wenn er vollständig im Feld steht.
+    @MainActor
+    private func typeReliably(_ text: String, into field: XCUIElement) {
+        for _ in 0..<3 {
+            field.tap()
+            let current = field.value as? String ?? ""
+            if current == text { return }
+            if !current.isEmpty, current != field.placeholderValue {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            }
+            field.typeText(text)
+            let complete = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", text), object: field)
+            if XCTWaiter.wait(for: [complete], timeout: 3) == .completed { return }
+        }
+        XCTFail("Eingabe unvollständig: \(field.value as? String ?? "")")
     }
 
     @MainActor
