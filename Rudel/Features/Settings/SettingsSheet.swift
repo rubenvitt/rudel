@@ -236,7 +236,7 @@ struct SettingsSheet: View {
                     : """
                     Während einer Läufigkeit kommen keine täglichen Hinweise. Die \
                     Prognose der nächsten Läufigkeit und die Phasenanzeige im \
-                    Zyklus-Tab bleiben davon unberührt.
+                    Bereich Zyklus unter Gesundheit bleiben davon unberührt.
                     """
             )
         }

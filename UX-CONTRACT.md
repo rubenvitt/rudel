@@ -32,7 +32,8 @@ Dashboard-Datumskopf ist deutsch. Eine vollständige Mehrsprachigkeit wird durch
 diesen visuellen Umbau nicht eingeführt.
 
 Dynamic Type, Light/Dark Mode, VoiceOver-Namen und native Fokusbedienung sind
-Teil des UI-Vertrags. Lange Namen dürfen umbrechen. Bei mehreren Tieren bleibt
-die Auswahl horizontal scrollbar; sie darf den Inhalt nicht verdrängen.
+Teil des UI-Vertrags. Lange Namen dürfen im Inhalt umbrechen; im Tier-Wechsler
+oben links werden sie gekürzt, das Menü nennt jedes Tier vollständig. Die
+Auswahl darf den Inhalt nicht verdrängen.
 Die Bildschirmdarstellung wird im iOS-Simulator geprüft, nicht in einem Browser.
 Ein Simulator-Test bestätigt keine Alarmzustellung auf einem echten iPhone.
