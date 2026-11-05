@@ -45,8 +45,15 @@ extension XCUIApplication {
                 entry.tap()
                 return
             }
-            // Ein offenes, aber unlesbares Menü schließen, bevor es neu aufgeht.
-            if switcher.isHittable { switcher.tap() }
+            // Kein Eintrag sichtbar: Der Tipp hat das Menü vielleicht nicht
+            // geöffnet. Noch einmal tippen und sofort nachsehen, damit der
+            // nächste Durchlauf ein jetzt offenes Menü nicht wieder schließt.
+            guard switcher.isHittable else { continue }
+            switcher.tap()
+            if entry.waitForExistence(timeout: 5) {
+                entry.tap()
+                return
+            }
         }
         XCTFail("Tier \(name) fehlt im Wechsler: \(debugDescription)")
     }
