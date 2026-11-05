@@ -140,13 +140,15 @@ plattformgesteuert. Eigene Sheets erhalten 28 Punkte Eckenradius.
 |---|---|
 | RudelTheme | Farben und Display-Typografie |
 | rudelListStyle / rudelFormStyle | Listen- und Formularflächen |
-| RudelPetHero | Tierkopf auf Heute und Profil |
+| RudelPetHero | Tierkopf auf Heute und im Tierprofil |
 | RudelFeatureHeading / RudelSectionHeading | Kontext und Abschnittshierarchie |
 | RudelEmptyState | Leere Medikamente, Zyklus, Symptome und Gewicht |
 | RudelQuickAction | Beschriftete Schnellaktionen |
 | RudelPrimaryButtonStyle | Primäre Aktionen, dunkel/hell identisch kontrastreich |
 | RudelTileButtonStyle | Gedrückt-Rückmeldung und Pointer-Hervorhebung |
-| PetScope | Tab-Titel und gemeinsame Tierauswahl |
+| PetScope / PetSwitcher | Tab-Titel und gemeinsame Tierauswahl oben links |
+| RudelAddMenu / RudelRowMenu | Einheitliches „+“-Menü und sichtbare Zeilenaktionen |
+| rudelReadableWidth | Lesbare Inhaltsbreite auf dem iPad |
 
 Buttons sind echte SwiftUI-Buttons, mit nativer Fokus- und VoiceOver-Semantik.
 Primäre Buttons sind mindestens 52 Punkte hoch und reduzieren ihre Deckkraft

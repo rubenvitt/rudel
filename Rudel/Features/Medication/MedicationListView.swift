@@ -69,12 +69,20 @@ private struct MedicationPlanList: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    appState.present(.editMedicationPlan(planID: nil, petID: pet.id))
-                } label: {
-                    Image(systemName: "plus")
+                RudelAddMenu {
+                    Button {
+                        appState.present(.editMedicationPlan(planID: nil, petID: pet.id))
+                    } label: {
+                        Label("Neuer Plan", systemImage: "calendar.badge.plus")
+                    }
+                    if !activePlans.isEmpty {
+                        Button {
+                            appState.present(.quickLogMedication(petID: pet.id))
+                        } label: {
+                            Label("Gabe mit Datum erfassen", systemImage: "checkmark.circle")
+                        }
+                    }
                 }
-                .accessibilityLabel("Plan anlegen")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -171,49 +179,54 @@ private struct MedicationPlanList: View {
         let status = MedicationDisplay.status(for: plan, asOf: now, dayMath: appState.dayMath)
         let isExpanded = expandedPlanIDs.contains(plan.id)
 
-        Button {
-            toggleExpansion(plan)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(plan.kindValue.isVaccination ? MedicationDisplay.vaccineName(for: plan) : MedicationDisplay.title(for: plan))
-                        .font(.body.weight(.medium))
-                    reminderBadge(plan)
-                    Spacer(minLength: 8)
-                    if let urgency = status.urgency {
-                        UrgencyBadge(urgency: urgency)
+        HStack(alignment: .top, spacing: 8) {
+            Button {
+                toggleExpansion(plan)
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(plan.kindValue.isVaccination ? MedicationDisplay.vaccineName(for: plan) : MedicationDisplay.title(for: plan))
+                            .font(.body.weight(.medium))
+                        reminderBadge(plan)
+                        Spacer(minLength: 8)
+                        if let urgency = status.urgency {
+                            UrgencyBadge(urgency: urgency)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     }
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                }
 
-                // Impfpass: Präparat und letztes Impfdatum stehen mit in der Zeile.
-                if let product = MedicationDisplay.vaccineProduct(for: plan) {
-                    Text(product)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if plan.kindValue.isVaccination {
-                    Text(plan.lastGivenOn.map { "Zuletzt geimpft \(Format.date($0))" } ?? "Keine Impfung dokumentiert")
+                    // Impfpass: Präparat und letztes Impfdatum stehen mit in der Zeile.
+                    if let product = MedicationDisplay.vaccineProduct(for: plan) {
+                        Text(product)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if plan.kindValue.isVaccination {
+                        Text(plan.lastGivenOn.map { "Zuletzt geimpft \(Format.date($0))" } ?? "Keine Impfung dokumentiert")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(status.dueText)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
 
-                Text(status.dueText)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let protection = status.protection {
-                    ProtectionBar(status: protection)
+                    if let protection = status.protection {
+                        ProtectionBar(status: protection)
+                    }
                 }
+                .padding(.vertical, 2)
+                .contentShape(.rect)
             }
-            .padding(.vertical, 2)
-            .contentShape(.rect)
+            .buttonStyle(.plain)
+            .accessibilityHint(isExpanded ? "Historie einklappen" : "Historie ausklappen")
+            RudelRowMenu(title: MedicationDisplay.title(for: plan)) {
+                planActions(plan)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityHint(isExpanded ? "Historie einklappen" : "Historie ausklappen")
         .swipeActions(edge: .leading) {
             Button {
                 logGiven(plan)
@@ -247,35 +260,42 @@ private struct MedicationPlanList: View {
             }
         }
         .contextMenu {
+            planActions(plan)
+        }
+    }
+
+    /// Alle Aktionen eines Plans — im sichtbaren „⋯“-Menü und beim langen
+    /// Drücken identisch.
+    @ViewBuilder
+    private func planActions(_ plan: MedicationPlan) -> some View {
+        Button {
+            logGiven(plan)
+        } label: {
+            Label(plan.usesFecalSampleInstead ? "Abgegeben" : "Gegeben", systemImage: "checkmark.circle")
+        }
+        if isPreventive(plan) {
             Button {
-                logGiven(plan)
+                skip(plan)
             } label: {
-                Label(plan.usesFecalSampleInstead ? "Abgegeben" : "Gegeben", systemImage: "checkmark.circle")
-            }
-            if isPreventive(plan) {
-                Button {
-                    skip(plan)
-                } label: {
-                    Label("Auslassen", systemImage: "forward")
-                }
-                Button {
-                    appState.present(.deferMedication(planID: plan.id))
-                } label: {
-                    Label("Zurückstellen", systemImage: "moon.zzz")
-                }
-            }
-            if needsAppointment(plan) {
-                Button {
-                    appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
-                } label: {
-                    Label("Termin anlegen", systemImage: "calendar.badge.plus")
-                }
+                Label("Auslassen", systemImage: "forward")
             }
             Button {
-                appState.present(.editMedicationPlan(planID: plan.id, petID: pet.id))
+                appState.present(.deferMedication(planID: plan.id))
             } label: {
-                Label("Bearbeiten", systemImage: "pencil")
+                Label("Zurückstellen", systemImage: "moon.zzz")
             }
+        }
+        if needsAppointment(plan) {
+            Button {
+                appState.present(.editAppointment(appointmentID: nil, petID: pet.id, planID: plan.id))
+            } label: {
+                Label("Termin anlegen", systemImage: "calendar.badge.plus")
+            }
+        }
+        Button {
+            appState.present(.editMedicationPlan(planID: plan.id, petID: pet.id))
+        } label: {
+            Label("Bearbeiten", systemImage: "pencil")
         }
     }
 

@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// Tierarzt-Bereich im Gesundheit-Tab: anstehende Termine, Verlauf, Praxen.
+/// Inhalt des Tierarzt-Tabs: Notfallkarte, Termine, Verlauf, Praxen.
 ///
 /// Termine gehören zum Tier, Praxen allen Tieren — deshalb stehen hier alle
 /// Praxen, nicht nur die des gewählten Tiers.
@@ -31,39 +31,29 @@ struct VetSection: View {
     private var petName: String { pet.name.isEmpty ? "dein Tier" : pet.name }
 
     var body: some View {
-        // Der Leerzustand nur, wenn es weder Termine noch Praxen gibt — sonst
-        // wären angelegte Praxen nicht mehr erreichbar.
-        if petAppointments.isEmpty && practices.isEmpty {
-            RudelEmptyState(
-                title: "Noch keine Termine",
-                detail: "Termine, Befunde und Kosten an einer Stelle. Dazu die Praxen mit Telefonnummer, für den Notfall.",
-                symbol: "stethoscope",
-                actionTitle: "Termin anlegen"
-            ) {
-                appState.present(.editAppointment(appointmentID: nil, petID: pet.id))
+        List {
+            Section {
+                RudelFeatureHeading(
+                    eyebrow: "TIERARZT",
+                    title: "Termine & Praxen",
+                    detail: headingDetail,
+                    symbol: "stethoscope"
+                )
+                .rudelFeatureRow()
             }
-        } else {
-            List {
-                Section {
-                    RudelFeatureHeading(
-                        eyebrow: "TIERARZT",
-                        title: "Termine & Praxen",
-                        detail: headingDetail,
-                        symbol: "stethoscope"
-                    )
-                    .rudelFeatureRow()
-                }
-                Section {
-                    VetReportShareLink(petID: pet.id, petName: pet.name)
-                }
-                upcomingSection
-                if !history.isEmpty {
-                    historySection
-                }
-                practicesSection
+            EmergencyCardSection(pet: pet)
+            upcomingSection
+            if !history.isEmpty {
+                historySection
             }
-            .rudelListStyle()
+            practicesSection
+            Section {
+                VetReportShareLink(petID: pet.id, petName: pet.name)
+            } footer: {
+                Text("Fasst Medikamente, Symptome, Gewicht und Termine als PDF für die Praxis zusammen.")
+            }
         }
+        .rudelListStyle()
     }
 
     private var headingDetail: String {

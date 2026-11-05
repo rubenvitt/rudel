@@ -4,9 +4,10 @@ import SwiftUI
 
 /// Löst das gewählte Tier auf und stellt den Umschalter bereit (PRD §5.1).
 ///
-/// Jede Feature-View wickelt ihren Inhalt hierin ein, statt selbst `AppState`
-/// und `@Query` zu verdrahten. Damit ist der Umschalter überall identisch und
-/// der „kein Tier gewählt"-Fall an einer Stelle behandelt.
+/// Jede tierbezogene Feature-View wickelt ihren Inhalt hierin ein, statt selbst
+/// `AppState` und `@Query` zu verdrahten. Damit sitzt der Umschalter überall
+/// an derselben Stelle (oben links), und der „kein Tier gewählt"-Fall ist an
+/// einer Stelle behandelt.
 ///
 /// ```swift
 /// struct DashboardView: View {
@@ -33,20 +34,16 @@ struct PetScope<Content: View>: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if pets.count > 1 {
-                    petStrip
-                }
-                Group {
-                    if let pet = selectedPet {
-                        content(pet)
-                    } else {
-                        ContentUnavailableView(
-                            "Kein Tier",
-                            systemImage: "pawprint",
-                            description: Text("Lege zuerst ein Tier an.")
-                        )
-                    }
+            Group {
+                if let pet = selectedPet {
+                    content(pet)
+                        .rudelReadableWidth()
+                } else {
+                    ContentUnavailableView(
+                        "Kein Tier",
+                        systemImage: "pawprint",
+                        description: Text("Lege zuerst ein Tier an.")
+                    )
                 }
             }
             .navigationTitle(title)
@@ -55,15 +52,8 @@ struct PetScope<Content: View>: View {
             .toolbarBackground(RudelTheme.canvas, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "pawprint.fill").font(.caption)
-                        Text("rudel").font(.system(.title3, design: .serif, weight: .bold))
-                    }
-                    .foregroundStyle(RudelTheme.accent)
-                    .accessibilityLabel("Rudel")
-                    .fixedSize()
+                    PetSwitcher(pets: pets, selected: selectedPet)
                 }
-                .sharedBackgroundVisibility(.hidden)
                 ToolbarItem(placement: .principal) {
                     Text(title)
                         .font(.system(.headline, design: .serif))
@@ -72,40 +62,68 @@ struct PetScope<Content: View>: View {
                 }
             }
         }
+        // Ein Tierwechsel führt zurück auf die Startseite des Tabs. Sonst bliebe
+        // eine geöffnete Unterseite beim alten Tier stehen.
+        .id(selectedPet?.id)
     }
+}
 
-    private var petStrip: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 10) {
+/// Tierbild mit Namen oben links. Ein Tipp öffnet die Auswahl aller Tiere —
+/// sichtbar auch mit nur einem Tier, damit „weiteres Tier“ nie gesucht werden
+/// muss.
+struct PetSwitcher: View {
+    let pets: [Pet]
+    let selected: Pet?
+
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        Menu {
+            Section("Tier wählen") {
                 ForEach(pets) { pet in
-                    let selected = pet.id == selectedPet?.id
                     Button {
                         appState.selectedPetID = pet.id
                     } label: {
-                        HStack(spacing: 8) {
-                            PetAvatar(pet: pet, size: 30)
-                            Text(pet.name.isEmpty ? "Unbenannt" : pet.name)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(1)
-                                .frame(maxWidth: 220, alignment: .leading)
-                            if selected {
-                                Image(systemName: "checkmark").font(.caption.weight(.bold))
-                            }
+                        if pet.id == selected?.id {
+                            Label(displayName(pet), systemImage: "checkmark")
+                        } else {
+                            Text(displayName(pet))
                         }
-                        .padding(.leading, 6).padding(.trailing, 14).padding(.vertical, 7)
-                        .foregroundStyle(selected ? RudelTheme.cream : RudelTheme.ink)
-                        .background(selected ? pet.colorValue.deep : RudelTheme.surface, in: .capsule)
                     }
-                    .buttonStyle(RudelTileButtonStyle())
-                    .accessibilityLabel("Tier wechseln: \(pet.name)")
-                    .accessibilityAddTraits(selected ? [.isSelected] : [])
+                    .accessibilityLabel("Tier wechseln: \(displayName(pet))")
+                    .accessibilityAddTraits(pet.id == selected?.id ? [.isSelected] : [])
                 }
             }
-            .padding(.horizontal, 20).padding(.vertical, 8)
+            Section {
+                Button {
+                    appState.present(.editPet(petID: nil))
+                } label: {
+                    Label("Tier hinzufügen", systemImage: "plus")
+                }
+                Button {
+                    appState.selectedTab = .rudel
+                } label: {
+                    Label("Tiere verwalten", systemImage: "pawprint")
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                PetAvatar(pet: selected, size: 28)
+                Text(selected.map(displayName) ?? "Tier")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .frame(maxWidth: 130, alignment: .leading)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(RudelTheme.ink)
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityLabel("Tier: \(selected.map(displayName) ?? "keins"). Wechseln")
         .accessibilityIdentifier("pet-switcher")
-        .background(RudelTheme.canvas)
+    }
+
+    private func displayName(_ pet: Pet) -> String {
+        pet.name.isEmpty ? "Unbenannt" : pet.name
     }
 }
 

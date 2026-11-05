@@ -1,118 +1,178 @@
 import SwiftData
 import SwiftUI
 
-/// Gesundheits-Tab: Symptome, Gewicht und Tierarzt (PRD §5.4, §5.5).
+/// Gesundheit-Tab: Übersicht über Zyklus, Symptome und Gewicht (PRD §5.3–5.5).
 ///
-/// Drei Bereiche in einem Tab statt drei Tabs. Symptome und Gewicht sind
-/// Beobachtungen am Tier, die oft beim selben Anlass entstehen, und der
-/// Tierarzt ist der Ort, an dem sie gebraucht werden. Die Tab-Leiste hat mit
-/// Zyklus schon fünf Einträge; ein sechster zwänge iOS in „Mehr".
+/// Jeder Bereich hat seine eigene Seite. Die Übersicht zeigt pro Bereich den
+/// letzten Stand, damit man oft gar nicht erst hineintippen muss. Der Zyklus
+/// erscheint nur für Tiere, die ihn brauchen — als Zeile, nicht als eigener
+/// Tab, damit die Tab-Leiste für jedes Tier gleich bleibt.
 struct HealthView: View {
-    @Environment(AppState.self) private var appState
-
-    @State private var section: HealthSection = .symptoms
-
     var body: some View {
         PetScope(title: "Gesundheit") { pet in
-            Group {
-                switch section {
-                case .symptoms:
-                    SymptomHistorySection(pet: pet)
-                case .weight:
-                    WeightHistorySection(pet: pet)
-                case .vet:
-                    VetSection(pet: pet)
+            HealthOverview(pet: pet)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        RudelAddMenu {
+                            HealthAddItems(pet: pet)
+                        }
+                    }
                 }
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                sectionPicker
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    addButton(petID: pet.id)
-                }
-            }
         }
-    }
-
-    /// Im Tierarzt-Bereich gibt es zwei Dinge anzulegen; dort wird das Plus
-    /// zum Menü, statt einen der beiden Einstiege zu verstecken.
-    @ViewBuilder
-    private func addButton(petID: UUID) -> some View {
-        if section == .vet {
-            Menu {
-                Button {
-                    appState.present(.editAppointment(appointmentID: nil, petID: petID))
-                } label: {
-                    Label("Termin", systemImage: "calendar.badge.plus")
-                }
-                Button {
-                    appState.present(.editPractice(practiceID: nil))
-                } label: {
-                    Label("Praxis", systemImage: "building.2")
-                }
-            } label: {
-                Image(systemName: "plus")
-            }
-            .accessibilityLabel(section.addLabel)
-            .accessibilityIdentifier("vet-add-menu")
-        } else if let sheet = section.addSheet(petID: petID) {
-            Button {
-                appState.present(sheet)
-            } label: {
-                Image(systemName: "plus")
-            }
-            .accessibilityLabel(section.addLabel)
-        }
-    }
-
-    /// Der Umschalter steht über der Liste, nicht in der Navigationsleiste: dort
-    /// sitzt links schon der Tier-Umschalter und rechts das Plus.
-    private var sectionPicker: some View {
-        Picker("Bereich", selection: $section) {
-            ForEach(HealthSection.allCases) { item in
-                Text(item.label).tag(item)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(RudelTheme.canvas)
     }
 }
 
-/// Die Bereiche des Tabs. Eigener Typ auf Datei-Ebene statt verschachtelt,
-/// damit `Section` in den Listen nicht verdeckt wird.
-private enum HealthSection: Hashable, Identifiable, CaseIterable {
-    case symptoms
-    case weight
-    case vet
+/// Die Einträge des „+“-Menüs im Gesundheit-Tab.
+private struct HealthAddItems: View {
+    let pet: Pet
 
-    var id: Self { self }
+    @Environment(AppState.self) private var appState
 
-    var label: String {
-        switch self {
-        case .symptoms: return "Symptome"
-        case .weight: return "Gewicht"
-        case .vet: return "Tierarzt"
+    var body: some View {
+        Button {
+            appState.present(.logSymptom(petID: pet.id))
+        } label: {
+            Label("Symptom erfassen", systemImage: "stethoscope")
+        }
+        Button {
+            appState.present(.logWeight(petID: pet.id))
+        } label: {
+            Label("Gewicht erfassen", systemImage: "scalemass")
+        }
+        if pet.tracksCycle {
+            Button {
+                appState.present(.logCycleObservation(petID: pet.id))
+            } label: {
+                Label("Zyklus-Beobachtung", systemImage: "drop")
+            }
+            Button {
+                appState.present(.startCyclePeriod(petID: pet.id))
+            } label: {
+                Label("Läufigkeit begonnen", systemImage: "calendar.badge.plus")
+            }
         }
     }
+}
 
-    /// Beschriftung für VoiceOver — der Button zeigt nur ein Plus.
-    var addLabel: String {
-        switch self {
-        case .symptoms: return "Symptom erfassen"
-        case .weight: return "Gewicht erfassen"
-        case .vet: return "Termin oder Praxis anlegen"
+private struct HealthOverview: View {
+    let pet: Pet
+
+    /// Abfragen statt `pet.symptomEntries` usw.: nur so aktualisiert sich die
+    /// Übersicht, wenn ein Sheet speichert.
+    @Query(sort: \SymptomEntry.date, order: .reverse) private var allSymptoms: [SymptomEntry]
+    @Query(sort: \WeightEntry.date, order: .reverse) private var allWeights: [WeightEntry]
+    @Query(sort: \CyclePeriod.day1Date, order: .reverse) private var allPeriods: [CyclePeriod]
+
+    private var symptoms: [SymptomEntry] { allSymptoms.filter { $0.pet?.id == pet.id } }
+    private var weights: [WeightEntry] { allWeights.filter { $0.pet?.id == pet.id } }
+    private var periods: [CyclePeriod] { allPeriods.filter { $0.pet?.id == pet.id } }
+
+    var body: some View {
+        List {
+            Section {
+                if pet.tracksCycle {
+                    NavigationLink {
+                        CycleOverviewPage(pet: pet)
+                    } label: {
+                        HealthAreaRow(
+                            title: "Zyklus",
+                            detail: cycleDetail,
+                            symbol: "circle.hexagonpath"
+                        )
+                    }
+                    .accessibilityIdentifier("health-cycle")
+                }
+                NavigationLink {
+                    SymptomHistorySection(pet: pet)
+                        .healthPage(title: "Symptome") {
+                            AddButton(title: "Symptom erfassen", sheet: .logSymptom(petID: pet.id))
+                        }
+                } label: {
+                    HealthAreaRow(title: "Symptome", detail: symptomDetail, symbol: "heart.text.square")
+                }
+                .accessibilityIdentifier("health-symptoms")
+                NavigationLink {
+                    WeightHistorySection(pet: pet)
+                        .healthPage(title: "Gewicht") {
+                            AddButton(title: "Gewicht erfassen", sheet: .logWeight(petID: pet.id))
+                        }
+                } label: {
+                    HealthAreaRow(title: "Gewicht", detail: weightDetail, symbol: "scalemass")
+                }
+                .accessibilityIdentifier("health-weight")
+            } header: {
+                RudelSectionHeading(title: "Bereiche")
+            } footer: {
+                Text("Tierarzttermine, Praxen und die Notfallkarte findest du im Tab Tierarzt.")
+            }
         }
+        .rudelListStyle()
     }
 
-    /// `nil` für den Tierarzt-Bereich: dort öffnet das Plus ein Menü.
-    func addSheet(petID: UUID) -> AppState.Sheet? {
-        switch self {
-        case .symptoms: return .logSymptom(petID: petID)
-        case .weight: return .logWeight(petID: petID)
-        case .vet: return nil
+    private var cycleDetail: String {
+        guard let latest = periods.first else { return "Noch keine Läufigkeit erfasst" }
+        return "Letzte Läufigkeit ab \(Format.date(latest.day1Date))"
+    }
+
+    private var symptomDetail: String {
+        guard let latest = symptoms.first else { return "Noch nichts erfasst" }
+        let count = symptoms.count == 1 ? "1 Eintrag" : "\(symptoms.count) Einträge"
+        return "\(count) · zuletzt \(Format.date(latest.date))"
+    }
+
+    private var weightDetail: String {
+        guard let latest = weights.first else { return "Noch nicht gewogen" }
+        return "\(Format.weight(latest.valueKg)) am \(Format.date(latest.date))"
+    }
+}
+
+/// Eine Zeile der Übersicht: Symbol, Bereich, letzter Stand.
+private struct HealthAreaRow: View {
+    let title: String
+    let detail: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            RudelIcon(symbol: symbol, size: 44)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.semibold)).foregroundStyle(RudelTheme.ink)
+                Text(detail).font(.subheadline).foregroundStyle(RudelTheme.muted)
+            }
         }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Plus-Knopf einer Unterseite: legt genau das an, worum es auf der Seite geht.
+private struct AddButton: View {
+    let title: String
+    let sheet: AppState.Sheet
+
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        Button {
+            appState.present(sheet)
+        } label: {
+            Image(systemName: "plus")
+        }
+        .accessibilityLabel(title)
+    }
+}
+
+extension View {
+    /// Gemeinsamer Rahmen für die Unterseiten im Gesundheit-Tab.
+    func healthPage<Trailing: View>(title: String, @ViewBuilder trailing: () -> Trailing) -> some View {
+        let item = trailing()
+        return self
+            .rudelReadableWidth()
+            .background(RudelTheme.canvas)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { item }
+            }
     }
 }

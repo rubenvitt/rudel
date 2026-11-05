@@ -23,9 +23,6 @@ struct PlusPaywallView: View {
     private static let order = [PlusStore.ProductID.yearly, PlusStore.ProductID.monthly, PlusStore.ProductID.lifetime]
     private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "plus")
 
-    private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    private static let privacyURL = URL(string: "https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md")!
-
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -175,7 +172,7 @@ struct PlusPaywallView: View {
         VStack(alignment: .leading, spacing: 12) {
             Group {
                 Text("Medikamente, Erinnerungen und alles für die Gesundheit bleiben für ein Tier kostenlos.")
-                Text("Abos verlängern sich automatisch und lassen sich jederzeit in den Einstellungen deines Apple-Accounts kündigen.")
+                Text("Abos verlängern sich automatisch und lassen sich jederzeit kündigen: im Tab Rudel unter „Abo verwalten“ oder in den Einstellungen deines Apple-Accounts.")
             }
             .foregroundStyle(RudelTheme.muted)
             Button(isRestoring ? "Wird geprüft …" : "Käufe wiederherstellen") {
@@ -194,8 +191,8 @@ struct PlusPaywallView: View {
             }
             .disabled(isRestoring)
             HStack(spacing: 16) {
-                Link("Nutzungsbedingungen", destination: Self.termsURL)
-                Link("Datenschutz", destination: Self.privacyURL)
+                Link("Nutzungsbedingungen", destination: RudelLinks.terms)
+                Link("Datenschutz", destination: RudelLinks.privacy)
             }
         }
         .font(.footnote)

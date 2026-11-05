@@ -8,11 +8,13 @@ import SwiftUI
 /// Läufigkeit, steht die Phase im Vordergrund; läuft keine, die Prognose der
 /// nächsten. Beides immer mit Konfidenz — eine Prognose ohne Konfidenzangabe ist
 /// laut PRD §6 nicht zulässig.
-struct CycleOverviewView: View {
+struct CycleOverviewPage: View {
+    let pet: Pet
+
+    @Environment(AppState.self) private var appState
+
     var body: some View {
-        // Die Tierauswahl bleibt über alle Tabs gleich. Ob das Modul für das
-        // gewählte Tier verfügbar ist, entscheidet erst der Inhalt.
-        PetScope(title: "Zyklus") { pet in
+        Group {
             if pet.tracksCycle {
                 CycleOverviewContent(pet: pet)
                     .id(pet.id)
@@ -28,7 +30,26 @@ struct CycleOverviewView: View {
                     .padding(20)
                     .frame(maxWidth: .infinity)
                 }
-                .background(RudelTheme.canvas)
+            }
+        }
+        .healthPage(title: "Zyklus") {
+            if pet.tracksCycle {
+                Menu {
+                    Button {
+                        appState.present(.logCycleObservation(petID: pet.id))
+                    } label: {
+                        Label("Beobachtung erfassen", systemImage: "drop")
+                    }
+                    Button {
+                        appState.present(.startCyclePeriod(petID: pet.id))
+                    } label: {
+                        Label("Läufigkeit begonnen", systemImage: "calendar.badge.plus")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Hinzufügen")
+                .accessibilityIdentifier("add-menu")
             }
         }
     }
@@ -36,7 +57,7 @@ struct CycleOverviewView: View {
 
 // MARK: - Inhalt
 
-private struct CycleOverviewContent: View {
+struct CycleOverviewContent: View {
     let pet: Pet
 
     @Environment(AppState.self) private var appState

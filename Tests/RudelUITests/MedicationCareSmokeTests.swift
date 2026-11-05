@@ -32,7 +32,7 @@ final class MedicationCareSmokeTests: XCTestCase {
         // Zeckenschutz-Plan anlegen. Das Formular zeigt die Erinnerungsklasse
         // schon beim Anlegen, mit „Vorsorge" als Standard der Art.
         app.tab("Medikamente").tap()
-        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.chooseFromAddMenu("Neuer Plan")
         app.buttons["Art"].tap()
         app.buttons["Zeckenschutz"].firstMatch.tap()
         let product = app.textFields["medication-product-name"]
