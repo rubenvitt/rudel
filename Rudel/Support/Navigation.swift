@@ -60,7 +60,8 @@ private struct ReadableWidth: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .contentMargins(.horizontal, margin, for: .scrollContent)
+            // nil behält die Standardränder; 0 würde Karten bis an den Rand ziehen.
+            .contentMargins(.horizontal, margin > 0 ? margin : nil, for: .scrollContent)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width
             } action: { width in
