@@ -59,8 +59,11 @@ private struct ReadableWidth: ViewModifier {
     @State private var margin: CGFloat = 0
 
     func body(content: Content) -> some View {
+        // `safeAreaPadding` addiert sich zu den Standardrändern von Listen und
+        // Formularen. `contentMargins` hätte sie ersetzt: Mit 0 auf dem iPhone
+        // säßen Karten und Eingabefelder dann direkt am Bildschirmrand.
         content
-            .contentMargins(.horizontal, margin, for: .scrollContent)
+            .safeAreaPadding(.horizontal, margin)
             .onGeometryChange(for: CGFloat.self) { proxy in
                 proxy.size.width
             } action: { width in
