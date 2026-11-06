@@ -4,15 +4,22 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// Einstellungen: Rudel Plus, Erinnerungen, Diagnose, Datenschutz.
+/// Einstellungen zu Erinnerungen und Alarmen, samt Diagnose.
+///
+/// Erscheint als Unterseite im Rudel-Tab und als Sheet, wenn der Hinweis zu
+/// einem Alarmproblem angetippt wird. Rudel Plus, Abo und Rechtliches stehen
+/// direkt im Rudel-Tab.
 ///
 /// Änderungen werden gespeichert und über den gemeinsamen Abgleich wirksam.
 /// Der Hauptschalter aktualisiert zusätzlich sofort die Diagnose im Sheet.
 struct SettingsSheet: View {
+    /// `true`, wenn die Seite in einen bestehenden Navigationsstapel geschoben
+    /// wird; dann ohne eigenen Stapel und ohne „Fertig“.
+    var isPushed = false
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
-    @Environment(PlusStore.self) private var plus
 
     private let service = NotificationService()
 
@@ -29,7 +36,6 @@ struct SettingsSheet: View {
     @State private var lastSuccessAt: Date?
     /// Offene Änderung, die beim Schließen wirksam wird.
     @State private var needsReschedule = false
-    @State private var showsPlus = false
 
     /// Vorwarnzeiten zur Auswahl. 0 = am Fälligkeitstag selbst.
     private static let leadDayChoices = [14, 7, 3, 1, 0]
@@ -38,19 +44,17 @@ struct SettingsSheet: View {
     private static let appointmentLeadChoices = [30, 60, 120, 180, 240]
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let settings {
-                    form(settings)
-                } else {
-                    ProgressView()
-                }
-            }
-            .rudelFormStyle()
-            .navigationTitle("Einstellungen")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") { dismiss() }
+        Group {
+            if isPushed {
+                page
+            } else {
+                NavigationStack {
+                    page
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Fertig") { dismiss() }
+                            }
+                        }
                 }
             }
         }
@@ -68,24 +72,23 @@ struct SettingsSheet: View {
         }
     }
 
-    private var plusSection: some View {
-        Section {
-            LabeledContent("Rudel Plus", value: plus.isPlus ? "Aktiv" : "Nicht aktiv")
-            if !plus.isPlus {
-                Button("Rudel Plus ansehen") { showsPlus = true }
+    private var page: some View {
+        Group {
+            if let settings {
+                form(settings)
+            } else {
+                ProgressView()
             }
         }
-        .sheet(isPresented: $showsPlus) {
-            PlusPaywallView()
-                .tint(RudelTheme.accent)
-                .presentationCornerRadius(28)
-        }
+        .rudelFormStyle()
+        .rudelReadableWidth()
+        .navigationTitle("Erinnerungen")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder
     private func form(_ settings: AppSettings) -> some View {
         Form {
-            plusSection
             notificationSection(settings)
             if settings.notificationsEnabled {
                 medicationAlarmSection(settings)
@@ -101,7 +104,6 @@ struct SettingsSheet: View {
             if !failures.isEmpty {
                 failureSection
             }
-            privacySection
         }
     }
 
@@ -234,7 +236,7 @@ struct SettingsSheet: View {
                     : """
                     Während einer Läufigkeit kommen keine täglichen Hinweise. Die \
                     Prognose der nächsten Läufigkeit und die Phasenanzeige im \
-                    Zyklus-Tab bleiben davon unberührt.
+                    Bereich Zyklus unter Gesundheit bleiben davon unberührt.
                     """
             )
         }
@@ -437,19 +439,6 @@ struct SettingsSheet: View {
                 .foregroundStyle(.orange)
         } footer: {
             Text("Diese Erinnerungen hat iOS nicht angenommen.")
-        }
-    }
-
-    // MARK: - Datenschutz
-
-    @ViewBuilder
-    private var privacySection: some View {
-        Section {
-            Label("Alle Daten bleiben auf diesem Gerät", systemImage: "lock.shield")
-        } header: {
-            Text("Datenschutz")
-        } footer: {
-            Text("Alles bleibt auf diesem iPhone. Kein Konto, kein Server. Dein iCloud- oder Geräte-Backup sichert die Einträge mit.")
         }
     }
 

@@ -7,8 +7,8 @@ Die UI-Überarbeitung ändert weder Persistenz noch Berechnung oder Alarmplanung
 
 | Fähigkeit | Gemeinsamer Eigentümer | Vertrag |
 |---|---|---|
-| Navigation | RootView, AppState | Native Tabs und zentrale Sheet-Präsentation |
-| Tierauswahl | PetScope | Gewählte Tier-ID und vollständiger Tierwechsler gelten für alle Tabs; Zyklus zeigt für ungeeignete Tiere einen Hinweis ohne Erfassungsaktionen und wechselt nie automatisch auf ein anderes Tier |
+| Navigation | RootView, AppState | Fünf feste Tabs (Heute, Medikamente, Gesundheit, Tierarzt, Rudel), auf dem iPad als Seitenleiste; zentrale Sheet-Präsentation; das „+“ oben rechts ist überall ein beschriftetes Menü (RudelAddMenu); Zeilenaktionen sind zusätzlich zum Wischen über ein sichtbares „⋯“ erreichbar (RudelRowMenu) |
+| Tierauswahl | PetScope, PetSwitcher | Gewählte Tier-ID gilt für alle tierbezogenen Tabs; der Wechsler sitzt oben links, ist auch mit einem Tier sichtbar und bietet „Tier hinzufügen“; ein Wechsel führt auf die Startseite des Tabs zurück; der Zyklus erscheint im Gesundheit-Tab nur für Tiere, die ihn brauchen, und die Auswahl wechselt nie automatisch auf ein anderes Tier |
 | Listen | Native List, rudelListStyle | Scrollen und bestehende Wischaktionen bleiben erhalten |
 | Formulare | Feature-Sheets, rudelFormStyle | Speichern/Abbrechen und bestehende Validierung bleiben erhalten |
 | Auswahl und Datum | SwiftUI Picker / DatePicker | Native Popup-Geometrie, Tastatur und Plattformbedienung akzeptiert |
@@ -32,7 +32,8 @@ Dashboard-Datumskopf ist deutsch. Eine vollständige Mehrsprachigkeit wird durch
 diesen visuellen Umbau nicht eingeführt.
 
 Dynamic Type, Light/Dark Mode, VoiceOver-Namen und native Fokusbedienung sind
-Teil des UI-Vertrags. Lange Namen dürfen umbrechen. Bei mehreren Tieren bleibt
-die Auswahl horizontal scrollbar; sie darf den Inhalt nicht verdrängen.
+Teil des UI-Vertrags. Lange Namen dürfen im Inhalt umbrechen; im Tier-Wechsler
+oben links werden sie gekürzt, das Menü nennt jedes Tier vollständig. Die
+Auswahl darf den Inhalt nicht verdrängen.
 Die Bildschirmdarstellung wird im iOS-Simulator geprüft, nicht in einem Browser.
 Ein Simulator-Test bestätigt keine Alarmzustellung auf einem echten iPhone.

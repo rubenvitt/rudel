@@ -25,12 +25,14 @@ final class AppState {
     /// Öffnen, ob ein neues Tier das Formular oder das Plus-Angebot zeigt.
     var petCount = 0
 
+    /// Fünf feste Tabs. Kein Tab erscheint oder verschwindet je nach Tier —
+    /// was für ein Tier nicht passt (etwa der Zyklus), steht innerhalb des Tabs.
     enum Tab: Hashable {
         case today
         case medication
-        case cycle
         case health
-        case profile
+        case vet
+        case rudel
     }
 
     enum Sheet: Hashable, Identifiable {

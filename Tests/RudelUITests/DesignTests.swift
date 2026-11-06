@@ -9,39 +9,33 @@ final class DesignTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// Der Zyklus ist kein eigener Tab mehr, sondern ein Bereich im
+    /// Gesundheit-Tab — und erscheint nur für Tiere, die ihn brauchen. Die
+    /// Auswahl darf dabei nicht von selbst auf die Hündin springen.
     @MainActor
-    func testCycleKeepsSelectedCatAndPetSwitcher() {
+    func testCycleOnlyForPetsThatNeedIt() {
         let app = launch()
         ensureTwoPets(in: app)
-        selectTab("Zyklus", in: app)
+        selectTab("Gesundheit", in: app)
 
-        let cat = app.buttons["Tier wechseln: \(longName)"]
-        let dog = app.buttons["Tier wechseln: Zola"]
-        let unavailable = app.staticTexts["Für \(longName) ist kein Zyklustracking verfügbar."]
-        // Der Zyklus-Tab darf weder auf die Hündin zurückfallen noch den
-        // Tierwechsler durch eine gefilterte Tierliste verschwinden lassen.
-        XCTAssertTrue(cat.waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertTrue(cat.isSelected)
-        XCTAssertTrue(dog.isHittable)
-        XCTAssertTrue(unavailable.exists)
-        XCTAssertFalse(app.buttons["Läufigkeit begonnen"].exists)
-        XCTAssertFalse(app.buttons["Beobachtung erfassen"].exists)
-        attach(app, "zyklus-katze-ohne-tracking")
+        let cycle = app.buttons["health-cycle"]
+        XCTAssertTrue(app.buttons["health-symptoms"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertFalse(cycle.exists, "Zyklus erscheint für die Katze")
+        attach(app, "gesundheit-katze-ohne-zyklus")
 
-        dog.tap()
-        XCTAssertTrue(dog.isSelected)
-        XCTAssertFalse(unavailable.exists)
-        XCTAssertTrue(
-            app.buttons["Läufigkeit begonnen"].exists
-                || app.buttons["Beobachtung erfassen"].exists
-        )
+        app.selectPet("Zola")
+        XCTAssertTrue(cycle.waitForExistence(timeout: 5), "Zyklus fehlt für die Hündin")
+        cycle.tap()
+        let start = app.buttons["Läufigkeit begonnen"].firstMatch
+        let observe = app.buttons["Beobachtung erfassen"].firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 5) || observe.exists)
+        attach(app, "gesundheit-zyklus-hündin")
+        app.navigationBars.buttons.firstMatch.tap()
 
-        cat.tap()
-        XCTAssertTrue(cat.isSelected)
-        XCTAssertTrue(unavailable.exists)
-        XCTAssertFalse(app.buttons["Läufigkeit begonnen"].exists)
-        XCTAssertFalse(app.buttons["Beobachtung erfassen"].exists)
-        selectTab("Profil", in: app)
+        app.selectPet(longName)
+        XCTAssertTrue(app.buttons["health-symptoms"].waitForExistence(timeout: 5))
+        XCTAssertFalse(cycle.exists)
+        selectTab("Heute", in: app)
         XCTAssertEqual(app.staticTexts["pet-hero-name"].label, longName)
     }
 
@@ -52,7 +46,6 @@ final class DesignTests: XCTestCase {
         selectTab("Heute", in: app)
         let heroName = app.staticTexts["pet-hero-name"]
         XCTAssertEqual(heroName.label, longName)
-        // Der Tierstreifen darf den eigentlichen Bildschirm nicht verdrängen.
         XCTAssertTrue(heroName.isHittable)
         attach(app, "design-zwei-tiere-langer-name")
 
@@ -64,12 +57,12 @@ final class DesignTests: XCTestCase {
         XCTAssertTrue(weightField.exists)
         app.buttons["Abbrechen"].tap()
 
-        let firstPet = app.buttons["Tier wechseln: Zola"]
-        XCTAssertTrue(firstPet.waitForExistence(timeout: 5))
-        firstPet.tap()
-        // Ein Wechsel muss den neuen Namen zeigen, auch nach vorherigem Scrollen.
-        selectTab("Profil", in: app)
+        // Ein Wechsel muss den neuen Namen zeigen, auch nach vorherigem Scrollen,
+        // und in jedem Tab gelten.
+        app.selectPet("Zola")
         XCTAssertEqual(app.staticTexts["pet-hero-name"].label, "Zola")
+        selectTab("Tierarzt", in: app)
+        XCTAssertTrue(app.buttons["pet-switcher"].label.contains("Zola"), app.buttons["pet-switcher"].label)
         selectTab("Heute", in: app)
         app.swipeDown(velocity: .fast)
         attach(app, "design-heute-zola")
@@ -85,21 +78,15 @@ final class DesignTests: XCTestCase {
         ]
         app.launch()
         XCTAssertTrue(app.buttons["Heute"].firstMatch.waitForExistence(timeout: 10))
-        let longPet = app.buttons["Tier wechseln: \(longName)"]
-        // Zweiter Chip ist bei großer Schrift eventuell außerhalb des Ausschnitts.
-        for _ in 0..<5 where !longPet.isHittable {
-            scrollPetStrip(in: app)
-        }
+        selectTab("Heute", in: app)
+        app.selectPet(longName)
         attach(app, "design-accessibility-auswahl")
-        XCTAssertTrue(longPet.isHittable, app.debugDescription)
-        longPet.tap()
         XCTAssertEqual(app.staticTexts["pet-hero-name"].label, longName)
         reveal(app.staticTexts["pet-hero-name"], in: app)
         attach(app, "design-accessibility-heute")
 
-        selectTab("Profil", in: app)
-        reveal(app.staticTexts["pet-hero-name"], in: app)
-        attach(app, "design-accessibility-profil")
+        selectTab("Rudel", in: app)
+        attach(app, "design-accessibility-rudel")
         selectTab("Medikamente", in: app)
         let create = app.scrollViews.buttons["Plan anlegen"]
         reveal(create, in: app)
@@ -119,6 +106,8 @@ final class DesignTests: XCTestCase {
         return app
     }
 
+    /// Legt Zola und die Katze mit dem langen Namen an, falls nötig, und
+    /// wählt am Ende die Katze.
     @MainActor
     private func ensureTwoPets(in app: XCUIApplication) {
         if app.buttons["Tier anlegen"].waitForExistence(timeout: 3) {
@@ -126,17 +115,18 @@ final class DesignTests: XCTestCase {
             app.buttons["Tier anlegen"].tap()
             fillPet(in: app, name: "Zola", breed: "Rhodesian Ridgeback")
         }
-        if app.buttons["Tier wechseln: \(longName)"].exists {
-            let target = app.buttons["Tier wechseln: \(longName)"]
-            for _ in 0..<5 where !target.isHittable { scrollPetStrip(in: app) }
-            target.tap()
-            return
+        selectTab("Rudel", in: app)
+        let existing = app.buttons.matching(identifier: "pet-row")
+            .matching(NSPredicate(format: "label CONTAINS %@", longName)).firstMatch
+        if !existing.waitForExistence(timeout: 3) {
+            let add = app.buttons["Weiteres Tier anlegen"]
+            reveal(add, in: app)
+            add.tap()
+            fillPet(in: app, name: longName, breed: "Hauskatze")
         }
-        selectTab("Profil", in: app)
-        let add = app.buttons["Weiteres Tier anlegen"]
-        reveal(add, in: app)
-        add.tap()
-        fillPet(in: app, name: longName, breed: "Hauskatze")
+        selectTab("Heute", in: app)
+        app.selectPet(longName)
+        XCTAssertTrue(app.staticTexts["pet-hero-name"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -150,24 +140,14 @@ final class DesignTests: XCTestCase {
         breedField.typeText(breed)
         if breed == "Hauskatze" { app.segmentedControls.buttons["Katze"].tap() }
         app.buttons["Speichern"].tap()
-        XCTAssertTrue(app.staticTexts["pet-hero-name"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tab("Heute").waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["Name"].waitForExistence(timeout: 2), "Formular bleibt offen")
     }
 
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<8 where !element.isHittable { app.swipeUp() }
         XCTAssertTrue(element.isHittable)
-    }
-
-    @MainActor
-    private func scrollPetStrip(in app: XCUIApplication) {
-        // iOS meldet im AX-Frame auch den Bereich unter Status-/Navigationsleiste.
-        // Eine Wischgeste in dessen Mitte trifft deshalb die Navigation. Der
-        // untere Teil des Frames enthält die tatsächlich sichtbaren Tierchips.
-        let strip = app.scrollViews["pet-switcher"]
-        let start = strip.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.85))
-        let end = strip.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.85))
-        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     @MainActor

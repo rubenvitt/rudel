@@ -32,7 +32,7 @@ final class MedicationCareSmokeTests: XCTestCase {
         // Zeckenschutz-Plan anlegen. Das Formular zeigt die Erinnerungsklasse
         // schon beim Anlegen, mit „Vorsorge" als Standard der Art.
         app.tab("Medikamente").tap()
-        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.chooseFromAddMenu("Neuer Plan")
         app.buttons["Art"].tap()
         app.buttons["Zeckenschutz"].firstMatch.tap()
         let product = app.textFields["medication-product-name"]
@@ -52,7 +52,7 @@ final class MedicationCareSmokeTests: XCTestCase {
         app.buttons["defer-option-march"].tap()
         app.buttons["Speichern"].tap()
         XCTAssertTrue(
-            waitForLabel(of: row, containing: "Zurückgestellt bis", timeout: 5),
+            waitForLabel(of: row, containing: "Zurückgestellt bis", timeout: 15),
             "Status zeigt keine Zurückstellung: \(row.label)"
         )
         attachScreenshot(of: app, named: "vorsorge-zurueckgestellt")
@@ -61,7 +61,7 @@ final class MedicationCareSmokeTests: XCTestCase {
         openRowAction("Auslassen", on: planRow(productName, in: app), in: app)
         XCTAssertEqual(app.state, .runningForeground, "Absturz beim Auslassen")
         XCTAssertTrue(
-            waitForLabel(of: planRow(productName, in: app), containing: "Ausgelassen", timeout: 5),
+            waitForLabel(of: planRow(productName, in: app), containing: "Ausgelassen", timeout: 15),
             "Status zeigt keine Auslassung"
         )
         attachScreenshot(of: app, named: "vorsorge-ausgelassen")

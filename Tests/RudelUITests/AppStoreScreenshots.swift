@@ -25,7 +25,7 @@ final class AppStoreScreenshots: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["pet-hero-name"].waitForExistence(timeout: 20))
         // Heute zuletzt: der erste Tab-Wechsel räumt Berechtigungsdialoge ab.
-        for (name, tab) in [("2-Medikamente", "Medikamente"), ("3-Gesundheit", "Gesundheit"), ("4-Profil", "Profil"), ("1-Heute", "Heute")] {
+        for (name, tab) in [("2-Medikamente", "Medikamente"), ("3-Gesundheit", "Gesundheit"), ("4-Tierarzt", "Tierarzt"), ("1-Heute", "Heute")] {
             let button = app.tab(tab).firstMatch
             XCTAssertTrue(button.waitForExistence(timeout: 5), "Tab \(tab) fehlt")
             button.tap()

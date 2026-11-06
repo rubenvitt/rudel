@@ -29,8 +29,7 @@ final class SmokeTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
-        app.tab("Profil").tap()
-        app.buttons["Einstellungen"].tap()
+        app.openReminderSettings()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(true, in: app)
         XCTAssertTrue(app.switches["Medikamentenalarme"].waitForExistence(timeout: 5))
@@ -39,7 +38,7 @@ final class SmokeTests: XCTestCase {
         attachScreenshot(of: app, named: "medikamentenalarm-einstellungen")
         // Nur der isolierte Test-Store: keine echten Alarme während UI-Tests.
         setReminders(false, in: app)
-        app.buttons["Fertig"].tap()
+        app.closeReminderSettings()
         app.open(URL(string: "rudel://medication-reminder?reminder=already-completed")!)
         XCTAssertTrue(app.navigationBars["Gabe bestätigen"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Diese Erinnerung ist bereits erledigt oder wurde durch einen geänderten Plan ersetzt."].exists)
@@ -55,19 +54,17 @@ final class SmokeTests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
-        app.tab("Profil").tap()
-        app.buttons["Einstellungen"].tap()
+        app.openReminderSettings()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
-        app.buttons["Fertig"].tap()
+        app.closeReminderSettings()
         app.tab("Medikamente").tap()
-        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.chooseFromAddMenu("Neuer Plan")
         app.buttons["Art"].tap()
         app.buttons["Laufendes Medikament"].tap()
         let product = app.textFields["medication-product-name"]
         XCTAssertTrue(product.waitForExistence(timeout: 5))
-        product.tap()
-        product.typeText(productName)
+        typeReliably(productName, into: product)
         app.buttons["Speichern"].tap()
         XCTAssertTrue(app.buttons["Gabe erfassen"].waitForExistence(timeout: 5))
         app.buttons["Gabe erfassen"].tap()
@@ -105,15 +102,9 @@ final class SmokeTests: XCTestCase {
         attachScreenshot(of: app, named: "01-nach-anlegen")
 
         // Jeder Tab muss sich öffnen lassen, ohne dass die App verschwindet.
-        // "Zyklus" ist optional: er erscheint nur für unkastrierte Hündinnen,
-        // und ob das Anlege-Formular so vorbelegt war, hängt an dessen Defaults.
-        for tab in ["Heute", "Medikamente", "Zyklus", "Gesundheit", "Profil"] {
+        for tab in ["Heute", "Medikamente", "Gesundheit", "Tierarzt", "Rudel"] {
             let button = app.tab(tab)
-            guard button.waitForExistence(timeout: 5) else {
-                if tab == "Zyklus" { continue }
-                XCTFail("Tab \(tab) nicht gefunden")
-                return
-            }
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Tab \(tab) nicht gefunden")
             button.tap()
 
             XCTAssertEqual(
@@ -122,21 +113,22 @@ final class SmokeTests: XCTestCase {
             )
             attachScreenshot(of: app, named: "tab-\(tab)")
 
-            // Der Gesundheit-Tab hat drei Bereiche; der Tierarzt-Bereich wird
-            // erst beim Umschalten gebaut.
+            // Die Unterseiten im Gesundheit-Tab werden erst beim Öffnen gebaut.
             if tab == "Gesundheit" {
-                let vetSegment = app.segmentedControls.buttons["Tierarzt"]
-                XCTAssertTrue(vetSegment.waitForExistence(timeout: 5), "Bereich Tierarzt fehlt")
-                vetSegment.tap()
-                XCTAssertEqual(app.state, .runningForeground, "Absturz im Tierarzt-Bereich")
-                attachScreenshot(of: app, named: "tab-Gesundheit-Tierarzt")
-                app.segmentedControls.buttons["Symptome"].tap()
+                for area in ["health-symptoms", "health-weight"] {
+                    let link = app.buttons[area]
+                    XCTAssertTrue(link.waitForExistence(timeout: 5), "Bereich \(area) fehlt")
+                    link.tap()
+                    XCTAssertEqual(app.state, .runningForeground, "Absturz in \(area)")
+                    attachScreenshot(of: app, named: "tab-Gesundheit-\(area)")
+                    app.navigationBars.buttons.firstMatch.tap()
+                }
             }
         }
     }
 
     /// Tierarzt-Durchstich: Praxis anlegen, Termin mit Praxis anlegen, Termin
-    /// abschließen — und die Notfallkarte im Profil.
+    /// abschließen — und die Notfallkarte im Tierarzt-Tab.
     @MainActor
     func testVetPracticeAndAppointmentLifecycle() throws {
         let app = XCUIApplication.withPlus()
@@ -151,16 +143,12 @@ final class SmokeTests: XCTestCase {
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
         // Termine erzeugen Mitteilungen — im Test nicht.
-        app.tab("Profil").tap()
-        app.buttons["Einstellungen"].tap()
+        app.openReminderSettings()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
-        app.buttons["Fertig"].tap()
+        app.closeReminderSettings()
 
-        app.tab("Gesundheit").tap()
-        let vetSegment = app.segmentedControls.buttons["Tierarzt"]
-        XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
-        vetSegment.tap()
+        app.tab("Tierarzt").tap()
 
         // Praxis anlegen.
         openVetAddMenu(in: app, choosing: "Praxis")
@@ -224,11 +212,10 @@ final class SmokeTests: XCTestCase {
         XCTAssertFalse(upcoming.exists, "Erledigter Termin steht noch unter „Anstehend“")
         attachScreenshot(of: app, named: "tierarzt-verlauf")
 
-        // Notfallkarte im Profil.
-        app.tab("Profil").tap()
-        XCTAssertTrue(app.staticTexts["Notfall"].waitForExistence(timeout: 5), "Abschnitt „Notfall“ fehlt")
+        // Notfallkarte oben im Tierarzt-Tab.
+        XCTAssertTrue(scrollTo(app.staticTexts["Notfall"], in: app), "Abschnitt „Notfall“ fehlt")
         XCTAssertTrue(app.staticTexts["Chipnummer"].exists)
-        attachScreenshot(of: app, named: "profil-notfall")
+        attachScreenshot(of: app, named: "tierarzt-notfall")
     }
 
     /// Praxis direkt im Termin-Formular anlegen, Bericht teilen, Termin in
@@ -245,16 +232,12 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
-        app.tab("Profil").tap()
-        app.buttons["Einstellungen"].tap()
+        app.openReminderSettings()
         XCTAssertTrue(app.switches["Erinnerungen"].waitForExistence(timeout: 5))
         setReminders(false, in: app)
-        app.buttons["Fertig"].tap()
+        app.closeReminderSettings()
 
-        app.tab("Gesundheit").tap()
-        let vetSegment = app.segmentedControls.buttons["Tierarzt"]
-        XCTAssertTrue(vetSegment.waitForExistence(timeout: 5))
-        vetSegment.tap()
+        app.tab("Tierarzt").tap()
 
         // Neue Praxis aus dem Termin-Formular heraus.
         openVetAddMenu(in: app, choosing: "Termin")
@@ -320,11 +303,13 @@ final class SmokeTests: XCTestCase {
 
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
 
-        let cycleTab = app.tab("Zyklus")
-        // Der Tab erscheint nur für unkastrierte Hündinnen. Ist das Anlege-
-        // Formular anders vorbelegt, ist hier nichts zu prüfen.
-        guard cycleTab.waitForExistence(timeout: 5) else { return }
-        cycleTab.tap()
+        // Der Zyklus erscheint im Gesundheit-Tab nur für unkastrierte
+        // Hündinnen. Ist das Anlege-Formular anders vorbelegt, ist hier nichts
+        // zu prüfen.
+        app.tab("Gesundheit").tap()
+        let cycleLink = app.buttons["health-cycle"]
+        guard cycleLink.waitForExistence(timeout: 5) else { return }
+        cycleLink.tap()
 
         // Tag 1 anlegen — vorbelegt mit heute, also ist danach eine Läufigkeit
         // aktiv und die Risikostufe steht auf Tag 1.
@@ -374,29 +359,24 @@ final class SmokeTests: XCTestCase {
 
         createPetIfNeeded(in: app, named: "Hegel", breed: "Hauskatze")
 
-        for tab in ["Heute", "Medikamente", "Gesundheit", "Profil"] {
-            let tabButton = app.tab(tab)
-            guard tabButton.waitForExistence(timeout: 5) else { continue }
+        let entries: [(tab: String, menu: String, item: String)] = [
+            ("Heute", "add-menu", "Gewicht erfassen"),
+            ("Medikamente", "add-menu", "Neuer Plan"),
+            ("Gesundheit", "add-menu", "Symptom erfassen"),
+            ("Tierarzt", "vet-add-menu", "Praxis"),
+            ("Rudel", "add-menu", "Tier hinzufügen"),
+        ]
+        for entry in entries {
+            let tabButton = app.tab(entry.tab)
+            XCTAssertTrue(tabButton.waitForExistence(timeout: 5), "Tab \(entry.tab) fehlt")
             tabButton.tap()
-
-            // Der erste Button in der Navigationsleiste, der ein Sheet öffnet,
-            // ist überall das "+"/Erfassen-Element.
-            let addButtons = app.navigationBars.buttons.allElementsBoundByIndex
-            for button in addButtons where button.isHittable {
-                let label = button.label.lowercased()
-                guard label.contains("hinzu") || label.contains("erfassen")
-                    || label.contains("neu") || label.contains("add") || label == "+"
-                else { continue }
-
-                button.tap()
-                XCTAssertEqual(
-                    app.state, .runningForeground,
-                    "Absturz beim Öffnen eines Sheets in \(tab)"
-                )
-                attachScreenshot(of: app, named: "sheet-\(tab)")
-                dismissSheet(in: app)
-                break
-            }
+            app.chooseFromAddMenu(entry.item, menu: entry.menu)
+            XCTAssertEqual(
+                app.state, .runningForeground,
+                "Absturz beim Öffnen eines Sheets in \(entry.tab)"
+            )
+            attachScreenshot(of: app, named: "sheet-\(entry.tab)")
+            dismissSheet(in: app)
         }
     }
 
@@ -503,6 +483,25 @@ final class SmokeTests: XCTestCase {
         let entry = app.buttons[item].firstMatch
         XCTAssertTrue(entry.waitForExistence(timeout: 5), "Menüeintrag \(item) fehlt")
         entry.tap()
+    }
+
+    /// Der Simulator verschluckt unter Last gelegentlich die letzten
+    /// Anschläge von `typeText`. Der Test sucht das Präparat danach über den
+    /// vollen Namen, deshalb erst weiter, wenn er vollständig im Feld steht.
+    @MainActor
+    private func typeReliably(_ text: String, into field: XCUIElement) {
+        for _ in 0..<3 {
+            field.tap()
+            let current = field.value as? String ?? ""
+            if current == text { return }
+            if !current.isEmpty, current != field.placeholderValue {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+            }
+            field.typeText(text)
+            let complete = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", text), object: field)
+            if XCTWaiter.wait(for: [complete], timeout: 3) == .completed { return }
+        }
+        XCTFail("Eingabe unvollständig: \(field.value as? String ?? "")")
     }
 
     @MainActor

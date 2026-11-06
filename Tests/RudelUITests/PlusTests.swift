@@ -16,6 +16,63 @@ extension XCUIApplication {
             ? buttons[name].firstMatch
             : tabBars.buttons[name]
     }
+
+    /// Das „+“ oben rechts ist überall ein Menü mit beschrifteten Einträgen.
+    func chooseFromAddMenu(_ item: String, menu: String = "add-menu") {
+        let button = buttons[menu].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 5), "Plus-Menü fehlt")
+        button.tap()
+        let entry = buttons[item].firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 5), "Menüeintrag \(item) fehlt")
+        entry.tap()
+    }
+
+    /// Wechselt das Tier über das Tierbild oben links.
+    ///
+    /// Menüeinträge tragen je nach iOS-Version und Schriftgröße das eigene
+    /// Label oder nur den Titel; bei sehr großer Schrift öffnet das Menü auf
+    /// dem iPad gelegentlich erst beim zweiten Tipp.
+    func selectPet(_ name: String) {
+        let switcher = buttons["pet-switcher"].firstMatch
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5), "Tier-Wechsler fehlt")
+        let entry = buttons.matching(NSPredicate(
+            format: "identifier != %@ AND (label == %@ OR label CONTAINS %@)",
+            "pet-switcher", "Tier wechseln: \(name)", name
+        )).firstMatch
+        for _ in 0..<3 {
+            switcher.tap()
+            if entry.waitForExistence(timeout: 5) {
+                entry.tap()
+                return
+            }
+            // Kein Eintrag sichtbar: Der Tipp hat das Menü vielleicht nicht
+            // geöffnet. Noch einmal tippen und sofort nachsehen, damit der
+            // nächste Durchlauf ein jetzt offenes Menü nicht wieder schließt.
+            guard switcher.isHittable else { continue }
+            switcher.tap()
+            if entry.waitForExistence(timeout: 5) {
+                entry.tap()
+                return
+            }
+        }
+        XCTFail("Tier \(name) fehlt im Wechsler: \(debugDescription)")
+    }
+
+    /// Öffnet Rudel › Erinnerungen & Alarme.
+    func openReminderSettings() {
+        tab("Rudel").tap()
+        let link = buttons["settings-reminders"].firstMatch
+        XCTAssertTrue(link.waitForExistence(timeout: 5), "Einstieg in die Erinnerungen fehlt")
+        for _ in 0..<6 where !link.isHittable { swipeUp() }
+        link.tap()
+    }
+
+    /// Zurück aus den Erinnerungen in die Rudel-Übersicht.
+    func closeReminderSettings() {
+        let back = navigationBars["Erinnerungen"].buttons.firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5))
+        back.tap()
+    }
 }
 
 /// Ohne Plus führt ein zweites Tier zum Angebot, nicht ins Formular.
@@ -42,9 +99,9 @@ final class PlusTests: XCTestCase {
             app.buttons["Speichern"].tap()
         }
 
-        let profile = app.tab("Profil")
-        XCTAssertTrue(profile.waitForExistence(timeout: 10))
-        profile.tap()
+        let rudel = app.tab("Rudel")
+        XCTAssertTrue(rudel.waitForExistence(timeout: 10))
+        rudel.tap()
         let add = app.buttons["Weiteres Tier anlegen"]
         for _ in 0..<8 where !add.isHittable { app.swipeUp() }
         add.tap()

@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Wurzel der App: Tab-Navigation plus zentrale Sheet-Präsentation.
 ///
-/// Der Tier-Umschalter sitzt in jedem Tab im Kopfbereich (PRD §5.1), nicht
-/// hier — so bleibt er dort sichtbar, wo gerade gearbeitet wird.
+/// Der Tier-Umschalter sitzt in jedem tierbezogenen Tab oben links (PRD §5.1),
+/// nicht hier — so bleibt er dort sichtbar, wo gerade gearbeitet wird.
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
@@ -168,6 +168,8 @@ struct RootView: View {
         await notificationService.reschedule(context: modelContext, settings: settings)
     }
 
+    /// Auf dem iPhone die Tab-Leiste, auf dem iPad eine Seitenleiste, die sich
+    /// einklappen lässt.
     private var tabs: some View {
         TabView(selection: tabBinding) {
             Tab("Heute", systemImage: "calendar.badge.clock", value: AppState.Tab.today) {
@@ -176,18 +178,17 @@ struct RootView: View {
             Tab("Medikamente", systemImage: "pills", value: AppState.Tab.medication) {
                 MedicationListView()
             }
-            if showsCycleTab {
-                Tab("Zyklus", systemImage: "circle.hexagonpath", value: AppState.Tab.cycle) {
-                    CycleOverviewView()
-                }
-            }
             Tab("Gesundheit", systemImage: "heart.text.square", value: AppState.Tab.health) {
                 HealthView()
             }
-            Tab("Profil", systemImage: "pawprint", value: AppState.Tab.profile) {
-                PetProfileView()
+            Tab("Tierarzt", systemImage: "stethoscope", value: AppState.Tab.vet) {
+                VetTabView()
+            }
+            Tab("Rudel", systemImage: "pawprint", value: AppState.Tab.rudel) {
+                RudelHomeView()
             }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .toolbarBackground(RudelTheme.canvas, for: .tabBar)
     }
 
@@ -207,13 +208,6 @@ struct RootView: View {
         )
     }
 
-    /// Der Zyklus-Tab erscheint nur, wenn mindestens ein Tier ihn braucht —
-    /// eine unkastrierte Hündin. Für Kater/Katze und kastrierte Tiere wäre er
-    /// leerer Ballast.
-    private var showsCycleTab: Bool {
-        pets.contains { $0.tracksCycle }
-    }
-
     /// Hält die Auswahl gültig: gelöschtes Tier ⇒ auf das erste zurückfallen.
     /// Ohne das zeigt die App nach einem Löschen leere Screens.
     private func syncSelection() {
@@ -221,9 +215,6 @@ struct RootView: View {
             return
         }
         appState.selectedPetID = pets.first?.id
-        if appState.selectedTab == .cycle, !showsCycleTab {
-            appState.selectedTab = .today
-        }
     }
 }
 

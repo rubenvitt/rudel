@@ -81,12 +81,35 @@ private struct DashboardContent: View {
         .sensoryFeedback(.success, trigger: logTick)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    appState.present(.quickLogMedication(petID: pet.id))
-                } label: {
-                    Image(systemName: "plus.circle")
+                RudelAddMenu {
+                    Button {
+                        appState.present(.quickLogMedication(petID: pet.id))
+                    } label: {
+                        Label("Gabe erfassen", systemImage: "pills")
+                    }
+                    Button {
+                        appState.present(.logWeight(petID: pet.id))
+                    } label: {
+                        Label("Gewicht erfassen", systemImage: "scalemass")
+                    }
+                    Button {
+                        appState.present(.logSymptom(petID: pet.id))
+                    } label: {
+                        Label("Symptom erfassen", systemImage: "stethoscope")
+                    }
+                    if pet.tracksCycle {
+                        Button {
+                            appState.present(.logCycleObservation(petID: pet.id))
+                        } label: {
+                            Label("Zyklus-Beobachtung", systemImage: "drop")
+                        }
+                    }
+                    Button {
+                        appState.present(.editAppointment(appointmentID: nil, petID: pet.id))
+                    } label: {
+                        Label("Tierarzttermin", systemImage: "calendar.badge.plus")
+                    }
                 }
-                .accessibilityLabel("Gabe erfassen")
             }
         }
     }
@@ -195,7 +218,8 @@ private struct DashboardContent: View {
                         forecastConfidence: item.isForecast ? data.prediction?.confidence : nil,
                         onLog: primaryAction(for: item),
                         logActionTitle: primaryActionTitle(for: item),
-                        actionSymbol: primaryActionSymbol(for: item)
+                        actionSymbol: primaryActionSymbol(for: item),
+                        moreActions: moreActions(for: item)
                     )
                     // Nur Termine öffnen per Tap; Gaben haben ihren eigenen Knopf.
                     .contentShape(.rect)
@@ -526,6 +550,31 @@ private struct DashboardContent: View {
         return { logGiven(item) }
     }
 
+    /// Was sonst nur per Wischen erreichbar wäre, steht zusätzlich im
+    /// „⋯“-Menü der Zeile.
+    private func moreActions(for item: DueItem) -> [RowAction] {
+        var actions: [RowAction] = []
+        switch item.category {
+        case .cycleForecast:
+            actions.append(RowAction(title: "Tag 1 erfassen", symbol: "drop") {
+                appState.present(.startCyclePeriod(petID: pet.id))
+            })
+        case .vetAppointment, .restock:
+            break
+        case .medication, .protectionExpiry, .dose, .criticalDays:
+            actions.append(RowAction(title: "Mit anderem Datum erfassen", symbol: "calendar") {
+                appState.present(.quickLogMedication(petID: pet.id, planID: plan(for: item)?.id))
+            })
+        }
+        if isPreventive(item), let plan = plan(for: item) {
+            actions.append(RowAction(title: "Auslassen", symbol: "forward") { skip(plan) })
+            actions.append(RowAction(title: "Zurückstellen", symbol: "moon.zzz") {
+                appState.present(.deferMedication(planID: plan.id))
+            })
+        }
+        return actions
+    }
+
     private func openAppointment(_ item: DueItem) {
         guard let appointment = appointment(for: item) else { return }
         appState.present(.editAppointment(
@@ -829,6 +878,7 @@ private struct DueItemRow: View {
     let onLog: (() -> Void)?
     let logActionTitle: String
     var actionSymbol = "checkmark.circle.fill"
+    var moreActions: [RowAction] = []
 
     @ScaledMetric private var iconWidth: CGFloat = 24
 
@@ -866,6 +916,16 @@ private struct DueItemRow: View {
                 }
 
                 Spacer(minLength: 0)
+
+                if !moreActions.isEmpty {
+                    RudelRowMenu(title: title) {
+                        ForEach(moreActions) { action in
+                            Button(action: action.run) {
+                                Label(action.title, systemImage: action.symbol)
+                            }
+                        }
+                    }
+                }
 
                 if let onLog {
                     Button(action: onLog) {

@@ -32,7 +32,7 @@ final class MedicationStockSmokeTests: XCTestCase {
 
         // Impfung „Leptospirose“ anlegen: eine Art „Impfung", darunter die Auswahl.
         app.tab("Medikamente").tap()
-        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.chooseFromAddMenu("Neuer Plan")
         app.buttons["Art"].tap()
         app.buttons["Impfung"].firstMatch.tap()
         let vaccinePicker = app.buttons["medication-vaccine"]
@@ -51,7 +51,7 @@ final class MedicationStockSmokeTests: XCTestCase {
         attachScreenshot(of: app, named: "impfpass")
 
         // Dauermedikament mit Vorrat: drei Tabletten, Packung zu 30.
-        app.buttons["Plan anlegen"].firstMatch.tap()
+        app.chooseFromAddMenu("Neuer Plan")
         app.buttons["Art"].tap()
         app.buttons["Laufendes Medikament"].firstMatch.tap()
         type(stockProduct, into: app.textFields["medication-product-name"], in: app)
