@@ -72,11 +72,16 @@ final class DesignTests: XCTestCase {
     func testAccessibilityText() {
         let app = launch()
         ensureTwoPets(in: app)
+        // Erst neu starten, wenn die App wirklich beendet ist. Ein sofortiger
+        // Neustart lief im iPad-Simulator wiederholt in „Timed out while
+        // requesting launch progress“.
         app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 15))
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
         ]
         app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         XCTAssertTrue(app.buttons["Heute"].firstMatch.waitForExistence(timeout: 10))
         selectTab("Heute", in: app)
         app.selectPet(longName)
@@ -131,8 +136,10 @@ final class DesignTests: XCTestCase {
 
     @MainActor
     private func fillPet(in app: XCUIApplication, name: String, breed: String) {
+        // Der iPad-Simulator in CI braucht für das Formular-Sheet teils deutlich
+        // länger als 5 s (Start dort bis zu 65 s).
         let nameField = app.textFields["Name"]
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        XCTAssertTrue(nameField.waitForExistence(timeout: 20))
         nameField.tap()
         nameField.typeText(name)
         let breedField = app.textFields["Rasse"]
