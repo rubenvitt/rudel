@@ -72,11 +72,16 @@ final class DesignTests: XCTestCase {
     func testAccessibilityText() {
         let app = launch()
         ensureTwoPets(in: app)
+        // Erst neu starten, wenn die App wirklich beendet ist. Ein sofortiger
+        // Neustart lief im iPad-Simulator wiederholt in „Timed out while
+        // requesting launch progress“.
         app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 15))
         app.launchArguments += [
             "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
         ]
         app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         XCTAssertTrue(app.buttons["Heute"].firstMatch.waitForExistence(timeout: 10))
         selectTab("Heute", in: app)
         app.selectPet(longName)
