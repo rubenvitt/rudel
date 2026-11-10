@@ -1,0 +1,4 @@
+- Klarere Hinweise, wenn ein Medikamentenalarm nicht gestellt werden kann: Rudel erklärt jetzt verständlich, was passiert ist, und erinnert dich stattdessen mit einer Mitteilung.
+- Ist das Alarm-Kontingent von iOS voll, laufen die übrigen Gaben automatisch als Mitteilung weiter.
+- Alte, nicht mehr zugeordnete Alarme werden aufgeräumt.
+- Kleinere Verbesserungen und Fehlerbehebungen.
