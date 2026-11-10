@@ -1,0 +1,4 @@
+- Clearer messages when a medication alarm can't be set: Rudel now explains what happened and reminds you with a notification instead.
+- When iOS has no room for more alarms, the remaining doses automatically fall back to notifications.
+- Old alarms that no longer belong to a dose are cleaned up.
+- Minor improvements and bug fixes.
