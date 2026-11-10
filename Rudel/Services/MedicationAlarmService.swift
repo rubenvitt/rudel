@@ -164,8 +164,6 @@ final class MedicationAlarmService {
             var failed: [MedicationReminder] = []
             var limitReached = false
             for reminder in desired {
-                // Nach erreichtem Limit scheitert jeder weitere Versuch genauso.
-                if limitReached { break }
                 let matches = records.filter { $0.reminder.id == reminder.id }
                 // Der neueste Wiederholungsalarm gewinnt auch nach einem
                 // Prozessende zwischen Installation und Entfernen der alten ID.
@@ -182,6 +180,9 @@ final class MedicationAlarmService {
                     continue
                 }
 
+                // Nach erreichtem Limit scheitert jeder neue Versuch genauso.
+                // Bereits gesetzte Alarme späterer Gaben zählen oben trotzdem.
+                if limitReached { continue }
                 let fireDate: Date
                 if let old {
                     fireDate = old.fireDate > asOf ? old.fireDate : asOf.addingTimeInterval(Double(configuration.snoozeMinutes * 60))

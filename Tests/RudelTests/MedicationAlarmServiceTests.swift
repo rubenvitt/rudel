@@ -103,6 +103,22 @@ struct MedicationAlarmServiceTests {
         #expect(!issue.contains("AlarmKit"))
     }
 
+    @Test("Nach dem Limit zählen bereits gesetzte Alarme späterer Gaben weiter")
+    func limitKeepsLaterInstalledAlarms() async throws {
+        let system = TestAlarmSystem()
+        let registry = TestAlarmRegistry()
+        let service = MedicationAlarmService(system: system, registry: registry)
+        let later = MedicationReminder(id: "dose:later:9", sourceID: "later", petID: "pet", petName: "Zola",
+                                       title: "Gelenktabletten", detail: nil, category: .dose,
+                                       dueAt: now.addingTimeInterval(9 * 3600))
+        _ = await service.reconcile(reminders: [later], configuration: configuration, asOf: now)
+        system.limit = 1
+        let handled = await service.reconcile(reminders: [reminder(), later], configuration: configuration, asOf: now)
+        #expect(handled == [later.id])
+        #expect(service.scheduledCount == 1)
+        #expect(service.issue?.contains("eine Gabe") == true)
+    }
+
     @Test("Alarme ohne Registrierung werden entfernt und geben das Kontingent frei")
     func orphanAlarmsAreCancelled() async throws {
         let system = TestAlarmSystem()
