@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 import RudelEngine
 
 @MainActor
@@ -7,6 +8,7 @@ import RudelEngine
 final class MedicationAlarmService {
     static let shared = MedicationAlarmService(system: NativeMedicationAlarmSystem(), registry: FileMedicationAlarmRegistry())
     static let capacity = 32
+    private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "alarms")
     private let system: any MedicationAlarmSystem
     private let registry: any MedicationAlarmRegistry
     @ObservationIgnored private var tail: Task<Void, Never>?
@@ -30,8 +32,29 @@ final class MedicationAlarmService {
         try registry.load().first { $0.id == id }
     }
 
+    /// Technische Details gehören ins Log, nicht in die Oberfläche.
     func reportFailure(_ error: Error) {
-        issue = "Medikamentenalarme konnten nicht aktualisiert werden: \(error.localizedDescription)"
+        Self.log.error("alarms: update failed: \(String(describing: error), privacy: .private)")
+        issue = Self.updateFailedMessage
+    }
+
+    static let updateFailedMessage = "Medikamentenalarme ließen sich gerade nicht aktualisieren. Rudel versucht es beim nächsten Öffnen erneut."
+
+    /// Nutzerseitige Meldung, wenn Alarme nicht gesetzt werden konnten. Für
+    /// diese Gaben plant `NotificationService` normale Mitteilungen.
+    static func scheduleFailureMessage(failed: [MedicationReminder], limitReached: Bool, notScheduled: Int) -> String? {
+        if limitReached {
+            let count = notScheduled == 1 ? "eine Gabe" : "\(notScheduled) Gaben"
+            return "iOS lässt gerade keine weiteren Alarme zu. Für \(count) erinnert Rudel stattdessen mit einer Mitteilung."
+        }
+        switch failed.count {
+        case 0: return nil
+        case 1:
+            let reminder = failed[0]
+            return "Für \(reminder.petName) · \(reminder.title) ließ sich kein Alarm stellen. Rudel erinnert stattdessen mit einer Mitteilung."
+        default:
+            return "Für \(failed.count) Gaben ließen sich keine Alarme stellen. Rudel erinnert stattdessen mit Mitteilungen."
+        }
     }
 
     func rearmAfterStop(id: UUID, validReminders: [MedicationReminder], configuration: MedicationAlarmConfiguration, asOf: Date) async {
@@ -113,6 +136,19 @@ final class MedicationAlarmService {
             }
             records.removeAll { !desiredIDs.contains($0.reminder.id) }
             try registry.save(records)
+            // Alarme ohne Registrierung lassen sich keiner Gabe mehr zuordnen,
+            // belegen aber das Alarmkontingent von iOS. Ein gerade klingelnder
+            // Alarm bleibt stehen.
+            let known = Set(records.map(\.id))
+            // Ein hängender Altalarm darf die Planung der übrigen nicht stoppen.
+            for (id, phase) in current where !known.contains(id) && phase != .alerting {
+                do {
+                    try system.cancel(id: id)
+                    current.removeValue(forKey: id)
+                } catch {
+                    Self.log.error("alarms: orphan cancel failed: \(String(describing: error), privacy: .public)")
+                }
+            }
 
             if authorization == .notDetermined, !desired.isEmpty {
                 authorization = try await system.requestAuthorization()
@@ -125,7 +161,8 @@ final class MedicationAlarmService {
                 return []
             }
 
-            var failures: [String] = []
+            var failed: [MedicationReminder] = []
+            var limitReached = false
             for reminder in desired {
                 let matches = records.filter { $0.reminder.id == reminder.id }
                 // Der neueste Wiederholungsalarm gewinnt auch nach einem
@@ -143,6 +180,9 @@ final class MedicationAlarmService {
                     continue
                 }
 
+                // Nach erreichtem Limit scheitert jeder neue Versuch genauso.
+                // Bereits gesetzte Alarme späterer Gaben zählen oben trotzdem.
+                if limitReached { continue }
                 let fireDate: Date
                 if let old {
                     fireDate = old.fireDate > asOf ? old.fireDate : asOf.addingTimeInterval(Double(configuration.snoozeMinutes * 60))
@@ -174,15 +214,22 @@ final class MedicationAlarmService {
                     records.removeAll {
                         $0.reminder.id == reminder.id && $0.id != new.id && current[$0.id] == nil
                     }
-                    failures.append("\(reminder.petName) · \(reminder.title): \(error.localizedDescription)")
+                    Self.log.error("alarms: schedule failed: \(String(describing: error), privacy: .public)")
+                    if error as? MedicationAlarmSystemError == .limitReached { limitReached = true }
+                    else { failed.append(reminder) }
                 }
             }
             try registry.save(records)
             scheduledCount = handled.count
-            if reminders.count > desired.count {
-                failures.append("Für \(reminders.count - desired.count) weitere Termine sind vorerst nur Mitteilungen vorgesehen.")
+            var messages: [String] = []
+            if let message = Self.scheduleFailureMessage(failed: failed, limitReached: limitReached,
+                                                         notScheduled: desired.count - handled.count) {
+                messages.append(message)
             }
-            if !failures.isEmpty { issue = failures.joined(separator: "\n") }
+            if reminders.count > desired.count {
+                messages.append("Für \(reminders.count - desired.count) weitere Termine sind vorerst nur Mitteilungen vorgesehen.")
+            }
+            if !messages.isEmpty { issue = messages.joined(separator: "\n") }
         } catch {
             scheduledCount = handled.count
             reportFailure(error)

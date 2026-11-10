@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import RudelEngine
 import SwiftData
 import UserNotifications
@@ -22,6 +23,8 @@ import UserNotifications
 final class NotificationService {
     private static var schedulingTail: Task<Void, Never>?
     private static var schedulingToken = UUID()
+    private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "notifications")
+    static let saveFailedMessage = "Die Daten ließen sich gerade nicht speichern."
 
     /// Tagesarithmetik in der Zeitzone des Geräts. Wird für das Planungsfenster
     /// gebraucht und an die Engine weitergegeben, damit „heute" dasselbe
@@ -138,7 +141,8 @@ final class NotificationService {
                 try await center.add(request)
                 result.scheduled += 1
             } catch {
-                result.failures.append(ScheduleFailure(id: item.id, title: item.title, reason: error.localizedDescription))
+                Self.log.error("notifications: add failed: \(String(describing: error), privacy: .public)")
+                result.failures.append(ScheduleFailure(id: item.id, title: item.title, reason: "iOS hat diese Mitteilung nicht angenommen."))
             }
         }
         return result
@@ -250,6 +254,10 @@ final class NotificationService {
         settings: AppSettings,
         asOf: Date = Date()
     ) async -> RescheduleOutcome {
+        #if DEBUG
+        // App-Store-Screenshots: keine Berechtigungsfrage, keine Alarme.
+        if DemoData.isActive { return .disabled }
+        #endif
         // Alle Aufrufer teilen dieselbe Warteschlange. Zwei View-Tasks dürfen
         // sich nicht gegenseitig Requests entfernen oder Schlummern zurücksetzen.
         let previous = Self.schedulingTail
@@ -274,7 +282,10 @@ final class NotificationService {
             center.removeAllDeliveredNotifications()
             _ = await alarmService.reconcile(reminders: [], configuration: settings.medicationAlarmConfiguration, asOf: asOf)
             settings.lastNotificationSyncAt = asOf
-            do { try context.save() } catch { return .failed(error.localizedDescription) }
+            do { try context.save() } catch {
+                Self.log.error("notifications: save failed: \(String(describing: error), privacy: .private)")
+                return .failed(Self.saveFailedMessage)
+            }
             if let issue = alarmService.issue { return .failed(issue) }
             return .disabled
         }
@@ -288,7 +299,7 @@ final class NotificationService {
             (reminders, registryAvailable) = try medicationSchedulingInput(context: context, settings: settings, retaining: notificationReminders, asOf: asOf)
         } catch {
             alarmService.reportFailure(error)
-            return .failed(error.localizedDescription)
+            return .failed(Self.saveFailedMessage)
         }
         await removeCompletedMedicationNotifications(open: reminders)
         var handled = Set<String>()

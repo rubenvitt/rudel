@@ -61,7 +61,17 @@ struct NativeMedicationAlarmSystem: MedicationAlarmSystem {
             schedule: .fixed(registration.fireDate), attributes: attributes,
             stopIntent: StopMedicationAlarmIntent(alarmID: registration.id.uuidString)
         )
-        _ = try await AlarmManager.shared.schedule(id: registration.id, configuration: configuration)
+        do {
+            _ = try await AlarmManager.shared.schedule(id: registration.id, configuration: configuration)
+        } catch {
+            // `AlarmManager.AlarmError.maximumLimitReached` kommt als
+            // „com.apple.AlarmKit.Alarm“ mit Code 0 an.
+            let nsError = error as NSError
+            if nsError.domain == "com.apple.AlarmKit.Alarm", nsError.code == 0 {
+                throw MedicationAlarmSystemError.limitReached
+            }
+            throw error
+        }
     }
 
     func cancel(id: UUID) throws { try AlarmManager.shared.cancel(id: id) }

@@ -70,6 +70,81 @@ struct MedicationAlarmServiceTests {
         #expect(service.scheduledCount == 0)
     }
 
+    @Test("Ein abgelehnter Alarm zeigt keinen technischen iOS-Fehlertext")
+    func rejectedAlarmShowsReadableMessage() async throws {
+        let system = TestAlarmSystem()
+        system.rejectSchedules = true
+        let service = MedicationAlarmService(system: system, registry: TestAlarmRegistry())
+        _ = await service.reconcile(reminders: [reminder()], configuration: configuration, asOf: now)
+        let issue = try #require(service.issue)
+        #expect(issue.contains("Zola · Präparat"))
+        #expect(issue.contains("Mitteilung"))
+        #expect(!issue.contains("error"))
+        #expect(!issue.contains("NSCocoaErrorDomain"))
+    }
+
+    @Test("Volles Alarmkontingent: weitere Gaben laufen als Mitteilung, ohne Rohtext")
+    func limitReachedFallsBackToNotifications() async throws {
+        let system = TestAlarmSystem()
+        system.limit = 1
+        let service = MedicationAlarmService(system: system, registry: TestAlarmRegistry())
+        let second = MedicationReminder(id: "dose:other:8", sourceID: "other", petID: "pet", petName: "Zola",
+                                        title: "Gelenktabletten", detail: nil, category: .dose,
+                                        dueAt: now.addingTimeInterval(9 * 3600))
+        let third = MedicationReminder(id: "dose:third:8", sourceID: "third", petID: "pet", petName: "Zola",
+                                       title: "Augentropfen", detail: nil, category: .dose,
+                                       dueAt: now.addingTimeInterval(10 * 3600))
+        let handled = await service.reconcile(reminders: [reminder(), second, third], configuration: configuration, asOf: now)
+        #expect(handled == [reminder().id])
+        // Nach dem ersten Limit-Fehler wird nicht weiter angefragt.
+        #expect(system.scheduleAttempts == 2)
+        let issue = try #require(service.issue)
+        #expect(issue.contains("2 Gaben"))
+        #expect(!issue.contains("AlarmKit"))
+    }
+
+    @Test("Nach dem Limit zählen bereits gesetzte Alarme späterer Gaben weiter")
+    func limitKeepsLaterInstalledAlarms() async throws {
+        let system = TestAlarmSystem()
+        let registry = TestAlarmRegistry()
+        let service = MedicationAlarmService(system: system, registry: registry)
+        let later = MedicationReminder(id: "dose:later:9", sourceID: "later", petID: "pet", petName: "Zola",
+                                       title: "Gelenktabletten", detail: nil, category: .dose,
+                                       dueAt: now.addingTimeInterval(9 * 3600))
+        _ = await service.reconcile(reminders: [later], configuration: configuration, asOf: now)
+        system.limit = 1
+        let handled = await service.reconcile(reminders: [reminder(), later], configuration: configuration, asOf: now)
+        #expect(handled == [later.id])
+        #expect(service.scheduledCount == 1)
+        #expect(service.issue?.contains("eine Gabe") == true)
+    }
+
+    @Test("Alarme ohne Registrierung werden entfernt und geben das Kontingent frei")
+    func orphanAlarmsAreCancelled() async throws {
+        let system = TestAlarmSystem()
+        let orphan = UUID()
+        let ringing = UUID()
+        system.alarms[orphan] = .scheduled
+        system.alarms[ringing] = .alerting
+        let service = MedicationAlarmService(system: system, registry: TestAlarmRegistry())
+        let handled = await service.reconcile(reminders: [reminder()], configuration: configuration, asOf: now)
+        #expect(handled == [reminder().id])
+        #expect(system.cancelled.contains(orphan))
+        #expect(!system.cancelled.contains(ringing))
+    }
+
+    @Test("Ein hängender Altalarm blockiert die Planung nicht")
+    func failingOrphanCancelDoesNotBlockScheduling() async {
+        let system = TestAlarmSystem()
+        let stuck = UUID()
+        system.alarms[stuck] = .scheduled
+        system.rejectCancels = [stuck]
+        let service = MedicationAlarmService(system: system, registry: TestAlarmRegistry())
+        let handled = await service.reconcile(reminders: [reminder()], configuration: configuration, asOf: now)
+        #expect(handled == [reminder().id])
+        #expect(service.issue == nil)
+    }
+
     @Test("Ohne persistierte Zuordnung wird kein Alarm installiert")
     func registryFailurePreventsOrphanAlarm() async {
         let system = TestAlarmSystem()
@@ -143,15 +218,22 @@ final class TestAlarmSystem: MedicationAlarmSystem {
     var scheduled: [MedicationAlarmRegistration] = []
     var cancelled: [UUID] = []
     var rejectSchedules = false
+    /// Simuliert das Alarmkontingent von iOS.
+    var limit: Int?
+    var scheduleAttempts = 0
+    var rejectCancels: Set<UUID> = []
     func requestAuthorization() async throws -> MedicationAlarmAuthorization { authorization }
     func currentAlarms() throws -> [UUID: MedicationAlarmPhase] { alarms }
     func schedule(_ registration: MedicationAlarmRegistration) async throws {
         await Task.yield()
+        scheduleAttempts += 1
         if rejectSchedules { throw CocoaError(.featureUnsupported) }
+        if let limit, alarms.count >= limit { throw MedicationAlarmSystemError.limitReached }
         scheduled.append(registration)
         alarms[registration.id] = .scheduled
     }
     func cancel(id: UUID) throws {
+        if rejectCancels.contains(id) { throw CocoaError(.featureUnsupported) }
         cancelled.append(id)
         alarms.removeValue(forKey: id)
     }

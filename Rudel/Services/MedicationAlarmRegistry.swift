@@ -52,6 +52,14 @@ struct FileMedicationAlarmRegistry: MedicationAlarmRegistry {
     }
 }
 
+/// Fehler, die das Alarmsystem in eine fachliche Bedeutung übersetzt.
+/// Rohtexte von iOS („com.apple.AlarmKit.Alarm error 0“) erreichen die
+/// Oberfläche nie.
+enum MedicationAlarmSystemError: Error, Equatable {
+    /// iOS nimmt für Rudel gerade keine weiteren Alarme an.
+    case limitReached
+}
+
 @MainActor
 protocol MedicationAlarmSystem {
     var authorization: MedicationAlarmAuthorization { get }
