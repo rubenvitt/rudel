@@ -117,6 +117,18 @@ struct MedicationAlarmServiceTests {
         #expect(!system.cancelled.contains(ringing))
     }
 
+    @Test("Ein hängender Altalarm blockiert die Planung nicht")
+    func failingOrphanCancelDoesNotBlockScheduling() async {
+        let system = TestAlarmSystem()
+        let stuck = UUID()
+        system.alarms[stuck] = .scheduled
+        system.rejectCancels = [stuck]
+        let service = MedicationAlarmService(system: system, registry: TestAlarmRegistry())
+        let handled = await service.reconcile(reminders: [reminder()], configuration: configuration, asOf: now)
+        #expect(handled == [reminder().id])
+        #expect(service.issue == nil)
+    }
+
     @Test("Ohne persistierte Zuordnung wird kein Alarm installiert")
     func registryFailurePreventsOrphanAlarm() async {
         let system = TestAlarmSystem()
@@ -193,6 +205,7 @@ final class TestAlarmSystem: MedicationAlarmSystem {
     /// Simuliert das Alarmkontingent von iOS.
     var limit: Int?
     var scheduleAttempts = 0
+    var rejectCancels: Set<UUID> = []
     func requestAuthorization() async throws -> MedicationAlarmAuthorization { authorization }
     func currentAlarms() throws -> [UUID: MedicationAlarmPhase] { alarms }
     func schedule(_ registration: MedicationAlarmRegistration) async throws {
@@ -204,6 +217,7 @@ final class TestAlarmSystem: MedicationAlarmSystem {
         alarms[registration.id] = .scheduled
     }
     func cancel(id: UUID) throws {
+        if rejectCancels.contains(id) { throw CocoaError(.featureUnsupported) }
         cancelled.append(id)
         alarms.removeValue(forKey: id)
     }

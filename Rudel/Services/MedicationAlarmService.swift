@@ -140,9 +140,14 @@ final class MedicationAlarmService {
             // belegen aber das Alarmkontingent von iOS. Ein gerade klingelnder
             // Alarm bleibt stehen.
             let known = Set(records.map(\.id))
+            // Ein hängender Altalarm darf die Planung der übrigen nicht stoppen.
             for (id, phase) in current where !known.contains(id) && phase != .alerting {
-                try system.cancel(id: id)
-                current.removeValue(forKey: id)
+                do {
+                    try system.cancel(id: id)
+                    current.removeValue(forKey: id)
+                } catch {
+                    Self.log.error("alarms: orphan cancel failed: \(String(describing: error), privacy: .public)")
+                }
             }
 
             if authorization == .notDetermined, !desired.isEmpty {

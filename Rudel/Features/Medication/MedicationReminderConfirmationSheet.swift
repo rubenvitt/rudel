@@ -1,8 +1,10 @@
+import OSLog
 import RudelEngine
 import SwiftData
 import SwiftUI
 
 struct MedicationReminderConfirmationSheet: View {
+    private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "medication")
     let reminderID: String
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -58,7 +60,10 @@ struct MedicationReminderConfirmationSheet: View {
                     let (open, _) = try notifications.medicationSchedulingInput(context: context, settings: settings, retaining: retained, asOf: Date())
                     reminder = open.first { $0.id == reminderID }
                 }
-                catch { errorMessage = "Die Erinnerung ließ sich nicht laden. Öffne sie in Rudel noch einmal." }
+                catch {
+                    Self.log.error("reminder: load failed: \(String(describing: error), privacy: .public)")
+                    errorMessage = "Die Erinnerung ließ sich nicht laden. Öffne sie in Rudel noch einmal."
+                }
             }
         }
     }
@@ -85,6 +90,12 @@ struct MedicationReminderConfirmationSheet: View {
             _ = try write(MedicationReminderData(), settings)
             await NotificationService().reschedule(context: context, settings: settings)
             dismiss()
-        } catch { errorMessage = "Das ließ sich nicht speichern. Versuch es noch einmal." }
+        } catch let error as MedicationReminderData.ConfirmationError {
+            // Eigener, fachlicher Text: erneut versuchen hilft hier nicht.
+            errorMessage = error.localizedDescription
+        } catch {
+            Self.log.error("reminder: record failed: \(String(describing: error), privacy: .public)")
+            errorMessage = "Das ließ sich nicht speichern. Versuch es noch einmal."
+        }
     }
 }
