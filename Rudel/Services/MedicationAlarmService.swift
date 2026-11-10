@@ -34,7 +34,7 @@ final class MedicationAlarmService {
 
     /// Technische Details gehören ins Log, nicht in die Oberfläche.
     func reportFailure(_ error: Error) {
-        Self.log.error("alarms: update failed: \(String(describing: error), privacy: .public)")
+        Self.log.error("alarms: update failed: \(String(describing: error), privacy: .private)")
         issue = Self.updateFailedMessage
     }
 

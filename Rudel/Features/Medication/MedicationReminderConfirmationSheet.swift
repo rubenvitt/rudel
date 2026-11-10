@@ -61,7 +61,7 @@ struct MedicationReminderConfirmationSheet: View {
                     reminder = open.first { $0.id == reminderID }
                 }
                 catch {
-                    Self.log.error("reminder: load failed: \(String(describing: error), privacy: .public)")
+                    Self.log.error("reminder: load failed: \(String(describing: error), privacy: .private)")
                     errorMessage = "Die Erinnerung ließ sich nicht laden. Öffne sie in Rudel noch einmal."
                 }
             }
@@ -94,7 +94,7 @@ struct MedicationReminderConfirmationSheet: View {
             // Eigener, fachlicher Text: erneut versuchen hilft hier nicht.
             errorMessage = error.localizedDescription
         } catch {
-            Self.log.error("reminder: record failed: \(String(describing: error), privacy: .public)")
+            Self.log.error("reminder: record failed: \(String(describing: error), privacy: .private)")
             errorMessage = "Das ließ sich nicht speichern. Versuch es noch einmal."
         }
     }

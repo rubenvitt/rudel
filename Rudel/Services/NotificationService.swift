@@ -283,7 +283,7 @@ final class NotificationService {
             _ = await alarmService.reconcile(reminders: [], configuration: settings.medicationAlarmConfiguration, asOf: asOf)
             settings.lastNotificationSyncAt = asOf
             do { try context.save() } catch {
-                Self.log.error("notifications: save failed: \(String(describing: error), privacy: .public)")
+                Self.log.error("notifications: save failed: \(String(describing: error), privacy: .private)")
                 return .failed(Self.saveFailedMessage)
             }
             if let issue = alarmService.issue { return .failed(issue) }

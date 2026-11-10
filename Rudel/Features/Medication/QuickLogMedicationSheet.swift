@@ -175,7 +175,7 @@ struct QuickLogMedicationSheet: View {
     private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "medication")
 
     private func reportSaveFailure(_ error: Error) {
-        Self.log.error("quick log: save failed: \(String(describing: error), privacy: .public)")
+        Self.log.error("quick log: save failed: \(String(describing: error), privacy: .private)")
         errorMessage = "Die Gabe ließ sich nicht speichern. Versuch es noch einmal."
     }
 
