@@ -7,8 +7,13 @@ import SwiftData
 /// mit `-rudelDemo` beim Start, und nur in einem leeren Store.
 @MainActor
 enum DemoData {
+    /// Screenshot-Lauf: Die App plant weder Mitteilungen noch Alarme. So
+    /// erscheinen weder Systemdialoge zur Berechtigung noch Alarmhinweise
+    /// auf den App-Store-Bildern.
+    static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-rudelDemo") }
+
     static func seedIfRequested(in context: ModelContext) {
-        guard ProcessInfo.processInfo.arguments.contains("-rudelDemo"),
+        guard isActive,
               (try? context.fetchCount(FetchDescriptor<Pet>())) == 0
         else { return }
 

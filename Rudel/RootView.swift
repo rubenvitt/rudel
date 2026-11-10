@@ -66,6 +66,7 @@ struct RootView: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(12)
                 }
                 .foregroundStyle(.orange).background(.regularMaterial)
+                .accessibilityIdentifier("alarm-issue-banner")
             }
         }
         .sheet(item: sheetBinding) { sheet in

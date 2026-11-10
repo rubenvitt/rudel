@@ -171,6 +171,8 @@ struct QuickLogMedicationSheet: View {
 
     // MARK: Speichern
 
+    private static let saveFailedMessage = "Die Gabe ließ sich nicht speichern. Versuch es noch einmal."
+
     private func save() {
         guard let plan = selectedPlan else { return }
         if plan.kindValue == .ongoing {
@@ -179,7 +181,7 @@ struct QuickLogMedicationSheet: View {
             context.insert(entry)
             entry.plan = plan
             do { try context.save(); dismiss() }
-            catch { context.delete(entry); errorMessage = error.localizedDescription }
+            catch { context.delete(entry); errorMessage = Self.saveFailedMessage }
             return
         }
         let event = MedicationEvent(
@@ -190,6 +192,6 @@ struct QuickLogMedicationSheet: View {
         context.insert(event)
         event.plan = plan
         do { try context.save(); dismiss() }
-        catch { context.delete(event); errorMessage = error.localizedDescription }
+        catch { context.delete(event); errorMessage = Self.saveFailedMessage }
     }
 }

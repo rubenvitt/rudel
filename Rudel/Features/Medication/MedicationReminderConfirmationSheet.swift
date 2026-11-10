@@ -58,7 +58,7 @@ struct MedicationReminderConfirmationSheet: View {
                     let (open, _) = try notifications.medicationSchedulingInput(context: context, settings: settings, retaining: retained, asOf: Date())
                     reminder = open.first { $0.id == reminderID }
                 }
-                catch { errorMessage = error.localizedDescription }
+                catch { errorMessage = "Die Erinnerung ließ sich nicht laden. Öffne sie in Rudel noch einmal." }
             }
         }
     }
@@ -85,6 +85,6 @@ struct MedicationReminderConfirmationSheet: View {
             _ = try write(MedicationReminderData(), settings)
             await NotificationService().reschedule(context: context, settings: settings)
             dismiss()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = "Das ließ sich nicht speichern. Versuch es noch einmal." }
     }
 }
