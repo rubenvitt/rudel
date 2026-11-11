@@ -40,7 +40,6 @@ struct RootView: View {
             syncSelection()
         }
         .onChange(of: pets.count, initial: true) {
-            appState.petCount = pets.count
             syncSelection()
         }
         // Zwei Auslöser, weil das Benachrichtigungs-Fenster rollierend ist
@@ -48,7 +47,6 @@ struct RootView: View {
         // vor, nach einem Log ändert sich sein Inhalt.
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
-            await PlusStore.shared.refresh()
             await refreshNotifications()
         }
         .task(id: notificationFingerprint) {
@@ -252,8 +250,6 @@ private struct SheetPresenter: View {
             VetPracticeEditSheet(practiceID: practiceID)
         case .settings:
             SettingsSheet()
-        case .plus:
-            PlusPaywallView()
         }
     }
 }

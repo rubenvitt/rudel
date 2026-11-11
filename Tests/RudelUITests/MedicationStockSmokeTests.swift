@@ -22,7 +22,7 @@ final class MedicationStockSmokeTests: XCTestCase {
 
     @MainActor
     func testVaccinationAndStockCanBeCreatedAndRestocked() throws {
-        let app = XCUIApplication.withPlus()
+        let app = XCUIApplication()
         let suffix = String(UUID().uuidString.prefix(6))
         let vaccineProduct = "Nobivac \(suffix)"
         let stockProduct = "Apoquel \(suffix)"

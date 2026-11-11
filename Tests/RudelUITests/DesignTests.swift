@@ -104,7 +104,7 @@ final class DesignTests: XCTestCase {
 
     @MainActor
     private func launch() -> XCUIApplication {
-        let app = XCUIApplication.withPlus()
+        let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))

@@ -1,4 +1,2 @@
-- Klarere Hinweise, wenn ein Medikamentenalarm nicht gestellt werden kann: Rudel erklärt jetzt verständlich, was passiert ist, und erinnert dich stattdessen mit einer Mitteilung.
-- Ist das Alarm-Kontingent von iOS voll, laufen die übrigen Gaben automatisch als Mitteilung weiter.
-- Alte, nicht mehr zugeordnete Alarme werden aufgeräumt.
-- Kleinere Verbesserungen und Fehlerbehebungen.
+- Rudel ist jetzt komplett kostenlos: beliebig viele Tiere, Tierarzt-Bericht und alle Farben für alle.
+- Rudel Plus gibt es nicht mehr. Falls du es abonniert hast, kannst du das Abo im Rudel-Tab unter „Früheres Abo verwalten“ kündigen.
