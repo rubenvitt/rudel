@@ -117,7 +117,13 @@ final class DesignTests: XCTestCase {
     private func ensureTwoPets(in app: XCUIApplication) {
         if app.buttons["Tier anlegen"].waitForExistence(timeout: 3) {
             attach(app, "design-willkommen")
+            // Auf langsamen CI-Simulatoren geht der erste Tipp direkt nach dem
+            // Start manchmal verloren; dann ein zweites Mal tippen.
             app.buttons["Tier anlegen"].tap()
+            if !app.textFields["Name"].waitForExistence(timeout: 10),
+               app.buttons["Tier anlegen"].exists {
+                app.buttons["Tier anlegen"].tap()
+            }
             fillPet(in: app, name: "Zola", breed: "Rhodesian Ridgeback")
         }
         selectTab("Rudel", in: app)
