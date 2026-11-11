@@ -1,4 +1,2 @@
-- Clearer messages when a medication alarm can't be set: Rudel now explains what happened and reminds you with a notification instead.
-- When iOS has no room for more alarms, the remaining doses automatically fall back to notifications.
-- Old alarms that no longer belong to a dose are cleaned up.
-- Minor improvements and bug fixes.
+- Rudel is now completely free: any number of pets, the vet report and all colors for everyone.
+- Rudel Plus is gone. If you subscribed, you can cancel it in the Rudel tab under "Früheres Abo verwalten".

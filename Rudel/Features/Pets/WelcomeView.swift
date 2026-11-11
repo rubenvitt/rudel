@@ -1,8 +1,11 @@
+import StoreKit
 import SwiftUI
 
 /// Ein Einstieg, eine Aktion; keine Beispieldaten im persönlichen Journal.
 struct WelcomeView: View {
     @Environment(AppState.self) private var appState
+    /// Auch ohne Tier erreichbar, etwa nach einer Neuinstallation ohne Backup.
+    @State private var showsManageSubscriptions = false
 
     var body: some View {
         ScrollView {
@@ -40,12 +43,19 @@ struct WelcomeView: View {
                 Label("Alle Einträge bleiben auf diesem Gerät.", systemImage: "lock")
                     .font(.footnote)
                     .foregroundStyle(RudelTheme.muted)
+                Button("Früheres Abo verwalten") {
+                    showsManageSubscriptions = true
+                }
+                .font(.footnote)
+                .tint(RudelTheme.accent)
+                .accessibilityIdentifier("welcome-manage-subscription")
             }
             .padding(24)
             .frame(maxWidth: 600, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
         .background(RudelTheme.canvas)
+        .manageSubscriptionsSheet(isPresented: $showsManageSubscriptions)
         .safeAreaInset(edge: .bottom) {
             Button {
                 appState.present(.editPet(petID: nil))

@@ -7,7 +7,7 @@ import UserNotifications
 /// Einstellungen zu Erinnerungen und Alarmen, samt Diagnose.
 ///
 /// Erscheint als Unterseite im Rudel-Tab und als Sheet, wenn der Hinweis zu
-/// einem Alarmproblem angetippt wird. Rudel Plus, Abo und Rechtliches stehen
+/// einem Alarmproblem angetippt wird. Tiere, Abo-Hinweis und Rechtliches stehen
 /// direkt im Rudel-Tab.
 ///
 /// Änderungen werden gespeichert und über den gemeinsamen Abgleich wirksam.

@@ -3,25 +3,22 @@ import SwiftData
 import SwiftUI
 
 /// Rudel-Tab: alles, was nicht zu einem einzelnen Tag oder Befund gehört —
-/// die Tiere selbst, Rudel Plus samt Abo, Einstellungen und Rechtliches.
+/// die Tiere selbst, Einstellungen und Rechtliches.
 ///
-/// Früher lagen Einstellungen und Plus hinter einem Zahnrad im Profil. Hier
+/// Früher lagen die Einstellungen hinter einem Zahnrad im Profil. Hier
 /// stehen sie offen, damit man sie findet, ohne zu wissen, wo man suchen muss.
 struct RudelHomeView: View {
     @Environment(AppState.self) private var appState
-    @Environment(PlusStore.self) private var plus
 
     @Query(sort: \Pet.createdAt) private var pets: [Pet]
 
     @State private var showsManageSubscriptions = false
-    @State private var isRestoring = false
-    @State private var message: String?
 
     var body: some View {
         NavigationStack {
             List {
                 petsSection
-                plusSection
+                subscriptionSection
                 settingsSection
                 aboutSection
             }
@@ -51,14 +48,6 @@ struct RudelHomeView: View {
                 }
             }
             .manageSubscriptionsSheet(isPresented: $showsManageSubscriptions)
-            .alert("Rudel Plus", isPresented: Binding(
-                get: { message != nil },
-                set: { if !$0 { message = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(message ?? "")
-            }
         }
     }
 
@@ -86,47 +75,22 @@ struct RudelHomeView: View {
         }
     }
 
-    // MARK: - Rudel Plus
+    // MARK: - Früheres Abo
 
-    private var plusSection: some View {
+    /// Rudel ist komplett kostenlos. Wer früher Rudel Plus abonniert hat,
+    /// findet hier den Weg zum Kündigen, ohne in den iOS-Einstellungen zu suchen.
+    private var subscriptionSection: some View {
         Section {
-            LabeledContent("Status", value: plus.isPlus ? "Aktiv" : "Nicht aktiv")
-            if !plus.isPlus {
-                Button {
-                    appState.present(.plus)
-                } label: {
-                    Label("Rudel Plus ansehen", systemImage: "sparkles")
-                }
-            }
             Button {
                 showsManageSubscriptions = true
             } label: {
-                Label("Abo verwalten", systemImage: "creditcard")
+                Label("Früheres Abo verwalten", systemImage: "creditcard")
             }
             .accessibilityIdentifier("manage-subscription")
-            Button {
-                restore()
-            } label: {
-                Label(isRestoring ? "Wird geprüft …" : "Käufe wiederherstellen", systemImage: "arrow.clockwise")
-            }
-            .disabled(isRestoring)
         } header: {
-            RudelSectionHeading(title: "Rudel Plus")
+            RudelSectionHeading(title: "Alles kostenlos")
         } footer: {
-            Text("Abos verlängern sich automatisch. Unter „Abo verwalten“ kannst du jederzeit wechseln oder kündigen.")
-        }
-    }
-
-    private func restore() {
-        isRestoring = true
-        Task {
-            do {
-                try await plus.restore()
-                message = plus.isPlus ? "Rudel Plus ist aktiv." : "Es wurde kein Kauf gefunden."
-            } catch {
-                message = "Wiederherstellen hat nicht geklappt. Prüf deine Verbindung und versuch es noch einmal."
-            }
-            isRestoring = false
+            Text("Rudel ist jetzt komplett kostenlos. Falls du früher Rudel Plus abonniert hast, kannst du das Abo hier kündigen.")
         }
     }
 

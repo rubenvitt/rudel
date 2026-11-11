@@ -4,4 +4,4 @@ To try it: create a pet on the welcome screen, then add a medication under "Medi
 
 The cycle tab appears only for intact female dogs. Predictions are always shown as a range and the app states that it is not a medical device.
 
-In-app purchases (Rudel Plus): monthly and yearly auto-renewing subscription in one group, plus a one-time lifetime unlock. One pet with all health features is free. Plus unlocks more pets ("Profil" > "Weiteres Tier anlegen"), the PDF vet report and four extra pet colors. "Käufe wiederherstellen" restores purchases.
+The app is now completely free: the former "Rudel Plus" in-app purchases were removed from the app and from sale. All features (any number of pets, PDF vet report, all colors) are available to everyone. The "Rudel" tab only keeps a link to manage a subscription bought earlier, so former subscribers can cancel it.

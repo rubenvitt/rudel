@@ -21,20 +21,6 @@ enum PetColor: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    /// Die ersten vier gibt es ohne Plus.
-    var isFree: Bool {
-        switch self {
-        case .forest, .lake, .berry, .rust: true
-        case .slate, .plum, .olive, .cocoa: false
-        }
-    }
-
-    /// Ob die Farbe gewählt und gespeichert werden darf. Eine schon
-    /// gespeicherte Plus-Farbe bleibt, auch wenn Plus inzwischen fehlt.
-    func isAvailable(withPlus isPlus: Bool, saved: PetColor) -> Bool {
-        isFree || isPlus || self == saved
-    }
-
     var label: String {
         switch self {
         case .forest: "Tanne"
