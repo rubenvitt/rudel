@@ -7,6 +7,9 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
+  # Quellsprache der String-Kataloge; übersetzt in en, nl, fr, es, it, pt,
+  # sv, nb, da, fi, ja, ko (Rudel/Resources/*.xcstrings).
+  developmentLanguage: de
 
 packages:
   RudelEngine:
@@ -123,6 +126,9 @@ schemes:
     test:
       config: Debug
       gatherCoverageData: true
+      # Die Tests prüfen deutsche Texte, unabhängig von der Simulatorsprache.
+      language: de
+      region: DE
       targets:
         - RudelTests
         - RudelUITests

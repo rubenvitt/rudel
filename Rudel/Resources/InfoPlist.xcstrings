@@ -1,0 +1,90 @@
+{
+  "sourceLanguage": "de",
+  "strings": {
+    "NSAlarmKitUsageDescription": {
+      "comment": "Privacy - AlarmKit usage description",
+      "extractionState": "manual",
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel minder dig med alarmer om medicindoser, der skal gives."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel erinnert dich mit Alarmen an offene Medikamentengaben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel uses alarms to remind you of medication doses that are due."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel te recuerda con alarmas las tomas de medicamentos pendientes."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel muistuttaa hälytyksillä annettavista lääkeannoksista."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel vous rappelle les prises de médicaments en attente par des alarmes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel ti ricorda con delle sveglie le somministrazioni di farmaci in sospeso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudelはアラームで未投与のお薬をお知らせします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel은 알람으로 아직 투여하지 않은 약을 알려드려요."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel minner deg på medisindoser som skal gis, med alarmer."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel herinnert je met alarmen aan openstaande medicijntoedieningen."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Rudel usa alarmes para lembrar você das doses de medicamentos pendentes."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rudel påminner dig med alarm om läkemedelsdoser som ska ges."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

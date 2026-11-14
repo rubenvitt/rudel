@@ -143,9 +143,9 @@ struct SettingsSheet: View {
 
     private var alarmAuthorizationLabel: String {
         switch MedicationAlarmService.shared.authorization {
-        case .authorized: return "Erteilt"
-        case .denied: return "Verweigert"
-        case .notDetermined: return "Noch nicht gefragt"
+        case .authorized: return String(localized: "Erteilt")
+        case .denied: return String(localized: "Verweigert")
+        case .notDetermined: return String(localized: "Noch nicht gefragt")
         }
     }
 
@@ -163,7 +163,7 @@ struct SettingsSheet: View {
                 }
 
             LabeledValueRow(
-                label: "Systemberechtigung",
+                label: String(localized: "Systemberechtigung"),
                 value: authorizationLabel,
                 systemImage: authorizationSymbol
             )
@@ -221,23 +221,8 @@ struct SettingsSheet: View {
         } footer: {
             Text(
                 settings.criticalDayRemindersEnabled
-                    ? """
-                    Während einer Läufigkeit kommt täglich ein Hinweis mit dem Tag im \
-                    Zyklus. Ab dem Tag, an dem eine Deckung möglich wird, deutlicher \
-                    formuliert — und mit Vorrang vor allen anderen Erinnerungen, weil \
-                    sich dieser Tag nicht nachholen lässt.
-
-                    Der Beginn ist bewusst früh angesetzt: der Übergang zur \
-                    fruchtbaren Phase liegt im Mittel bei Tag 10, kann aber schon an \
-                    Tag 4 einsetzen. Wer Beobachtungen erfasst, bekommt eine genauere \
-                    Einschätzung; wer das Ende der Hitze einträgt, beendet die \
-                    Hinweise früher.
-                    """
-                    : """
-                    Während einer Läufigkeit kommen keine täglichen Hinweise. Die \
-                    Prognose der nächsten Läufigkeit und die Phasenanzeige im \
-                    Bereich Zyklus unter Gesundheit bleiben davon unberührt.
-                    """
+                    ? String(localized: "Während einer Läufigkeit kommt täglich ein Hinweis mit dem Tag im Zyklus. Ab dem Tag, an dem eine Deckung möglich wird, deutlicher formuliert — und mit Vorrang vor allen anderen Erinnerungen, weil sich dieser Tag nicht nachholen lässt.\n\nDer Beginn ist bewusst früh angesetzt: der Übergang zur fruchtbaren Phase liegt im Mittel bei Tag 10, kann aber schon an Tag 4 einsetzen. Wer Beobachtungen erfasst, bekommt eine genauere Einschätzung; wer das Ende der Hitze einträgt, beendet die Hinweise früher.")
+                    : String(localized: "Während einer Läufigkeit kommen keine täglichen Hinweise. Die Prognose der nächsten Läufigkeit und die Phasenanzeige im Bereich Zyklus unter Gesundheit bleiben davon unberührt.")
             )
         }
     }
@@ -253,8 +238,8 @@ struct SettingsSheet: View {
         } footer: {
             Text(
                 settings.leadDays.isEmpty
-                    ? "Keine zusätzlichen Vorab-Mitteilungen. Alarme und Einzelgaben bleiben."
-                    : "Jede Vorwarnzeit ist eine eigene Mitteilung."
+                    ? String(localized: "Keine zusätzlichen Vorab-Mitteilungen. Alarme und Einzelgaben bleiben.")
+                    : String(localized: "Jede Vorwarnzeit ist eine eigene Mitteilung.")
             )
         }
     }
@@ -266,7 +251,7 @@ struct SettingsSheet: View {
     }
 
     private static func leadDayLabel(_ days: Int) -> String {
-        days == 0 ? "Am Fälligkeitstag" : "\(Format.dayCount(days)) vorher"
+        days == 0 ? String(localized: "Am Fälligkeitstag") : String(localized: "\(days) Tage vorher", comment: "Vorwarnzeit")
     }
 
     private func leadDayBinding(_ option: Int, _ settings: AppSettings) -> Binding<Bool> {
@@ -352,9 +337,9 @@ struct SettingsSheet: View {
     }
 
     private static func appointmentLeadLabel(_ minutes: Int) -> String {
-        if minutes < 60 || minutes % 60 != 0 { return "\(minutes) Minuten" }
+        if minutes < 60 || minutes % 60 != 0 { return String(localized: "\(minutes) Minuten") }
         let hours = minutes / 60
-        return hours == 1 ? "1 Stunde" : "\(hours) Stunden"
+        return String(localized: "\(hours) Stunden")
     }
 
     // MARK: - Planungsfenster
@@ -365,7 +350,7 @@ struct SettingsSheet: View {
 
         Section {
             Stepper(
-                "Fenster: \(Format.dayCount(settings.notificationHorizonDays))",
+                "Fenster: \(settings.notificationHorizonDays) Tage",
                 value: $bound.notificationHorizonDays,
                 in: 3...60
             )
@@ -382,9 +367,8 @@ struct SettingsSheet: View {
     /// Erklärt, warum hier nicht „alle" steht. Die Zahlen kommen aus der Engine,
     /// damit der Text nicht von den echten Grenzen abdriften kann.
     private func windowFootnote(_ settings: AppSettings) -> String {
-        """
-        iOS lässt pro App nur \(NotificationPlanner.iosPendingRequestLimit) ausstehende Erinnerungen zu und verwirft überzählige ohne Meldung — nicht unbedingt die unwichtigsten. Rudel plant deshalb rollierend: nur die nächsten \(Format.dayCount(settings.notificationHorizonDays)), höchstens \(NotificationPlanner.budget) Erinnerungen, mit Vorrang für Überfälliges. Neu gesetzt wird bei jedem Start und nach jedem Eintrag. Ein größeres Fenster verteilt dasselbe Budget nur auf mehr Tage.
-        """
+        let window = Format.dayCount(settings.notificationHorizonDays)
+        return String(localized: "iOS lässt pro App nur \(NotificationPlanner.iosPendingRequestLimit) ausstehende Erinnerungen zu und verwirft überzählige ohne Meldung — nicht unbedingt die unwichtigsten. Rudel plant deshalb rollierend: nur die nächsten \(window), höchstens \(NotificationPlanner.budget) Erinnerungen, mit Vorrang für Überfälliges. Neu gesetzt wird bei jedem Start und nach jedem Eintrag. Ein größeres Fenster verteilt dasselbe Budget nur auf mehr Tage.")
     }
 
     // MARK: - Diagnose
@@ -393,14 +377,14 @@ struct SettingsSheet: View {
     private func diagnosticsSection(_ settings: AppSettings) -> some View {
         Section {
             LabeledValueRow(
-                label: "Gesetzte Erinnerungen",
-                value: "\(pendingCount) von \(NotificationPlanner.budget)",
+                label: String(localized: "Gesetzte Erinnerungen"),
+                value: String(localized: "\(pendingCount) von \(NotificationPlanner.budget)", comment: "Gesetzte Erinnerungen von maximal möglichen"),
                 systemImage: "bell.badge"
             )
 
             LabeledValueRow(
-                label: "Zuletzt gesetzt",
-                value: settings.lastNotificationSyncAt.map(Format.dateTime) ?? "noch nie",
+                label: String(localized: "Zuletzt gesetzt"),
+                value: settings.lastNotificationSyncAt.map(Format.dateTime) ?? String(localized: "noch nie"),
                 systemImage: "clock.arrow.circlepath"
             )
 
@@ -419,7 +403,7 @@ struct SettingsSheet: View {
         } header: {
             Text("Diagnose")
         } footer: {
-            Text(statusMessage ?? "Nur nötig, wenn eine Erinnerung fehlt.")
+            Text(statusMessage ?? String(localized: "Nur nötig, wenn eine Erinnerung fehlt."))
         }
     }
 
@@ -446,12 +430,12 @@ struct SettingsSheet: View {
 
     private var authorizationLabel: String {
         switch authorization {
-        case .authorized: return "Erteilt"
-        case .provisional: return "Vorläufig"
-        case .ephemeral: return "Zeitweise"
-        case .denied: return "Verweigert"
-        case .notDetermined: return "Noch nicht gefragt"
-        @unknown default: return "Unbekannt"
+        case .authorized: return String(localized: "Erteilt")
+        case .provisional: return String(localized: "Vorläufig")
+        case .ephemeral: return String(localized: "Zeitweise")
+        case .denied: return String(localized: "Verweigert")
+        case .notDetermined: return String(localized: "Noch nicht gefragt")
+        @unknown default: return String(localized: "Unbekannt")
         }
     }
 
@@ -484,21 +468,21 @@ struct SettingsSheet: View {
 
         switch outcome {
         case .failed(let message):
-            statusMessage = "Erinnerungen konnten nicht aktualisiert werden: \(message)"
+            statusMessage = String(localized: "Erinnerungen konnten nicht aktualisiert werden: \(message)")
         case .disabled:
             failures = []
-            statusMessage = "Erinnerungen sind aus. Alle ausstehenden wurden entfernt."
+            statusMessage = String(localized: "Erinnerungen sind aus. Alle ausstehenden wurden entfernt.")
         case .notAuthorized(let status):
             authorization = status
             failures = []
-            statusMessage = "Ohne Systemberechtigung kann Rudel nichts setzen."
+            statusMessage = String(localized: "Ohne Systemberechtigung kann Rudel nichts setzen.")
         case .applied(let result):
             failures = result.failures
             if result.isComplete {
-                statusMessage = "\(result.scheduled) \(result.scheduled == 1 ? "Erinnerung" : "Erinnerungen") gesetzt."
+                statusMessage = String(localized: "\(result.scheduled) Erinnerungen gesetzt.")
                 lastSuccessAt = Date()
             } else {
-                statusMessage = "\(result.scheduled) von \(result.requested) Erinnerungen gesetzt, \(result.failures.count) abgelehnt."
+                statusMessage = String(localized: "\(result.scheduled) von \(result.requested) Erinnerungen gesetzt, \(result.failures.count) abgelehnt.")
             }
         }
 

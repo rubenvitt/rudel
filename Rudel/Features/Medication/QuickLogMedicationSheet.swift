@@ -133,7 +133,7 @@ struct QuickLogMedicationSheet: View {
                 if selectedPlan?.kindValue != .ongoing { TextField(
                     "Abweichendes Präparat",
                     text: $productOverride,
-                    prompt: Text(selectedPlan.map { MedicationDisplay.title(for: $0) } ?? "wie im Plan")
+                    prompt: Text(selectedPlan.map { MedicationDisplay.title(for: $0) } ?? String(localized: "wie im Plan"))
                 ) }
                 TextField("Notiz", text: $note, axis: .vertical)
             } footer: {
@@ -176,7 +176,7 @@ struct QuickLogMedicationSheet: View {
 
     private func reportSaveFailure(_ error: Error) {
         Self.log.error("quick log: save failed: \(String(describing: error), privacy: .private)")
-        errorMessage = "Die Gabe ließ sich nicht speichern. Versuch es noch einmal."
+        errorMessage = String(localized: "Die Gabe ließ sich nicht speichern. Versuch es noch einmal.")
     }
 
     private func save() {

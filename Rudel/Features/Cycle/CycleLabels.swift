@@ -15,9 +15,9 @@ enum CycleLabel {
     /// kommt.
     static func source(_ source: PhaseEstimateSource) -> String {
         switch source {
-        case .clinicalSignals: return "klinische Werte"
-        case .observedSignals: return "eigene Beobachtungen"
-        case .populationDefault: return "Populationswerte"
+        case .clinicalSignals: return String(localized: "klinische Werte", comment: "Quelle einer Zyklus-Schätzung, steht neben der Konfidenz")
+        case .observedSignals: return String(localized: "eigene Beobachtungen", comment: "Quelle einer Zyklus-Schätzung, steht neben der Konfidenz")
+        case .populationDefault: return String(localized: "Populationswerte", comment: "Quelle einer Zyklus-Schätzung: Durchschnittswerte aus Studien, steht neben der Konfidenz")
         }
     }
 
@@ -27,9 +27,12 @@ enum CycleLabel {
     static func basis(_ basis: PredictionBasis) -> String {
         switch basis {
         case .population:
-            return "nur Populationswerte"
+            return String(localized: "nur Populationswerte", comment: "Grundlage der Läufigkeits-Prognose: nur Studien-Durchschnittswerte")
         case .blended(let ownIntervalCount):
-            return ownIntervalCount == 1 ? "1 eigenes Intervall" : "\(ownIntervalCount) eigene Intervalle"
+            return String(
+                localized: "\(ownIntervalCount) eigene Intervalle",
+                comment: "Grundlage der Prognose: Anzahl gemessener Abstände (Tag 1 zu Tag 1) dieses Tiers"
+            )
         }
     }
 
@@ -62,13 +65,18 @@ enum CycleLabel {
     /// genau das ist bei einer Spanne von mehreren Wochen der Normalfall.
     static func predictionTiming(days: Int) -> String {
         if days >= 0 { return Format.relativeDue(days: days) }
-        return "rechnerischer Termin liegt \(Format.dayCount(abs(days))) zurück"
+        return String(
+            localized: "rechnerischer Termin liegt \(abs(days)) Tage zurück",
+            comment: "Prognostizierter Läufigkeitsbeginn liegt in der Vergangenheit; bewusst nicht „überfällig“"
+        )
     }
 
     /// Populationswert als Vergleich unter der eigenen Historie.
     static var populationIntervalSummary: String {
-        "Ø \(StudyConstants.day1ToDay1IntervalDays) Tage"
-            + " (\(StudyConstants.day1ToDay1IntervalMinDays)–\(StudyConstants.day1ToDay1IntervalMaxDays))"
+        String(
+            localized: "Ø \(StudyConstants.day1ToDay1IntervalDays) Tage (\(StudyConstants.day1ToDay1IntervalMinDays)–\(StudyConstants.day1ToDay1IntervalMaxDays))",
+            comment: "Populations-Durchschnitt des Läufigkeitsabstands mit Spanne, z. B. „Ø 210 Tage (135–300)“"
+        )
     }
 
     // MARK: Risikostufe
@@ -77,18 +85,18 @@ enum CycleLabel {
     /// „wie sehr aufpassen?", nicht „welche Phase?".
     static func riskTitle(_ risk: HeatRiskLevel) -> String {
         switch risk {
-        case .elevated: return "Erhöhte Aufmerksamkeit"
-        case .critical: return "Kritische Tage"
-        case .subsiding: return "Klingt ab"
+        case .elevated: return String(localized: "Erhöhte Aufmerksamkeit", comment: "Risikostufe der Läufigkeit: Hündin gut beaufsichtigen")
+        case .critical: return String(localized: "Kritische Tage", comment: "Risikostufe der Läufigkeit: Deckung möglich")
+        case .subsiding: return String(localized: "Klingt ab", comment: "Risikostufe der Läufigkeit: Läufigkeit klingt ab")
         }
     }
 
     /// Die Antwort auf die Frage, die man morgens hat, in einem Halbsatz.
     static func riskHeadline(_ risk: HeatRiskLevel) -> String {
         switch risk {
-        case .elevated: return "Deckung noch nicht möglich"
-        case .critical: return "Deckung möglich"
-        case .subsiding: return "Restrisiko"
+        case .elevated: return String(localized: "Deckung noch nicht möglich", comment: "Kurzantwort zur Risikostufe der Läufigkeit")
+        case .critical: return String(localized: "Deckung möglich", comment: "Kurzantwort zur Risikostufe der Läufigkeit")
+        case .subsiding: return String(localized: "Restrisiko", comment: "Kurzantwort zur Risikostufe der Läufigkeit: Deckung noch nicht ausgeschlossen")
         }
     }
 
@@ -119,41 +127,41 @@ enum CycleLabel {
     static func observationSummary(_ observation: CycleObservation) -> [String] {
         var parts: [String] = []
         if let present = observation.dischargePresent {
-            parts.append(present ? "Ausfluss" : "kein Ausfluss")
+            parts.append(present ? String(localized: "Ausfluss") : String(localized: "kein Ausfluss"))
         }
         if let color = observation.dischargeColorValue {
             parts.append(Format.label(color))
         }
         if let amount = observation.dischargeAmountValue {
-            parts.append("Menge: \(Format.label(amount))")
+            parts.append(String(localized: "Menge: \(Format.label(amount))", comment: "Menge des Ausflusses"))
         }
         if let turgor = observation.vulvaTurgorValue {
-            parts.append("Vulva: \(Format.label(turgor))")
+            parts.append(String(localized: "Vulva: \(Format.label(turgor))", comment: "Konsistenz der Vulva"))
         }
         if let swollen = observation.vulvaSwellingVisible {
-            parts.append(swollen ? "sichtbar geschwollen" : "keine sichtbare Schwellung")
+            parts.append(swollen ? String(localized: "sichtbar geschwollen") : String(localized: "keine sichtbare Schwellung"))
         }
         if let urination = observation.frequentUrination {
-            parts.append(urination ? "häufiges Urinieren" : "Urinieren unauffällig")
+            parts.append(urination ? String(localized: "häufiges Urinieren") : String(localized: "Urinieren unauffällig"))
         }
         if let licking = observation.genitalLicking {
-            parts.append(licking ? "vermehrtes Belecken" : "kein vermehrtes Belecken")
+            parts.append(licking ? String(localized: "vermehrtes Belecken") : String(localized: "kein vermehrtes Belecken"))
         }
         if let standingHeat = observation.standingHeat {
-            parts.append(standingHeat ? "Duldung" : "keine Duldung")
+            parts.append(standingHeat ? String(localized: "Duldung") : String(localized: "keine Duldung"))
         }
         if let flagging = observation.flagging {
-            parts.append(flagging ? "Flagging" : "kein Flagging")
+            parts.append(flagging ? String(localized: "Flagging") : String(localized: "kein Flagging"))
         }
         if let attractsMales = observation.attractsMales {
-            parts.append(attractsMales ? "Rüden interessiert" : "Rüden uninteressiert")
+            parts.append(attractsMales ? String(localized: "Rüden interessiert") : String(localized: "Rüden uninteressiert"))
         }
         if let progesterone = observation.progesteroneNgPerMl {
-            parts.append("Progesteron \(Format.progesterone(progesterone))")
+            parts.append(String(localized: "Progesteron \(Format.progesterone(progesterone))"))
         }
         if let cornification = observation.cornificationPercent {
             // `Format.percent` erwartet einen Anteil, das Modell speichert 0–100.
-            parts.append("Kornifizierung \(Format.percent(cornification / 100))")
+            parts.append(String(localized: "Kornifizierung \(Format.percent(cornification / 100))"))
         }
         return parts
     }

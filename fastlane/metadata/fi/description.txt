@@ -1,0 +1,26 @@
+Rudel on koirasi tai kissasi terveyskirja. Ettei sinun tarvitse enää miettiä, onko päivän tabletti jo annettu.
+
+EI ENÄÄ UNOHTUNEITA ANNOKSIA
+Rudel muistuttaa ajallaan, halutessasi oikealla hälytyksellä. Annos merkitään annetuksi vasta, kun vahvistat sen. Madotus ja punkkisuoja muistuttavat rauhallisesti ilmoituksella, ja näet, milloin varasto alkaa loppua.
+
+KAIKKI ELÄINLÄÄKÄRIÄ VARTEN
+Ajat, rokotustodistus ja oma vastaanottosi yhdessä paikassa. Ennen käyntiä Rudel tekee lyhyen PDF-raportin, jossa ovat lääkkeet, paino ja huomaamasi muutokset.
+
+KIIMA HALLINNASSA
+Nartuille Rudel näyttää, milloin seuraava kiima suunnilleen alkaa ja minä päivinä narttu kannattaa pitää kytkettynä. Aina aikavälinä, ei koskaan vääränä lupauksena.
+
+MITEN LEMMIKKISI VOI?
+Oireet kuvineen, paino käyränä. Näin huomaat muutokset ennen kuin niistä tulee ongelma.
+
+SINUN LEMMIKKISI, SINUN VÄRISI
+Jokainen lemmikki saa oman kuvan ja värin. Kun lemmikkejä on useampi, näet heti, kenestä on kyse.
+
+YKSITYINEN
+Ei tiliä, ei mainoksia, ei seurantaa. Kaikki pysyy iPhonessasi.
+
+Rudel on täysin ilmainen: niin monta lemmikkiä kuin haluat, eläinlääkäriraportti ja kaikki värit, ilman tilausta ja ilman sovelluksen sisäisiä ostoja.
+
+Rudel ei ole lääkinnällinen laite eikä korvaa eläinlääkäriä.
+
+Käyttöehdot (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Tietosuoja: https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md

@@ -15,6 +15,7 @@ private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
 
 @Suite("FertileWindowEstimator — fruchtbares Fenster (PRD §6.3)")
 struct FertileWindowEstimatorTests {
+    init() { useGermanEngineTexts() }
 
     private let dayMath = DayMath.utc
     private let estimator = FertileWindowEstimator(dayMath: .utc)

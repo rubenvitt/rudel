@@ -95,9 +95,9 @@ struct MedicationDeferSheet: View {
         let calendar = dayMath.calendar
         let inAMonth = calendar.date(byAdding: .month, value: 1, to: today) ?? dayMath.adding(days: 30, to: today)
         return [
-            QuickOption(id: "week", title: "1 Woche", date: dayMath.adding(days: 7, to: today)),
-            QuickOption(id: "month", title: "1 Monat", date: dayMath.startOfDay(inAMonth)),
-            QuickOption(id: "march", title: "Bis 1. März", date: nextFirstOfMarch)
+            QuickOption(id: "week", title: String(localized: "1 Woche"), date: dayMath.adding(days: 7, to: today)),
+            QuickOption(id: "month", title: String(localized: "1 Monat"), date: dayMath.startOfDay(inAMonth)),
+            QuickOption(id: "march", title: String(localized: "Bis 1. März"), date: nextFirstOfMarch)
         ]
     }
 

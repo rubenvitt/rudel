@@ -23,8 +23,19 @@ enum Format {
         value.formatted(.dateTime.hour().minute())
     }
 
+    /// Uhrzeit ohne Datum im Format des Gebietsschemas („08:00", „8:00 AM").
     static func time(_ value: TimeOfDay) -> String {
-        String(format: "%02d:%02d", value.hour, value.minute)
+        // Fester Bezugstag ohne Zeitumstellung, damit keine Uhrzeit ausfällt.
+        var components = DateComponents()
+        components.year = 2001
+        components.month = 1
+        components.day = 1
+        components.hour = value.hour
+        components.minute = value.minute
+        guard let date = Calendar.current.date(from: components) else {
+            return String(format: "%02d:%02d", value.hour, value.minute)
+        }
+        return time(date)
     }
 
     /// Datumsspanne als „12. – 26. Aug." bzw. mit Jahr, wenn sie es kreuzt.
@@ -46,26 +57,29 @@ enum Format {
     /// kein Rückblick, sondern ein offener Posten.
     static func relativeDue(days: Int) -> String {
         switch days {
-        case 0: return "Heute"
-        case 1: return "Morgen"
-        case 2...: return "in \(days) Tagen"
-        case -1: return "1 Tag überfällig"
-        default: return "\(abs(days)) Tage überfällig"
+        case 0: return String(localized: "Heute")
+        case 1: return String(localized: "Morgen", comment: "Fälligkeit: morgen (der nächste Tag)")
+        case 2...: return String(localized: "in \(days) Tagen", comment: "Fälligkeit in der Zukunft")
+        default:
+            let overdue = abs(days)
+            return String(localized: "\(overdue) Tage überfällig", comment: "Fälligkeit überschritten")
         }
     }
 
     /// „vor 3 Tagen", „heute", für zurückliegende Einträge.
     static func relativePast(days: Int) -> String {
         switch days {
-        case 0: return "heute"
-        case 1: return "gestern"
-        case 2...: return "vor \(days) Tagen"
-        default: return "in \(abs(days)) Tagen"
+        case 0: return String(localized: "heute", comment: "Rückblick, kleingeschrieben im Satz")
+        case 1: return String(localized: "gestern", comment: "Rückblick, kleingeschrieben im Satz")
+        case 2...: return String(localized: "vor \(days) Tagen", comment: "Rückblick")
+        default:
+            let ahead = abs(days)
+            return String(localized: "in \(ahead) Tagen", comment: "Fälligkeit in der Zukunft")
         }
     }
 
     static func dayCount(_ days: Int) -> String {
-        "\(days) \(abs(days) == 1 ? "Tag" : "Tage")"
+        String(localized: "\(days) Tage", comment: "Anzahl Tage")
     }
 
     /// Breite des Prognosebandes als Text.
@@ -80,7 +94,7 @@ enum Format {
     static func bandWidth(_ prediction: CyclePrediction) -> String {
         switch prediction.basis {
         case .population:
-            return "Populationsspanne"
+            return String(localized: "Populationsspanne", comment: "Prognoseband aus der publizierten Spanne der Population statt aus eigenen Daten")
         case .blended:
             return "± " + dayCount(Int(prediction.bandHalfWidthDays.rounded()))
         }
@@ -109,7 +123,7 @@ enum Format {
     }
 
     static func percent(_ fraction: Double) -> String {
-        (fraction * 100).formatted(.number.precision(.fractionLength(0))) + " %"
+        fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 
     static func progesterone(_ value: Double) -> String {
@@ -120,10 +134,10 @@ enum Format {
 
     static func label(_ phase: CyclePhase) -> String {
         switch phase {
-        case .proestrus: return "Proöstrus"
-        case .estrus: return "Östrus"
-        case .diestrus: return "Diöstrus"
-        case .anestrus: return "Anöstrus"
+        case .proestrus: return String(localized: "Proöstrus")
+        case .estrus: return String(localized: "Östrus")
+        case .diestrus: return String(localized: "Diöstrus")
+        case .anestrus: return String(localized: "Anöstrus")
         }
     }
 
@@ -131,23 +145,23 @@ enum Format {
     static func explanation(_ phase: CyclePhase) -> String {
         switch phase {
         case .proestrus:
-            return "Vorbereitung. Blutiger Ausfluss, pralle Vulva, Rüden interessieren sich — sie duldet aber noch nicht."
+            return String(localized: "Vorbereitung. Blutiger Ausfluss, pralle Vulva, Rüden interessieren sich — sie duldet aber noch nicht.")
         case .estrus:
-            return "Fruchtbare Phase. Ausfluss wird strohfarben, Vulva weicher, Duldungsbereitschaft."
+            return String(localized: "Fruchtbare Phase. Ausfluss wird strohfarben, Vulva weicher, Duldungsbereitschaft.")
         case .diestrus:
-            return "Nachlauf, 60–90 Tage. Anzeichen klingen ab; Scheinträchtigkeit ist hier möglich."
+            return String(localized: "Nachlauf, 60–90 Tage. Anzeichen klingen ab; Scheinträchtigkeit ist hier möglich.")
         case .anestrus:
-            return "Ruhephase bis zur nächsten Läufigkeit."
+            return String(localized: "Ruhephase bis zur nächsten Läufigkeit.")
         }
     }
 
     static func label(_ kind: MedicationKind) -> String {
         switch kind {
-        case .dewormer: return "Wurmkur"
-        case .tickProtection: return "Zeckenschutz"
-        case .ongoing: return "Laufendes Medikament"
-        case .rabiesVaccination: return "Tollwut-Impfung"
-        case .vaccination: return "Impfung"
+        case .dewormer: return String(localized: "Wurmkur")
+        case .tickProtection: return String(localized: "Zeckenschutz")
+        case .ongoing: return String(localized: "Laufendes Medikament")
+        case .rabiesVaccination: return String(localized: "Tollwut-Impfung")
+        case .vaccination: return String(localized: "Impfung")
         }
     }
 
@@ -162,38 +176,38 @@ enum Format {
 
     static func label(_ color: DischargeColor) -> String {
         switch color {
-        case .bloody: return "Blutig"
-        case .brownish: return "Bräunlich"
-        case .pinkish: return "Rosa"
-        case .strawColored: return "Strohfarben"
-        case .clear: return "Klar"
+        case .bloody: return String(localized: "Blutig")
+        case .brownish: return String(localized: "Bräunlich")
+        case .pinkish: return String(localized: "Rosa")
+        case .strawColored: return String(localized: "Strohfarben")
+        case .clear: return String(localized: "Klar")
         }
     }
 
     static func label(_ amount: DischargeAmount) -> String {
         switch amount {
-        case .none: return "Keiner"
-        case .scant: return "Wenig"
-        case .moderate: return "Mittel"
-        case .heavy: return "Viel"
+        case .none: return String(localized: "Keiner")
+        case .scant: return String(localized: "Wenig")
+        case .moderate: return String(localized: "Mittel", comment: "Menge oder Schweregrad: mittel")
+        case .heavy: return String(localized: "Viel")
         }
     }
 
     static func label(_ turgor: VulvaTurgor) -> String {
         switch turgor {
-        case .normal: return "Normal"
-        case .swollenFirm: return "Geschwollen, prall"
-        case .softening: return "Wird weicher"
-        case .swollenSoft: return "Geschwollen, weich"
+        case .normal: return String(localized: "Normal")
+        case .swollenFirm: return String(localized: "Geschwollen, prall")
+        case .softening: return String(localized: "Wird weicher")
+        case .swollenSoft: return String(localized: "Geschwollen, weich")
         }
     }
 
     static func label(_ sizeClass: DogSizeClass) -> String {
         switch sizeClass {
-        case .small: return "Klein (< 10 kg)"
-        case .medium: return "Mittel (10–25 kg)"
-        case .large: return "Groß (25–45 kg)"
-        case .giant: return "Sehr groß (> 45 kg)"
+        case .small: return String(localized: "Klein (< 10 kg)")
+        case .medium: return String(localized: "Mittel (10–25 kg)")
+        case .large: return String(localized: "Groß (25–45 kg)")
+        case .giant: return String(localized: "Sehr groß (> 45 kg)")
         }
     }
 }

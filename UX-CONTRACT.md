@@ -26,10 +26,15 @@ Die kleinen lokalen Datenmengen werden über SwiftData geladen und in nativen
 Listen dargestellt. Es gibt keine neue Pagination, Netzwerksuche oder URL-Suche.
 Ein nicht ladbarer Store bleibt ein Fehlerzustand, kein leeres Journal.
 
-Die Texte sind deutsch. Native Datums-/Zahlenformate folgen wie bisher den
-Geräteeinstellungen, die Tagesrechnung der Gerätezeitzone. Der ausgeschriebene
-Dashboard-Datumskopf ist deutsch. Eine vollständige Mehrsprachigkeit wird durch
-diesen visuellen Umbau nicht eingeführt.
+Deutsch ist die Quellsprache. Übersetzungen gibt es für Englisch,
+Niederländisch, Französisch, Spanisch, Italienisch, Portugiesisch, Schwedisch,
+Norwegisch (Bokmål), Dänisch, Finnisch, Japanisch und Koreanisch; die App folgt
+der Gerätesprache. App-Texte stehen in `Rudel/Resources/Localizable.xcstrings`,
+die Texte der Engine (Mitteilungen, Hinweise) in
+`Packages/RudelEngine/Sources/RudelEngine/Resources/*.lproj`. Neue Texte
+brauchen dort einen Eintrag in allen Sprachen, sonst erscheint das Deutsche.
+Native Datums-/Zahlenformate folgen den Geräteeinstellungen, die Tagesrechnung
+der Gerätezeitzone. Tests laufen immer auf Deutsch.
 
 Dynamic Type, Light/Dark Mode, VoiceOver-Namen und native Fokusbedienung sind
 Teil des UI-Vertrags. Lange Namen dürfen im Inhalt umbrechen; im Tier-Wechsler

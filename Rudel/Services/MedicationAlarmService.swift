@@ -38,22 +38,24 @@ final class MedicationAlarmService {
         issue = Self.updateFailedMessage
     }
 
-    static let updateFailedMessage = "Medikamentenalarme ließen sich gerade nicht aktualisieren. Rudel versucht es beim nächsten Öffnen erneut."
+    static var updateFailedMessage: String {
+        String(localized: "Medikamentenalarme ließen sich gerade nicht aktualisieren. Rudel versucht es beim nächsten Öffnen erneut.")
+    }
 
     /// Nutzerseitige Meldung, wenn Alarme nicht gesetzt werden konnten. Für
     /// diese Gaben plant `NotificationService` normale Mitteilungen.
     static func scheduleFailureMessage(failed: [MedicationReminder], limitReached: Bool, notScheduled: Int) -> String? {
         if limitReached {
-            let count = notScheduled == 1 ? "eine Gabe" : "\(notScheduled) Gaben"
-            return "iOS lässt gerade keine weiteren Alarme zu. Für \(count) erinnert Rudel stattdessen mit einer Mitteilung."
+            // Plural-Schlüssel: die deutsche Einzahl lautet „Für eine Gabe …“.
+            return String(localized: "iOS lässt gerade keine weiteren Alarme zu. Für \(notScheduled) Gaben erinnert Rudel stattdessen mit einer Mitteilung.")
         }
         switch failed.count {
         case 0: return nil
         case 1:
             let reminder = failed[0]
-            return "Für \(reminder.petName) · \(reminder.title) ließ sich kein Alarm stellen. Rudel erinnert stattdessen mit einer Mitteilung."
+            return String(localized: "Für \(reminder.petName) · \(reminder.title) ließ sich kein Alarm stellen. Rudel erinnert stattdessen mit einer Mitteilung.")
         default:
-            return "Für \(failed.count) Gaben ließen sich keine Alarme stellen. Rudel erinnert stattdessen mit Mitteilungen."
+            return String(localized: "Für \(failed.count) Gaben ließen sich keine Alarme stellen. Rudel erinnert stattdessen mit Mitteilungen.")
         }
     }
 
@@ -156,7 +158,7 @@ final class MedicationAlarmService {
             guard authorization == .authorized else {
                 scheduledCount = 0
                 if !desired.isEmpty {
-                    issue = "Medikamentenalarme sind nicht erlaubt. Aktuell sind nur normale Mitteilungen möglich."
+                    issue = String(localized: "Medikamentenalarme sind nicht erlaubt. Aktuell sind nur normale Mitteilungen möglich.")
                 }
                 return []
             }
@@ -227,7 +229,7 @@ final class MedicationAlarmService {
                 messages.append(message)
             }
             if reminders.count > desired.count {
-                messages.append("Für \(reminders.count - desired.count) weitere Termine sind vorerst nur Mitteilungen vorgesehen.")
+                messages.append(String(localized: "Für \(reminders.count - desired.count) weitere Termine sind vorerst nur Mitteilungen vorgesehen."))
             }
             if !messages.isEmpty { issue = messages.joined(separator: "\n") }
         } catch {

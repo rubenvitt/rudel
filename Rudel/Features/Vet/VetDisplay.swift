@@ -43,7 +43,7 @@ enum VetDisplay {
 
     static func practiceName(_ practice: VetPractice) -> String {
         let trimmed = practice.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Praxis ohne Namen" : trimmed
+        return trimmed.isEmpty ? String(localized: "Praxis ohne Namen") : trimmed
     }
 }
 

@@ -46,7 +46,10 @@ enum VetReportFile {
         let cleaned = petName.components(separatedBy: forbidden).joined(separator: " ")
             .split(whereSeparator: \.isWhitespace)
             .joined(separator: "-")
-        return "Rudel-Bericht-\(cleaned.isEmpty ? "Tier" : cleaned)-\(formatter.string(from: date)).pdf"
+        // Präfix und Platzhalter in der App-Sprache, ohne Leerzeichen übersetzt.
+        let prefix = String(localized: "Rudel-Bericht", comment: "File name prefix of the vet report PDF; no spaces or slashes")
+        let fallback = String(localized: "Tier", comment: "File name placeholder when the pet has no name; no spaces or slashes")
+        return "\(prefix)-\(cleaned.isEmpty ? fallback : cleaned)-\(formatter.string(from: date)).pdf"
     }
 
     /// Eigener Unterordner je Bericht, damit der Dateiname exakt bleibt, auch
@@ -83,7 +86,7 @@ struct VetReportShareLink: View {
     let petID: UUID
     let petName: String
     var occasion: VetReportContent.Occasion?
-    var title = "Bericht für die Praxis"
+    var title = String(localized: "Bericht für die Praxis")
     var accessibilityID = "vet-report-share"
 
     @Environment(\.modelContext) private var context

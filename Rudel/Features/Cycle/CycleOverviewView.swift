@@ -21,9 +21,9 @@ struct CycleOverviewPage: View {
             } else {
                 ScrollView {
                     RudelFeatureHeading(
-                        eyebrow: "Nur für unkastrierte Hündinnen",
-                        title: "Kein Zyklustracking",
-                        detail: "Für \(pet.name) ist kein Zyklustracking verfügbar.",
+                        eyebrow: String(localized: "Nur für unkastrierte Hündinnen"),
+                        title: String(localized: "Kein Zyklustracking"),
+                        detail: String(localized: "Für \(pet.name) ist kein Zyklustracking verfügbar."),
                         symbol: pet.speciesValue.symbolName
                     )
                     .frame(maxWidth: 560)
@@ -32,7 +32,7 @@ struct CycleOverviewPage: View {
                 }
             }
         }
-        .healthPage(title: "Zyklus") {
+        .healthPage(title: String(localized: "Zyklus")) {
             if pet.tracksCycle {
                 Menu {
                     Button {
@@ -194,18 +194,17 @@ struct CycleOverviewContent: View {
             Button("Abbrechen", role: .cancel) { periodPendingDeletion = nil }
         } message: { period in
             Text(
-                "Tag 1 vom \(Format.date(period.day1Date)) und \(observationCountText(period)) werden entfernt. "
-                    + "Das verändert jede Prognose, die auf diesem Anker beruht."
+                "Tag 1 vom \(Format.date(period.day1Date)) und \(observationCountText(period)) werden entfernt. Das verändert jede Prognose, die auf diesem Anker beruht."
             )
         }
     }
 
     private var emptyState: some View {
         RudelEmptyState(
-            title: "Kein Zyklus erfasst",
-            detail: "Alles beginnt mit Tag 1: dem ersten erkennbaren Tag der Läufigkeit. Mit deinen Beobachtungen lernt Rudel den Zyklus deines Tiers besser kennen.",
+            title: String(localized: "Kein Zyklus erfasst"),
+            detail: String(localized: "Alles beginnt mit Tag 1: dem ersten erkennbaren Tag der Läufigkeit. Mit deinen Beobachtungen lernt Rudel den Zyklus deines Tiers besser kennen."),
             symbol: "circle.hexagonpath",
-            actionTitle: "Läufigkeit begonnen"
+            actionTitle: String(localized: "Läufigkeit begonnen")
         ) {
             appState.present(.startCyclePeriod(petID: pet.id))
         }
@@ -253,13 +252,13 @@ struct CycleOverviewContent: View {
             RiskHeaderRow(notice: notice)
             if let range = criticalRange {
                 LabeledValueRow(
-                    label: "Kritische Tage",
+                    label: String(localized: "Kritische Tage"),
                     value: Format.dateRange(range),
                     systemImage: "exclamationmark.octagon"
                 )
             }
         } header: {
-            RudelSectionHeading(title: "Wie sehr aufpassen?")
+            RudelSectionHeading(title: String(localized: "Wie sehr aufpassen?"))
         }
     }
 
@@ -270,18 +269,18 @@ struct CycleOverviewContent: View {
             ActiveHeatHeaderRow(phase: phase)
 
             LabeledValueRow(
-                label: "Phase endet voraussichtlich",
+                label: String(localized: "Phase endet voraussichtlich"),
                 value: Format.dateRange(phase.expectedPhaseEnd),
                 systemImage: "calendar"
             )
             LabeledValueRow(
-                label: "Tag 1",
+                label: String(localized: "Tag 1"),
                 value: "\(Format.date(period.day1Date)) · \(Format.relativePast(days: dayMath.days(from: period.day1Date, to: today)))",
                 systemImage: "flag"
             )
             if let end = period.visibleHeatEndDate {
                 LabeledValueRow(
-                    label: "Sichtbare Hitze beendet",
+                    label: String(localized: "Sichtbare Hitze beendet"),
                     value: Format.date(end),
                     systemImage: "checkmark.circle"
                 )
@@ -290,8 +289,8 @@ struct CycleOverviewContent: View {
             // Der kürzeste Weg zum wichtigsten Signal: ein Tap, kein Formular.
             if let recorded = recordedStandingHeatToday(in: period) {
                 LabeledValueRow(
-                    label: "Duldung heute",
-                    value: recorded ? "Ja" : "Nein",
+                    label: String(localized: "Duldung heute"),
+                    value: recorded ? String(localized: "Ja") : String(localized: "Nein"),
                     systemImage: "checkmark.seal"
                 )
             } else {
@@ -300,7 +299,7 @@ struct CycleOverviewContent: View {
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Läuft gerade")
+            RudelSectionHeading(title: String(localized: "Läuft gerade"))
         } footer: {
             Text("Geschätzt, kein Befund. Deine Beobachtungen zählen mehr als der Kalender.")
         }
@@ -321,12 +320,12 @@ struct CycleOverviewContent: View {
         Section {
             DisclosureGroup("Fruchtbares Fenster", isExpanded: $breedingExpanded) {
                 LabeledValueRow(
-                    label: "Fenster",
+                    label: String(localized: "Fenster", comment: "Fruchtbares Fenster (Deckplanung)"),
                     value: Format.dateRange(estimate.window),
                     systemImage: "calendar.badge.clock"
                 )
                 LabeledValueRow(
-                    label: "Bester Zeitpunkt",
+                    label: String(localized: "Bester Zeitpunkt", comment: "Optimaler Deckzeitpunkt (Deckplanung)"),
                     value: Format.date(estimate.optimalDate),
                     systemImage: "scope"
                 )
@@ -351,25 +350,25 @@ struct CycleOverviewContent: View {
                     daysUntil: dayMath.days(from: today, to: prediction.expectedDate)
                 )
                 LabeledValueRow(
-                    label: "Punktschätzung",
+                    label: String(localized: "Punktschätzung"),
                     value: Format.date(prediction.expectedDate),
                     systemImage: "scope"
                 )
                 LabeledValueRow(
-                    label: "Gerechnetes Intervall",
+                    label: String(localized: "Gerechnetes Intervall"),
                     value: Format.dayCount(Int(prediction.effectiveIntervalDays.rounded())),
                     systemImage: "arrow.left.and.right"
                 )
                 if let last = latestPeriod {
                     LabeledValueRow(
-                        label: "Letzter Tag 1",
+                        label: String(localized: "Letzter Tag 1"),
                         value: Format.date(last.day1Date),
                         systemImage: "flag"
                     )
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Nächste Läufigkeit")
+            RudelSectionHeading(title: String(localized: "Nächste Läufigkeit"))
         } footer: {
             Text("Verlass dich auf die Spanne, der einzelne Tag ist nur ihre Mitte.")
         }
@@ -384,8 +383,7 @@ struct CycleOverviewContent: View {
             }
         } footer: {
             Text(
-                "Die Läufigkeit vom \(Format.date(period.day1Date)) hat kein Enddatum. "
-                    + "Die Prognose funktioniert trotzdem — sie hängt nur am Tag-1-Anker."
+                "Die Läufigkeit vom \(Format.date(period.day1Date)) hat kein Enddatum. Die Prognose funktioniert trotzdem — sie hängt nur am Tag-1-Anker."
             )
         }
     }
@@ -400,8 +398,7 @@ struct CycleOverviewContent: View {
                     Text("Noch keine eigenen Intervalle")
                         .font(.subheadline.weight(.semibold))
                     Text(
-                        "Die Prognose steht auf Populationswerten: \(CycleLabel.populationIntervalSummary). "
-                            + "Ab der nächsten erfassten Läufigkeit rechnet die App mit dem eigenen Abstand."
+                        "Die Prognose steht auf Populationswerten: \(CycleLabel.populationIntervalSummary). Ab der nächsten erfassten Läufigkeit rechnet die App mit dem eigenen Abstand."
                     )
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -431,7 +428,7 @@ struct CycleOverviewContent: View {
     private func intervalTitle(index: Int, intervalCount: Int) -> String {
         let anchors = periods.map(\.day1Date).sorted()
         guard anchors.count - 1 == intervalCount, index + 1 < anchors.count else {
-            return "Intervall \(index + 1)"
+            return String(localized: "Intervall \(index + 1)", comment: "Fallback-Beschriftung eines Läufigkeitsabstands, nummeriert")
         }
         return "\(Format.shortDate(anchors[index])) → \(Format.shortDate(anchors[index + 1]))"
     }
@@ -456,7 +453,7 @@ struct CycleOverviewContent: View {
                         }
                     }
                     if !period.note.isEmpty {
-                        LabeledValueRow(label: "Notiz", value: period.note, systemImage: "text.alignleft")
+                        LabeledValueRow(label: String(localized: "Notiz"), value: period.note, systemImage: "text.alignleft")
                     }
                 } label: {
                     PeriodSummaryRow(
@@ -491,7 +488,7 @@ struct CycleOverviewContent: View {
             }
         } label: {
             Label(
-                activePeriod == nil ? "Läufigkeit begonnen" : "Beobachtung erfassen",
+                activePeriod == nil ? LocalizedStringKey("Läufigkeit begonnen") : LocalizedStringKey("Beobachtung erfassen"),
                 systemImage: activePeriod == nil ? "calendar.badge.plus" : "square.and.pencil"
             )
             .frame(maxWidth: .infinity)
@@ -539,7 +536,7 @@ struct CycleOverviewContent: View {
 
     private func observationCountText(_ period: CyclePeriod) -> String {
         let count = period.observations.count
-        return count == 1 ? "1 Beobachtung" : "\(count) Beobachtungen"
+        return String(localized: "\(count) Beobachtungen", comment: "Anzahl Zyklus-Beobachtungen")
     }
 }
 
@@ -708,12 +705,15 @@ private struct PeriodSummaryRow: View {
         var parts: [String] = []
         if let end = period.visibleHeatEndDate {
             let days = dayMath.days(from: period.day1Date, to: end) + 1
-            parts.append("Sichtbare Hitze \(Format.dayCount(days)), bis \(Format.shortDate(end))")
+            parts.append(String(
+                localized: "Sichtbare Hitze \(Format.dayCount(days)), bis \(Format.shortDate(end))",
+                comment: "Erstes Argument: Dauer in Tagen (z. B. „9 Tage“), zweites: letztes Datum"
+            ))
         } else {
-            parts.append("Ende der sichtbaren Hitze nicht erfasst")
+            parts.append(String(localized: "Ende der sichtbaren Hitze nicht erfasst"))
         }
         let count = period.observations.count
-        parts.append(count == 1 ? "1 Beobachtung" : "\(count) Beobachtungen")
+        parts.append(String(localized: "\(count) Beobachtungen", comment: "Anzahl Zyklus-Beobachtungen"))
         return parts.joined(separator: " · ")
     }
 
@@ -761,7 +761,7 @@ private struct ObservationSummaryRow: View {
                     .monospacedDigit()
             }
             let parts = CycleLabel.observationSummary(observation)
-            Text(parts.isEmpty ? "Ohne Angaben" : parts.joined(separator: " · "))
+            Text(parts.isEmpty ? String(localized: "Ohne Angaben") : parts.joined(separator: " · "))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

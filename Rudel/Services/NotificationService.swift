@@ -24,7 +24,7 @@ final class NotificationService {
     private static var schedulingTail: Task<Void, Never>?
     private static var schedulingToken = UUID()
     private static let log = Logger(subsystem: "dev.rubeen.apps.rudel", category: "notifications")
-    static let saveFailedMessage = "Die Daten ließen sich gerade nicht speichern."
+    static var saveFailedMessage: String { String(localized: "Die Daten ließen sich gerade nicht speichern.") }
 
     /// Tagesarithmetik in der Zeitzone des Geräts. Wird für das Planungsfenster
     /// gebraucht und an die Engine weitergegeben, damit „heute" dasselbe
@@ -142,7 +142,7 @@ final class NotificationService {
                 result.scheduled += 1
             } catch {
                 Self.log.error("notifications: add failed: \(String(describing: error), privacy: .public)")
-                result.failures.append(ScheduleFailure(id: item.id, title: item.title, reason: "iOS hat diese Mitteilung nicht angenommen."))
+                result.failures.append(ScheduleFailure(id: item.id, title: item.title, reason: String(localized: "iOS hat diese Mitteilung nicht angenommen.")))
             }
         }
         return result
@@ -373,8 +373,8 @@ final class NotificationService {
         for reminder in overdue {
             candidates.append(NotificationPlanner.PlannedNotification(
                 id: "retry:\(reminder.id)", fireDate: asOf.addingTimeInterval(retryInterval),
-                title: "\(reminder.petName): Gabe noch offen",
-                body: "\(reminder.title) · geplant \(Format.dateTime(reminder.dueAt)). Bitte die Gabe prüfen und bestätigen.",
+                title: String(localized: "\(reminder.petName): Gabe noch offen", comment: "Mitteilung; Tiername"),
+                body: String(localized: "\(reminder.title) · geplant \(Format.dateTime(reminder.dueAt)). Bitte die Gabe prüfen und bestätigen.", comment: "Mitteilung; Medikament, Zeitpunkt"),
                 petID: reminder.petID, category: reminder.category, priority: 50,
                 sourceID: reminder.sourceID, dueAt: reminder.dueAt, repeatInterval: retryInterval
             ))
@@ -384,10 +384,13 @@ final class NotificationService {
             for reminder in alarmReminders {
                 let fireDate = reminder.dueAt.addingTimeInterval(-Double(lead * 60))
                 guard fireDate >= asOf else { continue }
+                // Dauer über den FormatStyle, damit „1 Minute“/„10 Minuten“ in
+                // jeder Sprache stimmt, ohne Plural-Schlüssel mit drei Argumenten.
+                let leadText = Duration.seconds(lead * 60).formatted(.units(allowed: [.minutes], width: .wide))
                 candidates.append(NotificationPlanner.PlannedNotification(
                     id: "advance:\(reminder.id)", fireDate: fireDate,
-                    title: "\(reminder.petName): \(reminder.title) in \(lead) Minuten",
-                    body: [reminder.detail, "Geplant um \(Format.time(reminder.dueAt))."].compactMap { $0 }.joined(separator: " · "),
+                    title: String(localized: "\(reminder.petName): \(reminder.title) in \(leadText)", comment: "Mitteilung; Tiername, Medikament, Dauer wie „10 Minuten“"),
+                    body: [reminder.detail, String(localized: "Geplant um \(Format.time(reminder.dueAt)).")].compactMap { $0 }.joined(separator: " · "),
                     petID: reminder.petID, category: reminder.category,
                     priority: dayMath.isSameDay(fireDate, asOf) ? 35 : 15,
                     sourceID: reminder.sourceID, dueAt: reminder.dueAt

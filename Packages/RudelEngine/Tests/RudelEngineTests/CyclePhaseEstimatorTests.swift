@@ -15,6 +15,7 @@ private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
 
 @Suite("CyclePhaseEstimator")
 struct CyclePhaseEstimatorTests {
+    init() { useGermanEngineTexts() }
     let estimator = CyclePhaseEstimator(dayMath: .utc)
     /// Tag-1-Anker aller Fixtures. Bewusst mitten im Monat, damit Monatsgrenzen
     /// innerhalb eines Zyklus überschritten werden.

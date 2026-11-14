@@ -8,6 +8,7 @@ import PackageDescription
 // `swift test` auch ohne Xcode-Simulator auf dem Host läuft.
 let package = Package(
     name: "RudelEngine",
+    defaultLocalization: "de",
     platforms: [
         .iOS(.v18),
         .macOS(.v15),
@@ -18,6 +19,9 @@ let package = Package(
     targets: [
         .target(
             name: "RudelEngine",
+            // Klassische .strings/.stringsdict statt String Catalog, damit
+            // `swift test` auch ohne Xcode die Texte findet.
+            resources: [.process("Resources")],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
             ]

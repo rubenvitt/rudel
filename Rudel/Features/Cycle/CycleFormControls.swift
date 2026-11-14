@@ -10,10 +10,10 @@ import SwiftUI
 /// Menü-Stil statt Segmented Control: „Nicht beobachtet" muss als Text lesbar
 /// bleiben, auch bei den großen Dynamic-Type-Stufen, wo ein Segment abschneidet.
 struct CycleTriStatePicker: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var value: Bool?
-    var yesLabel: String = "Ja"
-    var noLabel: String = "Nein"
+    var yesLabel: LocalizedStringKey = "Ja"
+    var noLabel: LocalizedStringKey = "Nein"
 
     var body: some View {
         Picker(title, selection: choice) {
@@ -61,7 +61,7 @@ enum CycleTriState: Hashable {
 /// nebeneinander. Das ist kein Versehen: kein Ausfluss ist ein Befund, keine
 /// Angabe ist keiner.
 struct CycleOptionalPicker<Value: Hashable & CaseIterable>: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var value: Value?
     let label: (Value) -> String
 

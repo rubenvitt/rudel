@@ -1,6 +1,14 @@
 import XCTest
 
 extension XCUIApplication {
+    /// Die App auf Deutsch, unabhängig von der Simulatorsprache: Die Tests
+    /// finden Elemente über ihre deutschen Beschriftungen.
+    static func german() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
+        return app
+    }
+
     /// Ein Tab der Hauptnavigation. Auf dem iPad zeigt iOS 26 die Tabs
     /// schwebend oben, dort findet XCTest keine TabBar, nur Buttons.
     func tab(_ name: String) -> XCUIElement {

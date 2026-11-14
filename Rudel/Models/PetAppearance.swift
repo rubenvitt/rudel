@@ -23,14 +23,14 @@ enum PetColor: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .forest: "Tanne"
-        case .lake: "See"
-        case .berry: "Beere"
-        case .rust: "Rost"
-        case .slate: "Schiefer"
-        case .plum: "Pflaume"
-        case .olive: "Oliv"
-        case .cocoa: "Kakao"
+        case .forest: String(localized: "Tanne", comment: "Tierfarbe (Tannengrün)")
+        case .lake: String(localized: "See", comment: "Tierfarbe (Seeblau)")
+        case .berry: String(localized: "Beere", comment: "Tierfarbe (Beerenrot)")
+        case .rust: String(localized: "Rost", comment: "Tierfarbe (Rostrot)")
+        case .slate: String(localized: "Schiefer", comment: "Tierfarbe (Schiefergrau)")
+        case .plum: String(localized: "Pflaume", comment: "Tierfarbe (Pflaumenlila)")
+        case .olive: String(localized: "Oliv", comment: "Tierfarbe (Olivgrün)")
+        case .cocoa: String(localized: "Kakao", comment: "Tierfarbe (Kakaobraun)")
         }
     }
 
@@ -80,16 +80,16 @@ enum PetSymbol {
     /// VoiceOver-Name, damit niemand „pawprint.fill" vorgelesen bekommt.
     static func label(_ symbol: String) -> String {
         switch symbol {
-        case "dog": "Hund"
-        case "cat": "Katze"
-        case "pawprint.fill": "Pfote"
-        case "heart.fill": "Herz"
-        case "star.fill": "Stern"
-        case "leaf.fill": "Blatt"
-        case "sun.max.fill": "Sonne"
-        case "moon.fill": "Mond"
-        case "crown.fill": "Krone"
-        case "teddybear.fill": "Teddy"
+        case "dog": String(localized: "Hund", comment: "Avatar-Symbol")
+        case "cat": String(localized: "Katze", comment: "Avatar-Symbol")
+        case "pawprint.fill": String(localized: "Pfote", comment: "Avatar-Symbol")
+        case "heart.fill": String(localized: "Herz", comment: "Avatar-Symbol")
+        case "star.fill": String(localized: "Stern", comment: "Avatar-Symbol")
+        case "leaf.fill": String(localized: "Blatt", comment: "Avatar-Symbol")
+        case "sun.max.fill": String(localized: "Sonne", comment: "Avatar-Symbol")
+        case "moon.fill": String(localized: "Mond", comment: "Avatar-Symbol")
+        case "crown.fill": String(localized: "Krone", comment: "Avatar-Symbol")
+        case "teddybear.fill": String(localized: "Teddy", comment: "Avatar-Symbol")
         default: symbol
         }
     }

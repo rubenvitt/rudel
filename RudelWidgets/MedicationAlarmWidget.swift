@@ -15,8 +15,8 @@ struct MedicationAlarmWidget: Widget {
                 HStack(alignment: .top) {
                     Image(systemName: "pills.fill").font(.title2).foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(context.attributes.metadata?.petName ?? "Medikamentengabe").font(.caption).foregroundStyle(.secondary)
-                        Text(context.attributes.metadata?.medication ?? "Gabe prüfen").font(.headline)
+                        Text(context.attributes.metadata?.petName ?? String(localized: "Medikamentengabe")).font(.caption).foregroundStyle(.secondary)
+                        Text(context.attributes.metadata?.medication ?? String(localized: "Gabe prüfen")).font(.headline)
                         if let dose = context.attributes.metadata?.dose, !dose.isEmpty {
                             Text(dose).font(.subheadline)
                         }
@@ -49,7 +49,7 @@ struct MedicationAlarmWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        Text(context.attributes.metadata?.medication ?? "Medikamentengabe").font(.headline)
+                        Text(context.attributes.metadata?.medication ?? String(localized: "Medikamentengabe")).font(.headline)
                         if let dose = context.attributes.metadata?.dose, !dose.isEmpty { Text(dose).font(.caption) }
                         Link("Gabe bestätigen", destination: MedicationAlarmLink.url(reminderID: context.attributes.metadata?.reminderID ?? ""))
                             .font(.subheadline.bold()).foregroundStyle(.orange)

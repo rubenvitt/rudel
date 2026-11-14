@@ -158,6 +158,6 @@ struct MedicationReminderData {
 
     enum ConfirmationError: LocalizedError {
         case noLongerCurrent
-        var errorDescription: String? { "Diese Gabe gehört nicht mehr zum aktuellen Plan. Bitte prüfe die Medikamentenliste." }
+        var errorDescription: String? { String(localized: "Diese Gabe gehört nicht mehr zum aktuellen Plan. Bitte prüfe die Medikamentenliste.") }
     }
 }

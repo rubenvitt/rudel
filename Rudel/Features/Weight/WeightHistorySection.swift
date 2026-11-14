@@ -23,10 +23,10 @@ struct WeightHistorySection: View {
     var body: some View {
         if entries.isEmpty {
             RudelEmptyState(
-                title: "Kein Gewicht",
-                detail: "Wiege \(petName) und halte den ersten Wert fest. Mit dem zweiten Eintrag beginnt euer Gewichtsverlauf.",
+                title: String(localized: "Kein Gewicht"),
+                detail: String(localized: "Wiege \(petName) und halte den ersten Wert fest. Mit dem zweiten Eintrag beginnt euer Gewichtsverlauf."),
                 symbol: "scalemass",
-                actionTitle: "Gewicht erfassen"
+                actionTitle: String(localized: "Gewicht erfassen")
             ) {
                 appState.present(.logWeight(petID: pet.id))
             }
@@ -73,7 +73,7 @@ struct WeightHistorySection: View {
     }
 
     private var petName: String {
-        pet.name.isEmpty ? "dein Tier" : pet.name
+        pet.name.isEmpty ? String(localized: "dein Tier", comment: "Platzhalter für ein Tier ohne Namen, im Satz") : pet.name
     }
 
     /// Zielbereich, nur wenn beide Grenzen sinnvoll gesetzt sind (`0` heißt
@@ -155,11 +155,12 @@ struct WeightHistorySection: View {
         // Angezeigt wird auf zwei Dezimalstellen. Alles darunter ist Rauschen
         // der Waage und wird nicht als Richtung behauptet.
         guard abs(delta) >= 0.005 else {
-            return Trend(symbolName: "arrow.right", text: "unverändert seit \(since)")
+            return Trend(symbolName: "arrow.right", text: String(localized: "unverändert seit \(since)", comment: "Gewichtstrend; %@ = Datum"))
         }
+        let change = "\(delta > 0 ? "+" : "−")\(Format.weight(abs(delta)))"
         return Trend(
             symbolName: delta > 0 ? "arrow.up.right" : "arrow.down.right",
-            text: "\(delta > 0 ? "+" : "−")\(Format.weight(abs(delta))) seit \(since)"
+            text: String(localized: "\(change) seit \(since)", comment: "Gewichtstrend; erstes %@ = Veränderung wie „+0,4 kg“, zweites = Datum")
         )
     }
 
@@ -169,17 +170,19 @@ struct WeightHistorySection: View {
         if let band {
             let range = "\(band.lowerBound.formatted(.number.precision(.fractionLength(0...2))))–\(Format.weight(band.upperBound))"
             if band.contains(latest.valueKg) {
-                return ("Im Zielbereich \(range)", .green, "checkmark.circle.fill")
+                return (String(localized: "Im Zielbereich \(range)"), .green, "checkmark.circle.fill")
             }
-            let direction = latest.valueKg < band.lowerBound ? "Unter" : "Über"
-            return ("\(direction) dem Zielbereich \(range)", .orange, "exclamationmark.circle.fill")
+            let text = latest.valueKg < band.lowerBound
+                ? String(localized: "Unter dem Zielbereich \(range)")
+                : String(localized: "Über dem Zielbereich \(range)")
+            return (text, .orange, "exclamationmark.circle.fill")
         }
 
         if pet.weightTargetMinKg > 0 {
-            return ("Zielgewicht mindestens \(Format.weight(pet.weightTargetMinKg))", .secondary, "target")
+            return (String(localized: "Zielgewicht mindestens \(Format.weight(pet.weightTargetMinKg))"), .secondary, "target")
         }
         if pet.weightTargetMaxKg > 0 {
-            return ("Zielgewicht höchstens \(Format.weight(pet.weightTargetMaxKg))", .secondary, "target")
+            return (String(localized: "Zielgewicht höchstens \(Format.weight(pet.weightTargetMaxKg))"), .secondary, "target")
         }
         return nil
     }
@@ -281,7 +284,15 @@ private struct WeightChart: View {
 
     private var accessibilitySummary: String {
         guard let first = entries.first, let last = entries.last else { return "" }
-        return "\(entries.count) Einträge, \(Format.weight(first.valueKg)) am \(Format.date(first.date)) bis \(Format.weight(last.valueKg)) am \(Format.date(last.date))"
+        let count = String(localized: "\(entries.count) Einträge")
+        let firstWeight = Format.weight(first.valueKg)
+        let firstDate = Format.date(first.date)
+        let lastWeight = Format.weight(last.valueKg)
+        let lastDate = Format.date(last.date)
+        return String(
+            localized: "\(count), \(firstWeight) am \(firstDate) bis \(lastWeight) am \(lastDate)",
+            comment: "Bedienungshilfe Gewichtskurve: Anzahl Einträge, erster Wert und Datum, letzter Wert und Datum"
+        )
     }
 }
 
@@ -322,7 +333,7 @@ private struct WeightHistoryRow: View {
             parts.append(score.label)
         }
         if let food = entry.foodAmountGrams, food > 0 {
-            parts.append("\(Format.grams(food)) Futter")
+            parts.append(String(localized: "\(Format.grams(food)) Futter", comment: "Tagesfuttermenge, %@ = Gramm"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

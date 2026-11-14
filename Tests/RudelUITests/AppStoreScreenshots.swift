@@ -22,8 +22,8 @@ final class AppStoreScreenshots: XCTestCase {
     func testAppStoreScreenshots() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["SCREENSHOTS"] == "1", "only for the Screenshots workflow")
         XCUIDevice.shared.orientation = .portrait
-        let app = XCUIApplication()
-        app.launchArguments += ["-rudelDemo", "-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
+        let app = XCUIApplication.german()
+        app.launchArguments += ["-rudelDemo"]
         app.launch()
         XCTAssertTrue(app.staticTexts["pet-hero-name"].waitForExistence(timeout: 20))
         // Heute zuletzt: der erste Tab-Wechsel räumt etwaige Systemdialoge ab.

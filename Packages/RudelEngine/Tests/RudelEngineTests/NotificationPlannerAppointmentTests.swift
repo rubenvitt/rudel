@@ -16,6 +16,7 @@ private let now = at(2026, 7, 26, 8)
 
 @Suite("NotificationPlanner — Tierarzttermine und Vorsorge")
 struct NotificationPlannerAppointmentTests {
+    init() { useGermanEngineTexts() }
 
     private let builder = DueItemBuilder(dayMath: .utc)
     private let planner = NotificationPlanner(dayMath: .utc)

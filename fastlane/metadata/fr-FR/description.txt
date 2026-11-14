@@ -1,0 +1,26 @@
+Rudel est le carnet de santé de votre chien ou de votre chat. Pour ne plus vous demander si le comprimé du jour a déjà été donné.
+
+NE PLUS JAMAIS OUBLIER UNE PRISE
+Rudel vous prévient à l'heure, avec une vraie alarme si vous le souhaitez. Une prise n'est validée qu'une fois que vous l'avez confirmée. Le vermifuge et la protection anti-tiques se rappellent à vous discrètement par une notification, et vous voyez quand le stock s'épuise.
+
+TOUT POUR LE VÉTÉRINAIRE
+Rendez-vous, carnet de vaccination et cabinet habituel au même endroit. Avant la visite, Rudel crée un court rapport PDF avec les médicaments, le poids et les signes inhabituels.
+
+LES CHALEURS EN UN COUP D'ŒIL
+Pour les chiennes, Rudel indique à quel moment les prochaines chaleurs devraient arriver environ, et les jours où il vaut mieux la garder en laisse. Toujours sous forme de fourchette, jamais comme une fausse promesse.
+
+COMMENT VA VOTRE ANIMAL ?
+Symptômes avec photo, poids sous forme de courbe. Vous repérez ainsi les changements avant qu'ils ne deviennent un problème.
+
+VOTRE ANIMAL, VOTRE COULEUR
+Chaque animal a sa photo et sa couleur. Avec plusieurs animaux, vous voyez tout de suite de qui il s'agit.
+
+PRIVÉ
+Pas de compte, pas de publicité, pas de suivi. Tout reste sur votre iPhone.
+
+Rudel est entièrement gratuit : autant d'animaux que vous le souhaitez, le rapport vétérinaire et toutes les couleurs, sans abonnement ni achats intégrés.
+
+Rudel n'est pas un dispositif médical et ne remplace pas un vétérinaire.
+
+Conditions d'utilisation (CLUF) : https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Confidentialité : https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md

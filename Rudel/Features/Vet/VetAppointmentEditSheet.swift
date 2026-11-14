@@ -193,7 +193,7 @@ struct VetAppointmentEditSheet: View {
                     petID: pet.id,
                     petName: pet.name,
                     occasion: currentOccasion,
-                    title: "Bericht für diesen Termin",
+                    title: String(localized: "Bericht für diesen Termin"),
                     accessibilityID: "appointment-report-share"
                 )
                 calendarRows
@@ -216,14 +216,14 @@ struct VetAppointmentEditSheet: View {
                             .foregroundStyle(RudelTheme.warning)
                     }
                     .accessibilityIdentifier("appointment-calendar-stale")
-                    calendarButton(title: "Erneut in Kalender übernehmen")
+                    calendarButton(title: String(localized: "Erneut in Kalender übernehmen"))
                 } else {
                     Label("Im Kalender eingetragen", systemImage: "calendar.badge.checkmark")
                         .foregroundStyle(RudelTheme.success)
                         .accessibilityIdentifier("appointment-calendar-exported")
                 }
             } else {
-                calendarButton(title: "In Kalender übernehmen")
+                calendarButton(title: String(localized: "In Kalender übernehmen"))
             }
         }
     }
@@ -287,10 +287,10 @@ struct VetAppointmentEditSheet: View {
                     Label("Termin absagen", systemImage: "xmark.circle")
                 }
             case .done:
-                LabeledValueRow(label: "Status", value: AppointmentStatus.done.label, systemImage: "checkmark.circle.fill")
+                LabeledValueRow(label: String(localized: "Status"), value: AppointmentStatus.done.label, systemImage: "checkmark.circle.fill")
                 Button("Doch noch offen") { status = .planned }
             case .cancelled:
-                LabeledValueRow(label: "Status", value: AppointmentStatus.cancelled.label, systemImage: "xmark.circle")
+                LabeledValueRow(label: String(localized: "Status"), value: AppointmentStatus.cancelled.label, systemImage: "xmark.circle")
                 Button("Wieder als geplant führen") { status = .planned }
             }
         } header: {

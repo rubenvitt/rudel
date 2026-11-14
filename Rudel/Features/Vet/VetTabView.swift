@@ -6,7 +6,7 @@ struct VetTabView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        PetScope(title: "Tierarzt") { pet in
+        PetScope(title: String(localized: "Tierarzt", comment: "Vet tab title")) { pet in
             VetSection(pet: pet)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

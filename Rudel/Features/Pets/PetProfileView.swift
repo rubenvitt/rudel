@@ -95,11 +95,11 @@ private struct PetProfileContent: View {
 
     private var headerSection: some View {
         Section {
-            RudelPetHero(pet: pet, eyebrow: "DEIN RUDEL") {
+            RudelPetHero(pet: pet, eyebrow: String(localized: "DEIN RUDEL")) {
                 HStack(alignment: .firstTextBaseline) {
                     Label(pet.speciesValue.label, systemImage: pet.speciesValue.symbolName)
                     Spacer(minLength: 12)
-                    Text(ageText ?? "Geburtstag noch nicht erfasst")
+                    Text(ageText ?? String(localized: "Geburtstag noch nicht erfasst"))
                         .multilineTextAlignment(.trailing)
                 }
                 .font(.subheadline)
@@ -112,42 +112,42 @@ private struct PetProfileContent: View {
     private var baseDataSection: some View {
         Section {
             LabeledValueRow(
-                label: "Art",
+                label: String(localized: "Art"),
                 value: pet.speciesValue.label,
                 systemImage: pet.speciesValue.symbolName
             )
 
             if !pet.breed.isEmpty {
-                LabeledValueRow(label: "Rasse", value: pet.breed, systemImage: "list.bullet")
+                LabeledValueRow(label: String(localized: "Rasse"), value: pet.breed, systemImage: "list.bullet")
             }
 
             LabeledValueRow(
-                label: "Geburtsdatum",
-                value: pet.birthDate.map(Format.date) ?? "Nicht erfasst",
+                label: String(localized: "Geburtsdatum"),
+                value: pet.birthDate.map(Format.date) ?? String(localized: "Nicht erfasst"),
                 systemImage: "birthday.cake"
             )
 
             LabeledValueRow(
-                label: "Geschlecht",
-                value: pet.isFemale ? "Weiblich" : "Männlich",
+                label: String(localized: "Geschlecht"),
+                value: pet.isFemale ? String(localized: "Weiblich") : String(localized: "Männlich"),
                 systemImage: "figure.stand.dress.line.vertical.figure"
             )
 
             LabeledValueRow(
-                label: "Kastriert",
-                value: pet.isNeutered ? "Ja" : "Nein",
+                label: String(localized: "Kastriert"),
+                value: pet.isNeutered ? String(localized: "Ja") : String(localized: "Nein"),
                 systemImage: "cross.case"
             )
 
             LabeledValueRow(
-                label: "Zielbereich Gewicht",
-                value: weightTargetText ?? "Nicht festgelegt",
+                label: String(localized: "Zielbereich Gewicht"),
+                value: weightTargetText ?? String(localized: "Nicht festgelegt"),
                 systemImage: "scalemass"
             )
 
             if let latest = pet.latestWeightKg {
                 LabeledValueRow(
-                    label: "Letztes Gewicht",
+                    label: String(localized: "Letztes Gewicht"),
                     value: Format.weight(latest),
                     systemImage: "chart.line.uptrend.xyaxis"
                 )
@@ -167,7 +167,7 @@ private struct PetProfileContent: View {
     private var sizeClassSection: some View {
         Section {
             LabeledValueRow(
-                label: "Größenklasse",
+                label: String(localized: "Größenklasse"),
                 value: Format.label(pet.effectiveSizeClass),
                 systemImage: "ruler"
             )
@@ -181,27 +181,27 @@ private struct PetProfileContent: View {
     private var statisticsSection: some View {
         Section {
             LabeledValueRow(
-                label: "Gaben",
+                label: String(localized: "Gaben"),
                 value: "\(medicationCounts.given)",
                 systemImage: "pills"
             )
 
             if showsCycleCount {
                 LabeledValueRow(
-                    label: "Läufigkeiten",
+                    label: String(localized: "Läufigkeiten"),
                     value: "\(pet.cyclePeriods.count)",
                     systemImage: "circle.hexagonpath"
                 )
             }
 
             LabeledValueRow(
-                label: "Symptome",
+                label: String(localized: "Symptome"),
                 value: "\(pet.symptomEntries.count)",
                 systemImage: "stethoscope"
             )
 
             LabeledValueRow(
-                label: "Gewichtseinträge",
+                label: String(localized: "Gewichtseinträge"),
                 value: "\(pet.weightEntries.count)",
                 systemImage: "scalemass"
             )
@@ -220,7 +220,7 @@ private struct PetProfileContent: View {
                 Label("Profil bearbeiten", systemImage: "square.and.pencil")
             }
 
-            VetReportShareLink(petID: pet.id, petName: pet.name, title: "Tierarzt-Bericht teilen")
+            VetReportShareLink(petID: pet.id, petName: pet.name, title: String(localized: "Tierarzt-Bericht teilen"))
         }
     }
 
@@ -239,7 +239,7 @@ private struct PetProfileContent: View {
     // MARK: - Abgeleitete Texte
 
     private var displayName: String {
-        pet.name.isEmpty ? "Unbenannt" : pet.name
+        pet.name.isEmpty ? String(localized: "Unbenannt") : pet.name
     }
 
     /// Alter als „3 Jahre, 4 Monate". Kein `Format`-Helfer vorhanden, deshalb
@@ -249,12 +249,12 @@ private struct PetProfileContent: View {
         let years = parts.years
         let months = parts.months
 
-        if years == 0 && months == 0 { return "Wenige Tage alt" }
-        let yearText = "\(years) \(years == 1 ? "Jahr" : "Jahre")"
-        let monthText = "\(months) \(months == 1 ? "Monat" : "Monate")"
+        if years == 0 && months == 0 { return String(localized: "Wenige Tage alt") }
+        let yearText = String(localized: "\(years) Jahre", comment: "Alter in Jahren")
+        let monthText = String(localized: "\(months) Monate", comment: "Alter in Monaten")
         if years == 0 { return monthText }
         if months == 0 { return yearText }
-        return "\(yearText), \(monthText)"
+        return String(localized: "\(yearText), \(monthText)", comment: "Alter aus Jahren und Monaten, z. B. „3 Jahre, 4 Monate“")
     }
 
     private var weightTargetText: String? {
@@ -265,8 +265,8 @@ private struct PetProfileContent: View {
             // Die Einheit nur einmal nennen — „22 kg – 28 kg" liest sich zäh.
             return "\(plainNumber(minKg)) – \(Format.weight(maxKg))"
         }
-        if minKg > 0 { return "ab \(Format.weight(minKg))" }
-        return "bis \(Format.weight(maxKg))"
+        if minKg > 0 { return String(localized: "ab \(Format.weight(minKg))", comment: "Zielgewicht nur mit Untergrenze") }
+        return String(localized: "bis \(Format.weight(maxKg))", comment: "Zielgewicht nur mit Obergrenze")
     }
 
     private func plainNumber(_ value: Double) -> String {
@@ -276,35 +276,42 @@ private struct PetProfileContent: View {
     /// Macht sichtbar, dass Loggen etwas bringt: die Einträge sind nicht Archiv,
     /// sie sind die Rechengrundlage.
     private var statisticsFooter: String {
-        let base = "Diese Einträge sind die Rechengrundlage: die Fälligkeiten kommen aus den Gaben"
         guard showsCycleCount else {
-            return "\(base). Je länger die Historie, desto belastbarer die Prognose."
+            return String(localized: "Diese Einträge sind die Rechengrundlage: die Fälligkeiten kommen aus den Gaben. Je länger die Historie, desto belastbarer die Prognose.")
         }
-        return "\(base), die Zyklusprognose aus den Tag-1-Daten der Läufigkeiten. Je mehr eigene Zyklen erfasst sind, desto engere Spannen zeigt Rudel."
+        return String(localized: "Diese Einträge sind die Rechengrundlage: die Fälligkeiten kommen aus den Gaben, die Zyklusprognose aus den Tag-1-Daten der Läufigkeiten. Je mehr eigene Zyklen erfasst sind, desto engere Spannen zeigt Rudel.")
     }
 
     /// Hinweis für unkastrierte Katzen: hier fehlt das Zyklus-Modul mit Absicht.
     private var baseDataFooter: String? {
         guard pet.speciesValue == .cat, pet.isFemale, !pet.isNeutered else { return nil }
-        return "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen."
+        return String(localized: "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen.")
     }
 
     private var sizeClassFooter: String {
+        // Ganze Sätze, die nur mit Leerzeichen aneinandergereiht werden.
         let origin = pet.sizeClassOverride == nil
             ? (pet.latestWeightKg == nil
-                ? "Ohne Gewichtseintrag greift Rudel auf „Mittel“ zurück."
-                : "Automatisch aus dem letzten Gewichtseintrag abgeleitet.")
-            : "Manuell festgelegt."
+                ? String(localized: "Ohne Gewichtseintrag greift Rudel auf „Mittel“ zurück.")
+                : String(localized: "Automatisch aus dem letzten Gewichtseintrag abgeleitet."))
+            : String(localized: "Manuell festgelegt.")
 
         guard pet.tracksCycle else {
-            return "\(origin) Die Klasse wirkt nur auf die Zyklusprognose und bleibt für dieses Tier ohne Effekt."
+            let noEffect = String(localized: "Die Klasse wirkt nur auf die Zyklusprognose und bleibt für dieses Tier ohne Effekt.")
+            return "\(origin) \(noEffect)"
         }
 
         let bias = StudyConstants.intervalBiasDays(for: pet.effectiveSizeClass)
-        let biasText = bias == 0
-            ? "verschiebt den Startwert der Zyklusprognose nicht"
-            : "verschiebt den Startwert der Zyklusprognose um \(bias > 0 ? "+" : "−")\(abs(bias)) Tage"
-        return "\(origin) Sie \(biasText). Sobald eigene Intervalle geloggt sind, überstimmen sie diesen Startwert."
+        let effect: String
+        if bias == 0 {
+            effect = String(localized: "Sie verschiebt den Startwert der Zyklusprognose nicht.")
+        } else if bias > 0 {
+            effect = String(localized: "Sie verschiebt den Startwert der Zyklusprognose um +\(bias) Tage.", comment: "Größenklasse verschiebt den Startwert nach hinten")
+        } else {
+            effect = String(localized: "Sie verschiebt den Startwert der Zyklusprognose um −\(abs(bias)) Tage.", comment: "Größenklasse verschiebt den Startwert nach vorn")
+        }
+        let ownIntervals = String(localized: "Sobald eigene Intervalle geloggt sind, überstimmen sie diesen Startwert.")
+        return "\(origin) \(effect) \(ownIntervals)"
     }
 
     // MARK: - Zählungen
@@ -334,60 +341,62 @@ private struct PetProfileContent: View {
 
         let planCount = pet.medicationPlans.count
         if planCount > 0 {
-            parts.append("\(planCount) \(planCount == 1 ? "Medikamentenplan" : "Medikamentenpläne")")
+            parts.append(String(localized: "\(planCount) Medikamentenpläne"))
         }
 
         let counts = medicationCounts
         if counts.given > 0 {
-            parts.append("\(counts.given) \(counts.given == 1 ? "Gabe" : "Gaben")")
+            parts.append(String(localized: "\(counts.given) Gaben"))
         }
         // Die Kaskade löscht Auslassungen mit — der Dialog muss sie nennen.
         if counts.skipped > 0 {
-            parts.append("\(counts.skipped) \(counts.skipped == 1 ? "Auslassung" : "Auslassungen")")
+            parts.append(String(localized: "\(counts.skipped) Auslassungen"))
         }
 
         let appointments = pet.vetAppointments.count
         if appointments > 0 {
-            parts.append("\(appointments) \(appointments == 1 ? "Tierarzttermin" : "Tierarzttermine")")
+            parts.append(String(localized: "\(appointments) Tierarzttermine"))
         }
 
         let periods = pet.cyclePeriods.count
         if periods > 0 {
             let observations = pet.cyclePeriods.reduce(0) { $0 + $1.observations.count }
-            let periodText = "\(periods) \(periods == 1 ? "Läufigkeit" : "Läufigkeiten")"
-            parts.append(
-                observations > 0
-                    ? "\(periodText) mit \(observations) \(observations == 1 ? "Beobachtung" : "Beobachtungen")"
-                    : periodText
-            )
+            let periodText = String(localized: "\(periods) Läufigkeiten")
+            if observations > 0 {
+                let observationText = String(localized: "\(observations) Beobachtungen")
+                parts.append(String(
+                    localized: "\(periodText) mit \(observationText)",
+                    comment: "Löschdialog, z. B. „2 Läufigkeiten mit 14 Beobachtungen“"
+                ))
+            } else {
+                parts.append(periodText)
+            }
         }
 
         let symptoms = pet.symptomEntries.count
         if symptoms > 0 {
-            parts.append("\(symptoms) \(symptoms == 1 ? "Symptom" : "Symptome")")
+            parts.append(String(localized: "\(symptoms) Symptome"))
         }
 
         let weights = pet.weightEntries.count
         if weights > 0 {
-            parts.append("\(weights) \(weights == 1 ? "Gewichtseintrag" : "Gewichtseinträge")")
+            parts.append(String(localized: "\(weights) Gewichtseinträge"))
         }
 
         let name = displayName
         let message: String
         if parts.isEmpty {
-            message = "Für \(name) sind noch keine Einträge erfasst. Es wird nur das Profil gelöscht."
+            message = String(localized: "Für \(name) sind noch keine Einträge erfasst. Es wird nur das Profil gelöscht.")
         } else {
-            message = "Mit \(name) werden \(enumerated(parts)) gelöscht. Das lässt sich nicht rückgängig machen."
+            message = String(localized: "Mit \(name) werden \(enumerated(parts)) gelöscht. Das lässt sich nicht rückgängig machen.")
         }
 
         return PetDeletionSummary(name: name, message: message)
     }
 
-    /// „a, b und c" — deutsche Aufzählung statt einer Komma-Liste.
+    /// „a, b und c" — Aufzählung in der Sprache des Geräts statt einer Komma-Liste.
     private func enumerated(_ parts: [String]) -> String {
-        guard let last = parts.last else { return "" }
-        guard parts.count > 1 else { return last }
-        return parts.dropLast().joined(separator: ", ") + " und " + last
+        parts.formatted(.list(type: .and))
     }
 
     private func delete() {

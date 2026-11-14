@@ -13,6 +13,7 @@ private func moment(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ mi
 
 @Suite("DueItemBuilder — Vorsorge, Auslassen, Zurückstellen, Tierarzt")
 struct DueItemBuilderCareTests {
+    init() { useGermanEngineTexts() }
 
     let builder = DueItemBuilder(dayMath: .utc)
     /// „Heute" in allen Tests: Sonntag, 26.07.2026.

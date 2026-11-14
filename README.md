@@ -28,6 +28,23 @@ Schwellung) stehen vor dem, was Anfassen oder eine Tierarztpraxis braucht.
 
 Das Xcode-Projekt ist **nicht eingecheckt** — es entsteht aus `project.yml`.
 
+## Sprachen
+
+Deutsch ist die Quellsprache; die App ist zusätzlich übersetzt in Englisch,
+Niederländisch, Französisch, Spanisch, Italienisch, Portugiesisch,
+Schwedisch, Norwegisch (Bokmål), Dänisch, Finnisch, Japanisch und Koreanisch
+und folgt der Gerätesprache.
+
+| Ort | Inhalt |
+|---|---|
+| `Rudel/Resources/Localizable.xcstrings` | App-Texte; der deutsche Text ist der Schlüssel |
+| `Rudel/Resources/InfoPlist.xcstrings`, `RudelWidgets/*.xcstrings` | Systemhinweise und Live-Activity-Widget |
+| `Packages/RudelEngine/Sources/RudelEngine/Resources/*.lproj` | Engine-Texte (Mitteilungen, Hinweise) als `.strings`/`.stringsdict`, damit `swift test` ohne Xcode läuft |
+| `fastlane/metadata/<locale>` | App-Store-Texte |
+
+Tests laufen immer auf Deutsch (Schema-Sprache, `XCUIApplication.german()`,
+`EngineLocalization.overrideLanguage("de")`).
+
 ## Bauen
 
 ```sh

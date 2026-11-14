@@ -66,7 +66,7 @@ struct PetEditSheet: View {
                 emergencySection
             }
             .rudelFormStyle()
-            .navigationTitle(isNew ? "Neues Tier" : "Tier bearbeiten")
+            .navigationTitle(isNew ? String(localized: "Neues Tier") : String(localized: "Tier bearbeiten"))
             .navigationBarTitleDisplayMode(.inline)
             // Beim Anlegen steht die Tastatur direkt im Namensfeld: danach fehlt
             // nur noch „Speichern". Beim Bearbeiten (`isNew == false`) bleibt der
@@ -93,7 +93,7 @@ struct PetEditSheet: View {
         // Die Label-Closure des `PhotosPicker` ist `@Sendable` und darf deshalb
         // nicht auf den @MainActor-Zustand der View zugreifen — den Titel hier
         // ausrechnen und als Wert hineingeben.
-        let pickerTitle = photoData == nil ? "Foto wählen" : "Foto ändern"
+        let pickerTitle = photoData == nil ? String(localized: "Foto wählen") : String(localized: "Foto ändern")
 
         return Section {
             HStack(spacing: 16) {
@@ -273,8 +273,8 @@ struct PetEditSheet: View {
 
     private var weightSection: some View {
         Section {
-            weightField(label: "Von", text: $weightMinText, prompt: "z. B. 22")
-            weightField(label: "Bis", text: $weightMaxText, prompt: "z. B. 28")
+            weightField(label: String(localized: "Von", comment: "Zielgewicht Untergrenze"), text: $weightMinText, prompt: String(localized: "z. B. 22"))
+            weightField(label: String(localized: "Bis", comment: "Zielgewicht Obergrenze"), text: $weightMaxText, prompt: String(localized: "z. B. 28"))
         } header: {
             Text("Zielbereich Gewicht")
         } footer: {
@@ -348,17 +348,17 @@ struct PetEditSheet: View {
     private var sexFooter: String {
         switch species {
         case .dog:
-            return "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt. Für andere Tiere ist kein Zyklustracking verfügbar."
+            return String(localized: "Die Läufigkeit wird nur für unkastrierte Hündinnen geführt. Für andere Tiere ist kein Zyklustracking verfügbar.")
         case .cat:
-            return "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen."
+            return String(localized: "Für Katzen gibt es keine Zyklusprognose, ihr Zyklus lässt sich nicht verlässlich vorhersagen.")
         }
     }
 
     private var weightFooter: String {
-        if case .invalid = parsedWeightMin { return "Bitte eine Zahl eingeben, z. B. 22,5." }
-        if case .invalid = parsedWeightMax { return "Bitte eine Zahl eingeben, z. B. 22,5." }
-        if !isWeightRangeOrdered { return "Der untere Wert muss kleiner sein als der obere." }
-        return "Optional. Dient als Vergleich im Gewichtsverlauf."
+        if case .invalid = parsedWeightMin { return String(localized: "Bitte eine Zahl eingeben, z. B. 22,5.") }
+        if case .invalid = parsedWeightMax { return String(localized: "Bitte eine Zahl eingeben, z. B. 22,5.") }
+        if !isWeightRangeOrdered { return String(localized: "Der untere Wert muss kleiner sein als der obere.") }
+        return String(localized: "Optional. Dient als Vergleich im Gewichtsverlauf.")
     }
 
     // MARK: - Gültigkeit

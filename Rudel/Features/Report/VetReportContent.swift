@@ -23,7 +23,7 @@ struct VetReportContent: Sendable, Equatable {
         var species: String
         var breed: String
         var birthDate: Date?
-        var sex: String
+        var isFemale: Bool
         var isNeutered: Bool
         var microchipNumber: String
         var allergies: String
@@ -242,11 +242,11 @@ extension VetReportContent.PetFacts {
     init(pet: Pet) {
         let practice = pet.primaryPractice
         self.init(
-            name: pet.name.isEmpty ? "Unbenannt" : pet.name,
+            name: pet.name.isEmpty ? String(localized: "Unbenannt", comment: "Placeholder for a pet without a name") : pet.name,
             species: pet.speciesValue.label,
             breed: pet.breed,
             birthDate: pet.birthDate,
-            sex: pet.isFemale ? "weiblich" : "männlich",
+            isFemale: pet.isFemale,
             isNeutered: pet.isNeutered,
             microchipNumber: pet.microchipNumber,
             allergies: pet.allergies,
@@ -307,7 +307,7 @@ extension VetReportContent {
         var detail: String?
     }
 
-    static let emptyText = "Keine Einträge"
+    static var emptyText: String { String(localized: "Keine Einträge") }
 
     /// Fester Satz Überschriften. Abschnitte ohne Inhalt bleiben mit „Keine
     /// Einträge" stehen — für die Praxis ist „nichts erfasst" auch eine Aussage.
@@ -317,11 +317,11 @@ extension VetReportContent {
         if let occasion {
             result.append(occasionSection(occasion))
         }
-        result.append(Section(title: "Aktuelle Medikamente", rows: medications.map(Self.row(for:))))
-        result.append(Section(title: "Impfungen und Vorsorge", rows: preventives.map(Self.row(for:))))
+        result.append(Section(title: String(localized: "Aktuelle Medikamente"), rows: medications.map(Self.row(for:))))
+        result.append(Section(title: String(localized: "Impfungen und Vorsorge"), rows: preventives.map(Self.row(for:))))
         result.append(weightSection)
         result.append(Section(
-            title: "Symptome seit \(Format.date(symptomsSince))",
+            title: String(localized: "Symptome seit \(Format.date(symptomsSince))"),
             rows: symptoms.map {
                 Row(label: Format.date($0.date), text: "\($0.name) · \($0.severity)", detail: Self.nonEmpty($0.note))
             }
@@ -330,83 +330,90 @@ extension VetReportContent {
             result.append(cycleSection(cycle))
         }
         result.append(Section(
-            title: "Letzte Tierarzttermine",
+            title: String(localized: "Letzte Tierarzttermine"),
             rows: appointments.map {
                 let place = $0.practiceName.map { " · \($0)" } ?? ""
-                return Row(label: Format.date($0.date), text: $0.title + place, detail: Self.nonEmpty($0.findings).map { "Befund: \($0)" })
+                return Row(label: Format.date($0.date), text: $0.title + place, detail: Self.nonEmpty($0.findings).map { String(localized: "Befund: \($0)") })
             }
         ))
         return result
     }
 
     private var petSection: Section {
-        var rows = [Row(label: "Art", text: [pet.species, Self.nonEmpty(pet.breed)].compactMap { $0 }.joined(separator: " · "))]
+        var rows = [Row(label: String(localized: "Art", comment: "Vet report row label: species of the pet"), text: [pet.species, Self.nonEmpty(pet.breed)].compactMap { $0 }.joined(separator: " · "))]
         if let birthDate = pet.birthDate {
-            rows.append(Row(label: "Geboren", text: Format.date(birthDate)))
+            rows.append(Row(label: String(localized: "Geboren", comment: "Vet report row label: date of birth"), text: Format.date(birthDate)))
         }
-        rows.append(Row(label: "Geschlecht", text: pet.sex + (pet.isNeutered ? ", kastriert" : ", nicht kastriert")))
+        let sex: String
+        switch (pet.isFemale, pet.isNeutered) {
+        case (true, true): sex = String(localized: "weiblich, kastriert")
+        case (true, false): sex = String(localized: "weiblich, nicht kastriert")
+        case (false, true): sex = String(localized: "männlich, kastriert")
+        case (false, false): sex = String(localized: "männlich, nicht kastriert")
+        }
+        rows.append(Row(label: String(localized: "Geschlecht"), text: sex))
         if let latest = weight?.points.last {
-            rows.append(Row(label: "Gewicht", text: "\(Format.weight(latest.kg)) am \(Format.date(latest.date))"))
+            rows.append(Row(label: String(localized: "Gewicht"), text: String(localized: "\(Format.weight(latest.kg)) am \(Format.date(latest.date))", comment: "Weight on date")))
         }
-        rows.append(Row(label: "Chipnummer", text: Self.nonEmpty(pet.microchipNumber) ?? "nicht erfasst"))
-        rows.append(Row(label: "Allergien", text: Self.nonEmpty(pet.allergies) ?? "keine bekannt"))
+        rows.append(Row(label: String(localized: "Chipnummer"), text: Self.nonEmpty(pet.microchipNumber) ?? String(localized: "nicht erfasst")))
+        rows.append(Row(label: String(localized: "Allergien"), text: Self.nonEmpty(pet.allergies) ?? String(localized: "keine bekannt", comment: "Vet report: no known allergies")))
         if let insurance = Self.nonEmpty(pet.insuranceInfo) {
-            rows.append(Row(label: "Versicherung", text: insurance))
+            rows.append(Row(label: String(localized: "Versicherung"), text: insurance))
         }
         if let practice = pet.primaryPractice {
             let phone = pet.primaryPracticePhone.map { " · \($0)" } ?? ""
-            rows.append(Row(label: "Haustierarzt", text: practice + phone))
+            rows.append(Row(label: String(localized: "Haustierarzt"), text: practice + phone))
         }
-        return Section(title: "Tier und Notfalldaten", rows: rows)
+        return Section(title: String(localized: "Tier und Notfalldaten"), rows: rows)
     }
 
     private func occasionSection(_ occasion: Occasion) -> Section {
-        var rows = [Row(label: "Termin", text: "\(occasion.title) · \(Format.dateTime(occasion.date))")]
+        var rows = [Row(label: String(localized: "Termin"), text: "\(occasion.title) · \(Format.dateTime(occasion.date))")]
         if let practice = occasion.practiceName {
-            rows.append(Row(label: "Praxis", text: practice))
+            rows.append(Row(label: String(localized: "Praxis"), text: practice))
         }
-        rows.append(Row(label: "Fragen an die Praxis", text: Self.nonEmpty(occasion.questions) ?? "keine notiert"))
-        return Section(title: "Anlass", rows: rows)
+        rows.append(Row(label: String(localized: "Fragen an die Praxis"), text: Self.nonEmpty(occasion.questions) ?? String(localized: "keine notiert", comment: "Vet report: no questions noted")))
+        return Section(title: String(localized: "Anlass", comment: "Vet report section: occasion of the visit"), rows: rows)
     }
 
     private var weightSection: Section {
-        guard let weight else { return Section(title: "Gewicht (12 Monate)", rows: []) }
+        guard let weight else { return Section(title: String(localized: "Gewicht (12 Monate)"), rows: []) }
         let trend: String
         switch weight.trend {
-        case .stable: trend = "stabil"
-        case .rising: trend = "steigend (+\(Format.weight(weight.deltaKg)))"
-        case .falling: trend = "fallend (−\(Format.weight(abs(weight.deltaKg))))"
+        case .stable: trend = String(localized: "stabil", comment: "Weight trend")
+        case .rising: trend = String(localized: "steigend (+\(Format.weight(weight.deltaKg)))", comment: "Weight trend with change")
+        case .falling: trend = String(localized: "fallend (−\(Format.weight(abs(weight.deltaKg))))", comment: "Weight trend with change")
         }
         var rows = [
-            Row(label: "Spanne", text: "\(Format.weight(weight.minKg)) – \(Format.weight(weight.maxKg))"),
-            Row(label: "Trend", text: weight.points.count > 1 ? trend : "nur ein Messwert"),
+            Row(label: String(localized: "Spanne", comment: "Vet report: weight range"), text: "\(Format.weight(weight.minKg)) – \(Format.weight(weight.maxKg))"),
+            Row(label: String(localized: "Trend"), text: weight.points.count > 1 ? trend : String(localized: "nur ein Messwert")),
         ]
         rows += weight.points.reversed().map { Row(label: Format.date($0.date), text: Format.weight($0.kg)) }
-        return Section(title: "Gewicht (12 Monate)", rows: rows)
+        return Section(title: String(localized: "Gewicht (12 Monate)"), rows: rows)
     }
 
     private func cycleSection(_ cycle: CycleSummary) -> Section {
         var rows = cycle.periods.map { period in
-            let end = period.visibleHeatEnd.map { "sichtbare Hitze bis \(Format.date($0))" } ?? "Ende nicht erfasst"
+            let end = period.visibleHeatEnd.map { String(localized: "sichtbare Hitze bis \(Format.date($0))") } ?? String(localized: "Ende nicht erfasst")
             return Row(
                 label: Format.date(period.day1),
-                text: "Tag 1 · \(end)",
-                detail: period.pseudopregnancy ? "Anzeichen von Scheinträchtigkeit" : nil
+                text: String(localized: "Tag 1 · \(end)", comment: "Heat cycle row: day 1 · end of visible heat"),
+                detail: period.pseudopregnancy ? String(localized: "Anzeichen von Scheinträchtigkeit") : nil
             )
         }
         if !cycle.observedIntervalDays.isEmpty {
-            rows.append(Row(label: "Intervalle", text: cycle.observedIntervalDays.map(Format.dayCount).joined(separator: ", ")))
+            rows.append(Row(label: String(localized: "Intervalle", comment: "Vet report: observed heat cycle intervals"), text: cycle.observedIntervalDays.map(Format.dayCount).joined(separator: ", ")))
         }
         if let range = cycle.nextRange {
-            rows.append(Row(label: "Nächste erwartet", text: Format.dateRange(range)))
+            rows.append(Row(label: String(localized: "Nächste erwartet", comment: "Vet report: next heat expected"), text: Format.dateRange(range)))
         }
-        return Section(title: "Läufigkeit", rows: rows)
+        return Section(title: String(localized: "Läufigkeit"), rows: rows)
     }
 
     private static func row(for line: MedicationLine) -> Row {
         var details: [String] = []
         if let schedule = line.schedule { details.append(schedule) }
-        if let lastGiven = line.lastGiven { details.append("zuletzt \(Format.date(lastGiven))") }
+        if let lastGiven = line.lastGiven { details.append(String(localized: "zuletzt \(Format.date(lastGiven))", comment: "Medication last given on date")) }
         if let stock = line.stock { details.append(stock) }
         details.append(line.status)
         let title = line.title == line.kind ? line.title : "\(line.title) (\(line.kind))"

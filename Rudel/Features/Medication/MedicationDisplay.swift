@@ -54,7 +54,7 @@ enum MedicationDisplay {
         let product = plan.productName.trimmingCharacters(in: .whitespacesAndNewlines)
         switch plan.kindValue {
         case .rabiesVaccination:
-            return "Tollwut"
+            return String(localized: "Tollwut")
         case .vaccination:
             let vaccine = plan.vaccineValue ?? .other
             if vaccine != .other { return vaccine.displayName }
@@ -78,7 +78,7 @@ enum MedicationDisplay {
     static func durationLabel(days: Int) -> String {
         if days >= 365, days % 365 == 0 {
             let years = days / 365
-            return years == 1 ? "1 Jahr" : "\(years) Jahre"
+            return String(localized: "\(years) Jahre", comment: "Dauer in Jahren, z. B. Gültigkeit einer Impfung")
         }
         return Format.dayCount(days)
     }
@@ -87,7 +87,9 @@ enum MedicationDisplay {
     /// Dosierschema hat.
     static func scheduleSummary(for plan: MedicationPlan) -> String? {
         guard let schedule = plan.doseSchedule else { return nil }
-        let rhythm = schedule.everyNDays == 1 ? "Täglich" : "Jeden \(schedule.everyNDays). Tag"
+        let rhythm = schedule.everyNDays == 1
+            ? String(localized: "Täglich")
+            : String(localized: "Jeden \(schedule.everyNDays). Tag", comment: "Dosierrhythmus, Zahl immer ≥ 2")
         var parts = [rhythm, schedule.timesOfDay.map { Format.time($0) }.joined(separator: ", ")]
         if !schedule.doseLabel.isEmpty {
             parts.append(schedule.doseLabel)
@@ -127,7 +129,7 @@ enum MedicationDisplay {
             .build(medications: [plan.engineInput(asOf: asOf, dayMath: dayMath)], cycles: [], asOf: asOf, forecastHorizonDays: 0)
             .first { $0.category != .restock }
         guard let item else {
-            return unconfigured("Keine Fälligkeit berechenbar")
+            return unconfigured(String(localized: "Keine Fälligkeit berechenbar"))
         }
         let protection = protection(for: plan, today: today, dayMath: dayMath)
         let sortKey = PlanStatus.SortKey(group: 1, days: item.daysUntilDue)
@@ -135,7 +137,7 @@ enum MedicationDisplay {
         if let deferredUntil = item.deferredUntil {
             return PlanStatus(
                 urgency: item.urgency,
-                dueText: "Zurückgestellt bis \(Format.date(deferredUntil))",
+                dueText: String(localized: "Zurückgestellt bis \(Format.date(deferredUntil))"),
                 protection: protection,
                 sortKey: sortKey
             )
@@ -144,7 +146,7 @@ enum MedicationDisplay {
         if item.needsVetAppointment {
             return PlanStatus(
                 urgency: item.urgency,
-                dueText: "Tierarzttermin vereinbaren · fällig \(dueLabel(item))",
+                dueText: String(localized: "Tierarzttermin vereinbaren · fällig \(dueLabel(item))"),
                 protection: protection,
                 sortKey: plan.lastGivenOn == nil && plan.lastSkippedOn == nil
                     ? .init(group: 0, days: 0)
@@ -161,7 +163,9 @@ enum MedicationDisplay {
         if let skipped = plan.lastSkippedOn, skipped > (plan.lastGivenOn ?? .distantPast) {
             return PlanStatus(
                 urgency: item.urgency,
-                dueText: "Ausgelassen am \(Format.shortDate(skipped)) · nächste \(dueNoun(plan)) \(dueLabel(item))",
+                dueText: usesFecalSample(plan)
+                    ? String(localized: "Ausgelassen am \(Format.shortDate(skipped)) · nächste Kotprobe \(dueLabel(item))")
+                    : String(localized: "Ausgelassen am \(Format.shortDate(skipped)) · nächste Gabe \(dueLabel(item))"),
                 protection: protection,
                 sortKey: sortKey
             )
@@ -174,25 +178,29 @@ enum MedicationDisplay {
             // Schutzende — der Schutz ist dann schon weg, und „Schutz bis" darf
             // nicht den verschobenen Tag nennen.
             if let end = item.protectionEndsOn, !dayMath.isSameDay(end, item.dueOn) {
-                let ended = isRabies ? "Abgelaufen am" : "Schutz endete am"
+                // Hier nie Kotprobe: die gibt es nur bei der Wurmkur.
                 return PlanStatus(
                     urgency: item.urgency,
-                    dueText: "\(ended) \(Format.date(end)) · nächste \(dueNoun(plan)) \(dueLabel(item))",
+                    dueText: isRabies
+                        ? String(localized: "Abgelaufen am \(Format.date(end)) · nächste Gabe \(dueLabel(item))")
+                        : String(localized: "Schutz endete am \(Format.date(end)) · nächste Gabe \(dueLabel(item))"),
                     protection: protection,
                     sortKey: sortKey
                 )
             }
-            let prefix = isRabies ? "Gültig bis" : "Schutz bis"
+            let endsOn = Format.date(item.protectionEndsOn ?? item.dueOn)
             return PlanStatus(
                 urgency: item.urgency,
-                dueText: "\(prefix) \(Format.date(item.protectionEndsOn ?? item.dueOn))",
+                dueText: isRabies ? String(localized: "Gültig bis \(endsOn)") : String(localized: "Schutz bis \(endsOn)"),
                 protection: protection,
                 sortKey: sortKey
             )
         case .dewormer, .ongoing:
             return PlanStatus(
                 urgency: item.urgency,
-                dueText: "Nächste \(dueNoun(plan)): \(Format.date(item.dueOn)) · \(Format.relativeDue(days: item.daysUntilDue))",
+                dueText: usesFecalSample(plan)
+                    ? String(localized: "Nächste Kotprobe: \(Format.date(item.dueOn)) · \(Format.relativeDue(days: item.daysUntilDue))")
+                    : String(localized: "Nächste Gabe: \(Format.date(item.dueOn)) · \(Format.relativeDue(days: item.daysUntilDue))"),
                 protection: nil,
                 sortKey: sortKey
             )
@@ -201,7 +209,7 @@ enum MedicationDisplay {
 
     /// „Termin am 12. Okt., 10:30 · Praxis am Park".
     static func appointmentText(_ appointment: VetAppointment) -> String {
-        var text = "Termin am \(Format.dateTime(appointment.date))"
+        var text = String(localized: "Termin am \(Format.dateTime(appointment.date))")
         if let practice = appointment.practice?.name, !practice.isEmpty {
             text += " · \(practice)"
         }
@@ -210,14 +218,14 @@ enum MedicationDisplay {
 
     /// Bei Kotprobe statt Pauschalgabe fällig ist nicht die Gabe, sondern
     /// die Probe (PRD §5.2) — dieselbe Rechnung, andere Handlung.
-    private static func dueNoun(_ plan: MedicationPlan) -> String {
-        plan.kindValue == .dewormer && plan.usesFecalSampleInstead ? "Kotprobe" : "Gabe"
+    private static func usesFecalSample(_ plan: MedicationPlan) -> Bool {
+        plan.kindValue == .dewormer && plan.usesFecalSampleInstead
     }
 
     /// „12. Okt. 2026 · in 7 Tagen", bei „noch nie gegeben" nur „sofort".
     private static func dueLabel(_ item: DueItem) -> String {
         if item.urgency == .overdue, item.daysUntilDue == 0 {
-            return "sofort"
+            return String(localized: "sofort", comment: "Fälligkeit: noch nie gegeben")
         }
         return "\(Format.date(item.dueOn)) · \(Format.relativeDue(days: item.daysUntilDue))"
     }
@@ -225,13 +233,13 @@ enum MedicationDisplay {
     private static func missingConfiguration(for plan: MedicationPlan) -> String? {
         switch plan.kindValue {
         case .dewormer:
-            return plan.intervalDays > 0 ? nil : "Intervall nicht hinterlegt"
+            return plan.intervalDays > 0 ? nil : String(localized: "Intervall nicht hinterlegt")
         case .tickProtection:
-            return plan.effectiveDays > 0 ? nil : "Wirkdauer nicht hinterlegt"
+            return plan.effectiveDays > 0 ? nil : String(localized: "Wirkdauer nicht hinterlegt")
         case .rabiesVaccination, .vaccination:
-            return plan.effectiveDays > 0 ? nil : "Gültigkeit nicht hinterlegt"
+            return plan.effectiveDays > 0 ? nil : String(localized: "Gültigkeit nicht hinterlegt")
         case .ongoing:
-            return plan.doseSchedule == nil ? "Keine Gabezeiten hinterlegt" : nil
+            return plan.doseSchedule == nil ? String(localized: "Keine Gabezeiten hinterlegt") : nil
         }
     }
 
@@ -252,12 +260,12 @@ enum MedicationDisplay {
         let today = dayMath.startOfDay(asOf)
 
         guard let schedule = plan.doseSchedule else {
-            return unconfigured("Keine Gabezeiten hinterlegt")
+            return unconfigured(String(localized: "Keine Gabezeiten hinterlegt"))
         }
         if let endDate = plan.doseEndDate, dayMath.startOfDay(endDate) < today {
             return PlanStatus(
                 urgency: nil,
-                dueText: "Beendet am \(Format.date(endDate))",
+                dueText: String(localized: "Beendet am \(Format.date(endDate))"),
                 protection: nil,
                 sortKey: .init(group: 3, days: 0)
             )
@@ -268,7 +276,7 @@ enum MedicationDisplay {
             let days = dayMath.days(from: today, to: deferral)
             return PlanStatus(
                 urgency: Urgency(daysUntilDue: days),
-                dueText: "Zurückgestellt bis \(Format.date(deferral))",
+                dueText: String(localized: "Zurückgestellt bis \(Format.date(deferral))"),
                 protection: nil,
                 sortKey: .init(group: 2, days: days)
             )
@@ -282,18 +290,18 @@ enum MedicationDisplay {
         guard let next = occurrences.first(where: { $0 >= asOf }) ?? occurrences.first else {
             return PlanStatus(
                 urgency: nil,
-                dueText: "Keine Gabe in den nächsten 30 Tagen",
+                dueText: String(localized: "Keine Gabe in den nächsten 30 Tagen"),
                 protection: nil,
                 sortKey: .init(group: 3, days: 0)
             )
         }
         let days = dayMath.days(from: today, to: next)
-        let when = dayMath.isSameDay(next, asOf)
-            ? "heute \(Format.time(next))"
-            : "\(Format.date(next)) · \(Format.time(next))"
+        let dueText = dayMath.isSameDay(next, asOf)
+            ? String(localized: "Nächste Gabe: heute \(Format.time(next))")
+            : String(localized: "Nächste Gabe: \(Format.date(next)) · \(Format.time(next))")
         return PlanStatus(
             urgency: Urgency(daysUntilDue: days),
-            dueText: "Nächste Gabe: \(when)",
+            dueText: dueText,
             protection: nil,
             // Dauermedikamente werden über die Einzelgaben abgehakt, nicht
             // über „Gegeben" — deshalb hinter den Intervall-Fällen.
@@ -320,7 +328,7 @@ enum MedicationDisplay {
     private static func neverGiven() -> PlanStatus {
         PlanStatus(
             urgency: .overdue,
-            dueText: "Noch nie gegeben",
+            dueText: String(localized: "Noch nie gegeben"),
             protection: nil,
             sortKey: .init(group: 0, days: 0)
         )
@@ -345,15 +353,15 @@ enum MedicationDisplay {
 
     private static func stockConfiguration(for plan: MedicationPlan) -> [ConfigurationRow] {
         guard plan.managesStock else { return [] }
-        var rows = [ConfigurationRow(label: "Menge je Gabe", value: Format.amount(plan.amountPerGiving, unit: plan.stockUnit))]
+        var rows = [ConfigurationRow(label: String(localized: "Menge je Gabe"), value: Format.amount(plan.amountPerGiving, unit: plan.stockUnit))]
         if plan.packageSize > 0 {
-            rows.append(ConfigurationRow(label: "Packung", value: Format.amount(plan.packageSize, unit: plan.stockUnit)))
+            rows.append(ConfigurationRow(label: String(localized: "Packung"), value: Format.amount(plan.packageSize, unit: plan.stockUnit)))
         }
         if let countedAt = plan.stockCountedAt {
-            rows.append(ConfigurationRow(label: "Gezählt", value: Format.date(countedAt)))
+            rows.append(ConfigurationRow(label: String(localized: "Gezählt"), value: Format.date(countedAt)))
         }
         if plan.needsPrescription {
-            rows.append(ConfigurationRow(label: "Rezept", value: "nötig"))
+            rows.append(ConfigurationRow(label: String(localized: "Rezept"), value: String(localized: "nötig")))
         }
         return rows
     }
@@ -363,44 +371,46 @@ enum MedicationDisplay {
         case .dewormer:
             var rows = [
                 ConfigurationRow(
-                    label: "Intervall",
-                    value: plan.intervalDays > 0 ? "alle \(durationLabel(days: plan.intervalDays))" : "nicht gesetzt"
+                    label: String(localized: "Intervall"),
+                    value: plan.intervalDays > 0
+                        ? String(localized: "alle \(durationLabel(days: plan.intervalDays))", comment: "Intervall, z. B. „alle 90 Tage“")
+                        : String(localized: "nicht gesetzt")
                 )
             ]
             if plan.usesFecalSampleInstead {
-                rows.append(ConfigurationRow(label: "Statt Pauschalgabe", value: "Kotprobe"))
+                rows.append(ConfigurationRow(label: String(localized: "Statt Pauschalgabe"), value: String(localized: "Kotprobe")))
             }
             return rows
 
         case .tickProtection:
             return [
                 ConfigurationRow(
-                    label: "Wirkdauer",
-                    value: plan.effectiveDays > 0 ? durationLabel(days: plan.effectiveDays) : "nicht gesetzt"
+                    label: String(localized: "Wirkdauer"),
+                    value: plan.effectiveDays > 0 ? durationLabel(days: plan.effectiveDays) : String(localized: "nicht gesetzt")
                 )
             ]
 
         case .rabiesVaccination, .vaccination:
             var rows: [ConfigurationRow] = []
             if let lastGivenOn = plan.lastGivenOn {
-                rows.append(ConfigurationRow(label: "Zuletzt geimpft", value: Format.date(lastGivenOn)))
+                rows.append(ConfigurationRow(label: String(localized: "Zuletzt geimpft"), value: Format.date(lastGivenOn)))
             }
             rows.append(ConfigurationRow(
-                label: "Gültigkeit",
-                value: plan.effectiveDays > 0 ? durationLabel(days: plan.effectiveDays) : "nicht gesetzt"
+                label: String(localized: "Gültigkeit"),
+                value: plan.effectiveDays > 0 ? durationLabel(days: plan.effectiveDays) : String(localized: "nicht gesetzt")
             ))
             return rows
 
         case .ongoing:
             var rows: [ConfigurationRow] = []
             if let summary = scheduleSummary(for: plan) {
-                rows.append(ConfigurationRow(label: "Dosierung", value: summary))
+                rows.append(ConfigurationRow(label: String(localized: "Dosierung"), value: summary))
             }
             if let start = plan.doseStartDate {
-                rows.append(ConfigurationRow(label: "Beginn", value: Format.date(start)))
+                rows.append(ConfigurationRow(label: String(localized: "Beginn"), value: Format.date(start)))
             }
             if let end = plan.doseEndDate {
-                rows.append(ConfigurationRow(label: "Ende", value: Format.date(end)))
+                rows.append(ConfigurationRow(label: String(localized: "Ende"), value: Format.date(end)))
             }
             return rows
         }
@@ -418,8 +428,8 @@ enum MedicationDisplay {
     /// Vorratsverwaltung.
     static func stockText(for plan: MedicationPlan, asOf: Date, dayMath: DayMath) -> String? {
         guard let projection = stockProjection(for: plan, asOf: asOf, dayMath: dayMath) else { return nil }
-        guard projection.remainingAmount > 0 else { return "Vorrat aufgebraucht" }
-        var text = "Vorrat: noch \(Format.amount(projection.remainingAmount, unit: projection.unit))"
+        guard projection.remainingAmount > 0 else { return String(localized: "Vorrat aufgebraucht") }
+        var text = String(localized: "Vorrat: noch \(Format.amount(projection.remainingAmount, unit: projection.unit))")
         if let reach = reachText(projection) { text += " · \(reach)" }
         return text
     }
@@ -427,12 +437,12 @@ enum MedicationDisplay {
     /// „reicht bis 17. Okt." — `nil`, wenn sich das nicht datieren lässt.
     static func reachText(_ projection: StockProjection) -> String? {
         if projection.coveredGivings == 0, projection.runsOutOn != nil {
-            return "reicht nicht für die nächste Gabe"
+            return String(localized: "reicht nicht für die nächste Gabe")
         }
         // Ohne `runsOutOn` reicht der Vorrat bis zum Schemaende oder über die
         // Rechengrenze hinaus — dann steht nur die Menge da.
         guard projection.runsOutOn != nil, let last = projection.lastCoveredOn else { return nil }
-        return "reicht bis \(Format.shortDate(last))"
+        return String(localized: "reicht bis \(Format.shortDate(last))")
     }
 
     // MARK: Historie

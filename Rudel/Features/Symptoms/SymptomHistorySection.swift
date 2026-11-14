@@ -29,10 +29,10 @@ struct SymptomHistorySection: View {
     var body: some View {
         if petEntries.isEmpty {
             RudelEmptyState(
-                title: "Keine Symptome",
-                detail: "Eine kleine Auffälligkeit, ein Foto, eine Beobachtung. Hier entsteht die Geschichte, die dir beim Tierarzt hilft.",
+                title: String(localized: "Keine Symptome"),
+                detail: String(localized: "Eine kleine Auffälligkeit, ein Foto, eine Beobachtung. Hier entsteht die Geschichte, die dir beim Tierarzt hilft."),
                 symbol: "heart.text.square",
-                actionTitle: "Symptom erfassen"
+                actionTitle: String(localized: "Symptom erfassen")
             ) {
                 appState.present(.logSymptom(petID: pet.id))
             }
@@ -40,9 +40,9 @@ struct SymptomHistorySection: View {
             List {
                 Section {
                     RudelFeatureHeading(
-                        eyebrow: "GESUNDHEITSJOURNAL",
-                        title: "Aufmerksam begleitet",
-                        detail: "\(petEntries.count) \(petEntries.count == 1 ? "Beobachtung" : "Beobachtungen") für \(pet.name.isEmpty ? "dein Tier" : pet.name)",
+                        eyebrow: String(localized: "GESUNDHEITSJOURNAL"),
+                        title: String(localized: "Aufmerksam begleitet"),
+                        detail: journalDetail,
                         symbol: "heart.text.square"
                     )
                     .rudelFeatureRow()
@@ -76,6 +76,15 @@ struct SymptomHistorySection: View {
             }
             .rudelListStyle()
         }
+    }
+
+    /// „3 Beobachtungen für Zola".
+    private var journalDetail: String {
+        let observations = String(localized: "\(petEntries.count) Beobachtungen")
+        let name = pet.name.isEmpty
+            ? String(localized: "dein Tier", comment: "Platzhalter für ein Tier ohne Namen, im Satz")
+            : pet.name
+        return String(localized: "\(observations) für \(name)", comment: "Erstes %@ = Anzahl Beobachtungen, zweites = Name des Tiers")
     }
 
     /// Gruppen nach `groupingKey`, innen und außen absteigend nach Datum:
@@ -271,24 +280,24 @@ private struct SymptomDetailView: View {
 
             Section {
                 LabeledValueRow(
-                    label: "Datum",
+                    label: String(localized: "Datum"),
                     value: Format.date(entry.date),
                     systemImage: "calendar"
                 )
                 LabeledValueRow(
-                    label: "Schweregrad",
+                    label: String(localized: "Schweregrad"),
                     value: entry.severityValue.label,
                     systemImage: "gauge.with.dots.needle.bottom.50percent"
                 )
                 if let treatment = entry.linkedTreatment {
                     LabeledValueRow(
-                        label: "Behandlung",
+                        label: String(localized: "Behandlung"),
                         value: treatmentName(treatment),
                         systemImage: "pills"
                     )
                 }
                 LabeledValueRow(
-                    label: "Erfasst",
+                    label: String(localized: "Erfasst", comment: "Zeitpunkt der Erfassung"),
                     value: Format.dateTime(entry.loggedAt),
                     systemImage: "square.and.pencil"
                 )

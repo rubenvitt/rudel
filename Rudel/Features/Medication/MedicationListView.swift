@@ -10,7 +10,7 @@ import SwiftUI
 /// Einzelgaben direkt in der Zeile zum Abhaken.
 struct MedicationListView: View {
     var body: some View {
-        PetScope(title: "Medikamente") { pet in
+        PetScope(title: String(localized: "Medikamente")) { pet in
             MedicationPlanList(pet: pet)
         }
     }
@@ -104,10 +104,12 @@ private struct MedicationPlanList: View {
 
     private var emptyState: some View {
         RudelEmptyState(
-            title: "Keine Medikamente",
-            detail: "Von der Wurmkur bis zur täglichen Gabe: Lege den ersten Plan für \(pet.name.isEmpty ? "dein Tier" : pet.name) an. Rudel behält die Intervalle im Blick.",
+            title: String(localized: "Keine Medikamente"),
+            detail: pet.name.isEmpty
+                ? String(localized: "Von der Wurmkur bis zur täglichen Gabe: Lege den ersten Plan für dein Tier an. Rudel behält die Intervalle im Blick.")
+                : String(localized: "Von der Wurmkur bis zur täglichen Gabe: Lege den ersten Plan für \(pet.name) an. Rudel behält die Intervalle im Blick."),
             symbol: "pills",
-            actionTitle: "Plan anlegen"
+            actionTitle: String(localized: "Plan anlegen")
         ) {
             appState.present(.editMedicationPlan(planID: nil, petID: pet.id))
         }
@@ -117,9 +119,11 @@ private struct MedicationPlanList: View {
         List {
             Section {
                 RudelFeatureHeading(
-                    eyebrow: pet.name.isEmpty ? "MEDIKAMENTENPLÄNE" : "FÜR \(pet.name.uppercased())",
-                    title: "Gaben & Schutz",
-                    detail: "\(activePlans.count) \(activePlans.count == 1 ? "aktiver Plan" : "aktive Pläne") · Intervalle und Verlauf",
+                    eyebrow: pet.name.isEmpty
+                        ? String(localized: "MEDIKAMENTENPLÄNE")
+                        : String(localized: "FÜR \(pet.name.uppercased())", comment: "Überschrift über der Medikamentenliste, Tiername in Großbuchstaben"),
+                    title: String(localized: "Gaben & Schutz"),
+                    detail: String(localized: "\(activePlans.count) aktive Pläne · Intervalle und Verlauf"),
                     symbol: "pills"
                 )
                 .rudelFeatureRow()
@@ -205,7 +209,8 @@ private struct MedicationPlanList: View {
                             .foregroundStyle(.secondary)
                     }
                     if plan.kindValue.isVaccination {
-                        Text(plan.lastGivenOn.map { "Zuletzt geimpft \(Format.date($0))" } ?? "Keine Impfung dokumentiert")
+                        Text(plan.lastGivenOn.map { String(localized: "Zuletzt geimpft \(Format.date($0))") }
+                            ?? String(localized: "Keine Impfung dokumentiert"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -394,8 +399,8 @@ private struct MedicationPlanList: View {
     }
 
     private func lastGivenText(_ plan: MedicationPlan) -> String {
-        guard let lastGivenOn = plan.lastGivenOn else { return "Keine Gabe dokumentiert" }
-        return "Zuletzt: \(Format.date(lastGivenOn))"
+        guard let lastGivenOn = plan.lastGivenOn else { return String(localized: "Keine Gabe dokumentiert") }
+        return String(localized: "Zuletzt: \(Format.date(lastGivenOn))")
     }
 
     // MARK: Einzelgaben eines Dauermedikaments
@@ -576,7 +581,9 @@ private struct MedicationPlanList: View {
             Text(Format.dateTime(entry.scheduledAt))
                 .font(.footnote)
             Spacer(minLength: 8)
-            Text("\(entry.wasSkipped ? "ausgelassen" : "abgehakt") \(Format.dateTime(entry.takenAt))")
+            Text(entry.wasSkipped
+                 ? String(localized: "ausgelassen \(Format.dateTime(entry.takenAt))")
+                 : String(localized: "abgehakt \(Format.dateTime(entry.takenAt))"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -669,7 +676,7 @@ private enum PlanSection: CaseIterable, Hashable {
         case .dewormer: return Format.label(MedicationKind.dewormer)
         case .tickProtection: return Format.label(MedicationKind.tickProtection)
         case .ongoing: return Format.label(MedicationKind.ongoing)
-        case .vaccinations: return "Impfungen"
+        case .vaccinations: return String(localized: "Impfungen")
         }
     }
 

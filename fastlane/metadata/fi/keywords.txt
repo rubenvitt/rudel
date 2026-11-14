@@ -1,0 +1,1 @@
+lemmikki,madotus,rokotus,muistutus,paino,punkki,terveys,narttu,lääkitys,pentu,juoksu,juoksuaika

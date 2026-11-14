@@ -14,6 +14,7 @@ private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
 
 @Suite("DueItemBuilder")
 struct DueItemBuilderTests {
+    init() { useGermanEngineTexts() }
 
     let builder = DueItemBuilder(dayMath: .utc)
     /// „Heute" in allen Tests.

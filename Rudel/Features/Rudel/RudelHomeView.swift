@@ -69,7 +69,7 @@ struct RudelHomeView: View {
                 Label("Weiteres Tier anlegen", systemImage: "plus.circle")
             }
         } header: {
-            RudelSectionHeading(title: "Deine Tiere")
+            RudelSectionHeading(title: String(localized: "Deine Tiere"))
         } footer: {
             Text("Welches Tier die anderen Tabs zeigen, wählst du dort oben links.")
         }
@@ -88,7 +88,7 @@ struct RudelHomeView: View {
             }
             .accessibilityIdentifier("manage-subscription")
         } header: {
-            RudelSectionHeading(title: "Alles kostenlos")
+            RudelSectionHeading(title: String(localized: "Alles kostenlos"))
         } footer: {
             Text("Rudel ist jetzt komplett kostenlos. Falls du früher Rudel Plus abonniert hast, kannst du das Abo hier kündigen.")
         }
@@ -113,7 +113,7 @@ struct RudelHomeView: View {
             }
             .accessibilityIdentifier("settings-reminders")
         } header: {
-            RudelSectionHeading(title: "Einstellungen")
+            RudelSectionHeading(title: String(localized: "Einstellungen"))
         }
     }
 
@@ -132,7 +132,7 @@ struct RudelHomeView: View {
                 LabeledContent("Version", value: version)
             }
         } header: {
-            RudelSectionHeading(title: "Über Rudel")
+            RudelSectionHeading(title: String(localized: "Über Rudel"))
         } footer: {
             Text("Kein Konto, kein Server. Dein iCloud- oder Geräte-Backup sichert die Einträge mit.")
         }
@@ -152,7 +152,7 @@ private struct PetRow: View {
         HStack(spacing: 14) {
             PetAvatar(pet: pet, size: 44)
             VStack(alignment: .leading, spacing: 3) {
-                Text(pet.name.isEmpty ? "Unbenannt" : pet.name)
+                Text(pet.name.isEmpty ? String(localized: "Unbenannt") : pet.name)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(RudelTheme.ink)
                     .lineLimit(2)
