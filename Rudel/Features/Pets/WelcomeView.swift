@@ -34,11 +34,23 @@ struct WelcomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RudelTheme.forest, in: .rect(cornerRadius: 28))
 
-                RudelSectionHeading(title: "Euer Alltag. Gut im Blick.")
+                RudelSectionHeading(title: String(localized: "Euer Alltag. Gut im Blick."))
                 VStack(alignment: .leading, spacing: 22) {
-                    feature("Gaben im richtigen Moment", detail: "Medikamente und Schutzintervalle mit Erinnerungen.", symbol: "pills")
-                    feature("Veränderungen festhalten", detail: "Symptome, Fotos und Gewicht im Verlauf.", symbol: "heart.text.square")
-                    feature("Zyklen besser kennenlernen", detail: "Läufigkeit dokumentieren und Spannen einschätzen.", symbol: "circle.hexagonpath")
+                    feature(
+                        String(localized: "Gaben im richtigen Moment"),
+                        detail: String(localized: "Medikamente und Schutzintervalle mit Erinnerungen."),
+                        symbol: "pills"
+                    )
+                    feature(
+                        String(localized: "Veränderungen festhalten"),
+                        detail: String(localized: "Symptome, Fotos und Gewicht im Verlauf."),
+                        symbol: "heart.text.square"
+                    )
+                    feature(
+                        String(localized: "Zyklen besser kennenlernen"),
+                        detail: String(localized: "Läufigkeit dokumentieren und Spannen einschätzen."),
+                        symbol: "circle.hexagonpath"
+                    )
                 }
                 Label("Alle Einträge bleiben auf diesem Gerät.", systemImage: "lock")
                     .font(.footnote)

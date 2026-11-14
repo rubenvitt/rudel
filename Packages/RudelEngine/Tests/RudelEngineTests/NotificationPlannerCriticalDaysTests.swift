@@ -8,6 +8,7 @@ import Testing
 /// sondern die Frage, ob ein zeitgebundener Hinweis das Budget übersteht.
 @Suite("NotificationPlanner — kritische Tage")
 struct NotificationPlannerCriticalDaysTests {
+    init() { useGermanEngineTexts() }
 
     private let math = DayMath.utc
     private let planner = NotificationPlanner(dayMath: .utc)

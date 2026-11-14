@@ -4,6 +4,7 @@ import Testing
 
 @Suite("NotificationPlanner authoritative medication reminders")
 struct NotificationPlannerMedicationReminderTests {
+    init() { useGermanEngineTexts() }
     private let medicationPlanner = MedicationReminderPlanner(dayMath: .utc)
     private let notificationPlanner = NotificationPlanner(dayMath: .utc)
 

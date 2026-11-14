@@ -13,6 +13,7 @@ private func moment(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ mi
 
 @Suite("Impfungen — Katalog und Fälligkeit")
 struct VaccinationTests {
+    init() { useGermanEngineTexts() }
     let builder = DueItemBuilder(dayMath: .utc)
     let today = moment(2026, 7, 26)
 
@@ -89,6 +90,7 @@ struct VaccinationTests {
 
 @Suite("Vorrat — Reichweite und Nachfüllen")
 struct StockProjectionTests {
+    init() { useGermanEngineTexts() }
     let builder = DueItemBuilder(dayMath: .utc)
     let today = moment(2026, 7, 26)
 
@@ -277,6 +279,7 @@ struct StockProjectionTests {
 
 @Suite("Vorrat — Mitteilungen")
 struct RestockNotificationTests {
+    init() { useGermanEngineTexts() }
     let builder = DueItemBuilder(dayMath: .utc)
     let planner = NotificationPlanner(dayMath: .utc)
 

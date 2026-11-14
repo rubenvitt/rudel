@@ -161,11 +161,17 @@ struct MedicationPlanEditSheet: View {
         }
     }
 
+    /// „Art“ des Plans. Eigener Schlüssel, weil „Art“ sonst die Tierart ist
+    /// und andere Sprachen dafür ein anderes Wort brauchen.
+    private static var kindTitle: String {
+        String(localized: "Art (Plan)", defaultValue: "Art", comment: "Medication plan form: kind of treatment (medication, deworming, vaccination …)")
+    }
+
     @ViewBuilder
     private var kindSection: some View {
         Section {
             if canChangeKind {
-                Picker("Art", selection: kindOptionBinding) {
+                Picker(Self.kindTitle, selection: kindOptionBinding) {
                     ForEach(Self.kindOptions, id: \.self) { option in
                         Label(Format.label(option), systemImage: Format.symbolName(option))
                             .tag(option)
@@ -181,12 +187,12 @@ struct MedicationPlanEditSheet: View {
                 }
             } else {
                 LabeledValueRow(
-                    label: "Art",
+                    label: Self.kindTitle,
                     value: Format.label(kind.isVaccination ? .vaccination : kind),
                     systemImage: Format.symbolName(kind)
                 )
                 if kind.isVaccination {
-                    LabeledValueRow(label: "Impfung gegen", value: vaccineChoice.label)
+                    LabeledValueRow(label: String(localized: "Impfung gegen"), value: vaccineChoice.label)
                 }
             }
         } footer: {
@@ -201,13 +207,13 @@ struct MedicationPlanEditSheet: View {
     private var kindExplanation: String {
         switch kind {
         case .dewormer:
-            return "Fällig wird die nächste Gabe aus der letzten Gabe plus Intervall."
+            return String(localized: "Fällig wird die nächste Gabe aus der letzten Gabe plus Intervall.")
         case .tickProtection:
-            return "Der Balken in der Liste zeigt, wie lange der Schutz noch hält."
+            return String(localized: "Der Balken in der Liste zeigt, wie lange der Schutz noch hält.")
         case .ongoing:
-            return "Ein Dauermedikament wird nicht als Ganzes fällig, sondern Gabe für Gabe abgehakt."
+            return String(localized: "Ein Dauermedikament wird nicht als Ganzes fällig, sondern Gabe für Gabe abgehakt.")
         case .rabiesVaccination, .vaccination:
-            return "Impfdatum plus Gültigkeit laut Impfpass."
+            return String(localized: "Impfdatum plus Gültigkeit laut Impfpass.")
         }
     }
 
@@ -254,7 +260,7 @@ struct MedicationPlanEditSheet: View {
 
     private var productSection: some View {
         Section {
-            TextField("Präparat", text: $productName, prompt: Text(kind.isVaccination ? "Impfstoff" : Format.label(kind)))
+            TextField("Präparat", text: $productName, prompt: Text(kind.isVaccination ? String(localized: "Impfstoff") : Format.label(kind)))
                 .textInputAutocapitalization(.words)
                 .accessibilityIdentifier("medication-product-name")
         } footer: {
@@ -271,7 +277,7 @@ struct MedicationPlanEditSheet: View {
                     Text(MedicationDisplay.durationLabel(days: days)).tag(days)
                 }
             }
-            dayCountField(label: "Tage", value: $intervalDays)
+            dayCountField(label: String(localized: "Tage"), value: $intervalDays)
             Toggle("Kotprobe statt Pauschalgabe", isOn: $usesFecalSampleInstead)
         } header: {
             Text("Wiederholung")
@@ -291,7 +297,7 @@ struct MedicationPlanEditSheet: View {
                     Text(MedicationDisplay.durationLabel(days: days)).tag(days)
                 }
             }
-            dayCountField(label: "Tage", value: $effectiveDays)
+            dayCountField(label: String(localized: "Tage"), value: $effectiveDays)
         } header: {
             Text(kind.isVaccination ? "Gültigkeit der Impfung" : "Wirkdauer des Präparats")
         } footer: {
@@ -335,8 +341,10 @@ struct MedicationPlanEditSheet: View {
         Section {
             Stepper(value: $doseEveryNDays, in: 1...30) {
                 LabeledValueRow(
-                    label: "Rhythmus",
-                    value: doseEveryNDays == 1 ? "täglich" : "jeden \(doseEveryNDays). Tag"
+                    label: String(localized: "Rhythmus"),
+                    value: doseEveryNDays == 1
+                        ? String(localized: "täglich")
+                        : String(localized: "jeden \(doseEveryNDays). Tag", comment: "Dosierrhythmus, Zahl immer ≥ 2")
                 )
             }
             TextField("Dosis", text: $doseLabel, prompt: Text("z. B. 1/2 Tablette"))
@@ -362,7 +370,7 @@ struct MedicationPlanEditSheet: View {
             Toggle("Vorrat verwalten", isOn: $managesStock)
                 .accessibilityIdentifier("medication-manage-stock")
             if managesStock {
-                amountField("Bestand", text: $stockAmountText, identifier: "medication-stock-amount")
+                amountField(String(localized: "Bestand"), text: $stockAmountText, identifier: "medication-stock-amount")
                 HStack {
                     Text("Einheit")
                     Spacer(minLength: 8)
@@ -370,10 +378,10 @@ struct MedicationPlanEditSheet: View {
                         .multilineTextAlignment(.trailing)
                         .accessibilityIdentifier("medication-stock-unit")
                 }
-                amountField("Menge je Gabe", text: $amountPerGivingText, identifier: "medication-amount-per-giving")
-                amountField("Packungsgröße", text: $packageSizeText, identifier: "medication-package-size", prompt: "unbekannt")
+                amountField(String(localized: "Menge je Gabe"), text: $amountPerGivingText, identifier: "medication-amount-per-giving")
+                amountField(String(localized: "Packungsgröße"), text: $packageSizeText, identifier: "medication-package-size", prompt: String(localized: "unbekannt"))
                 Stepper(value: $restockLeadDays, in: 1...60) {
-                    LabeledValueRow(label: "Erinnern", value: "\(Format.dayCount(restockLeadDays)) vorher")
+                    LabeledValueRow(label: String(localized: "Erinnern"), value: String(localized: "\(Format.dayCount(restockLeadDays)) vorher", comment: "Vorlauf der Vorrats-Erinnerung, z. B. „7 Tage vorher“"))
                 }
                 Toggle("Rezeptpflichtig", isOn: $needsPrescription)
             }
@@ -815,7 +823,7 @@ enum VaccineChoice: Hashable {
 
     var label: String {
         switch self {
-        case .rabies: return "Tollwut"
+        case .rabies: return String(localized: "Tollwut")
         case .vaccine(let vaccine): return vaccine.displayName
         }
     }

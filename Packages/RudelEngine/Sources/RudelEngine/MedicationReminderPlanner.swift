@@ -121,7 +121,7 @@ public struct MedicationReminderPlanner: Sendable {
                         medication: medication,
                         category: .dose,
                         title: medication.productName.isEmpty
-                            ? "Laufendes Medikament"
+                            ? L10n.string("medication.kind.ongoing")
                             : medication.productName,
                         detail: schedule.doseLabel.isEmpty ? nil : schedule.doseLabel,
                         dueAt: dueAt,

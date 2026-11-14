@@ -17,15 +17,15 @@ enum SymptomType: String, Codable, CaseIterable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .earInfection: return "Ohrenentzündung"
-        case .vomiting: return "Erbrechen"
-        case .diarrhea: return "Durchfall"
-        case .limping: return "Humpeln"
-        case .appetiteLoss: return "Appetitlosigkeit"
-        case .itching: return "Juckreiz"
-        case .coughing: return "Husten"
-        case .lethargy: return "Mattigkeit"
-        case .other: return "Sonstiges"
+        case .earInfection: return String(localized: "Ohrenentzündung")
+        case .vomiting: return String(localized: "Erbrechen")
+        case .diarrhea: return String(localized: "Durchfall")
+        case .limping: return String(localized: "Humpeln")
+        case .appetiteLoss: return String(localized: "Appetitlosigkeit")
+        case .itching: return String(localized: "Juckreiz")
+        case .coughing: return String(localized: "Husten")
+        case .lethargy: return String(localized: "Mattigkeit")
+        case .other: return String(localized: "Sonstiges", comment: "Symptom: anderes")
         }
     }
 
@@ -57,9 +57,9 @@ enum SymptomSeverity: Int, Codable, CaseIterable, Hashable, Sendable, Comparable
 
     var label: String {
         switch self {
-        case .mild: return "Leicht"
-        case .moderate: return "Mittel"
-        case .severe: return "Stark"
+        case .mild: return String(localized: "Leicht", comment: "Schweregrad eines Symptoms")
+        case .moderate: return String(localized: "Mittel", comment: "Menge oder Schweregrad: mittel")
+        case .severe: return String(localized: "Stark", comment: "Schweregrad eines Symptoms")
         }
     }
 

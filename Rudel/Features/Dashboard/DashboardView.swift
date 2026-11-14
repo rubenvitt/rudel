@@ -12,7 +12,7 @@ import SwiftUI
 /// Fall, dass Datum oder Notiz vom Regelfall abweichen (PRD §2).
 struct DashboardView: View {
     var body: some View {
-        PetScope(title: "Heute") { pet in
+        PetScope(title: String(localized: "Heute")) { pet in
             DashboardContent(pet: pet)
         }
     }
@@ -121,8 +121,8 @@ private struct DashboardContent: View {
         Section {
             RudelPetHero(
                 pet: pet,
-                eyebrow: today.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(Locale(identifier: "de_DE"))),
-                introduction: "Heute mit",
+                eyebrow: today.formatted(.dateTime.weekday(.wide).day().month(.wide)),
+                introduction: String(localized: "Heute mit"),
                 subtitle: ageText
             ) {
                 weightRow
@@ -180,7 +180,7 @@ private struct DashboardContent: View {
 
         // 50 g Toleranz: darunter ist es Waagen-Rauschen, kein Trend.
         if abs(delta) < 0.05 {
-            return WeightTrend(text: "unverändert · \(since)", symbolName: "arrow.right", tint: .secondary)
+            return WeightTrend(text: String(localized: "unverändert · \(since)"), symbolName: "arrow.right", tint: .secondary)
         }
         let sign = delta > 0 ? "+" : "−"
         return WeightTrend(
@@ -239,7 +239,10 @@ private struct DashboardContent: View {
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Offene Aufgaben", detail: data.tasks.isEmpty ? nil : "\(data.tasks.count) offen")
+            RudelSectionHeading(
+                title: String(localized: "Offene Aufgaben"),
+                detail: data.tasks.isEmpty ? nil : String(localized: "\(data.tasks.count) offen")
+            )
         }
     }
 
@@ -346,17 +349,17 @@ private struct DashboardContent: View {
                 switch cycle {
                 case .running(let estimate, let day1):
                     LabeledValueRow(
-                        label: "Phase",
+                        label: String(localized: "Phase"),
                         value: Format.label(estimate.phase),
                         systemImage: "circle.hexagonpath"
                     )
                     LabeledValueRow(
-                        label: "Tag im Zyklus",
+                        label: String(localized: "Tag im Zyklus"),
                         value: "\(estimate.dayInCycle)",
                         systemImage: "number"
                     )
                     LabeledValueRow(
-                        label: "Tag 1",
+                        label: String(localized: "Tag 1"),
                         value: Format.date(day1),
                         systemImage: "calendar"
                     )
@@ -374,7 +377,7 @@ private struct DashboardContent: View {
 
                 case .forecast(let prediction):
                     LabeledValueRow(
-                        label: "Nächste Läufigkeit",
+                        label: String(localized: "Nächste Läufigkeit"),
                         value: Format.dateRange(prediction.range),
                         systemImage: "calendar.badge.clock"
                     )
@@ -408,18 +411,18 @@ private struct DashboardContent: View {
     /// und zwei gleichnamige Extensions im Modul kollidieren.
     private func sourceLabel(_ source: PhaseEstimateSource) -> String {
         switch source {
-        case .clinicalSignals: return "aus klinischen Werten"
-        case .observedSignals: return "aus Beobachtungen"
-        case .populationDefault: return "aus Populationswerten"
+        case .clinicalSignals: return String(localized: "aus klinischen Werten")
+        case .observedSignals: return String(localized: "aus Beobachtungen")
+        case .populationDefault: return String(localized: "aus Populationswerten")
         }
     }
 
     private func basisLabel(_ basis: PredictionBasis) -> String {
         switch basis {
         case .population:
-            return "Populationswert"
+            return String(localized: "Populationswert")
         case .blended(let count):
-            return count == 1 ? "1 eigenes Intervall" : "\(count) eigene Intervalle"
+            return String(localized: "\(count) eigene Intervalle")
         }
     }
 
@@ -429,24 +432,24 @@ private struct DashboardContent: View {
     private var quickActionsSection: some View {
         Section {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 135), spacing: 12)], spacing: 12) {
-                RudelQuickAction(title: "Gabe mit Datum", symbol: "pills", apricot: true) {
+                RudelQuickAction(title: String(localized: "Gabe mit Datum"), symbol: "pills", apricot: true) {
                     appState.present(.quickLogMedication(petID: pet.id))
                 }
-                RudelQuickAction(title: "Gewicht", symbol: "scalemass") {
+                RudelQuickAction(title: String(localized: "Gewicht"), symbol: "scalemass") {
                     appState.present(.logWeight(petID: pet.id))
                 }
-                RudelQuickAction(title: "Symptom", symbol: "stethoscope") {
+                RudelQuickAction(title: String(localized: "Symptom"), symbol: "stethoscope") {
                     appState.present(.logSymptom(petID: pet.id))
                 }
                 if pet.tracksCycle {
-                    RudelQuickAction(title: "Zyklus-Beobachtung", symbol: "drop", apricot: true) {
+                    RudelQuickAction(title: String(localized: "Zyklus-Beobachtung"), symbol: "drop", apricot: true) {
                         appState.present(.logCycleObservation(petID: pet.id))
                     }
                 }
             }
             .rudelFeatureRow()
         } header: {
-            RudelSectionHeading(title: "Schnell erfassen")
+            RudelSectionHeading(title: String(localized: "Schnell erfassen"))
         }
     }
 
@@ -491,10 +494,10 @@ private struct DashboardContent: View {
     /// nicht mit, also korrigiert die View den Titel.
     private func title(for item: DueItem) -> String {
         if isPastAppointment(item) {
-            return "Termin abschließen"
+            return String(localized: "Termin abschließen")
         }
         if item.category == .medication, let plan = plan(for: item), plan.usesFecalSampleInstead {
-            return "Kotprobe"
+            return String(localized: "Kotprobe")
         }
         return item.title
     }
@@ -506,18 +509,18 @@ private struct DashboardContent: View {
 
     private func primaryActionTitle(for item: DueItem) -> String {
         if item.category == .restock {
-            return "Aufgefüllt"
+            return String(localized: "Aufgefüllt")
         }
         if item.category == .vetAppointment {
-            return isPastAppointment(item) ? "Termin abschließen" : "Termin öffnen"
+            return isPastAppointment(item) ? String(localized: "Termin abschließen") : String(localized: "Termin öffnen")
         }
         if item.needsVetAppointment {
-            return "Termin anlegen"
+            return String(localized: "Termin anlegen")
         }
         if let plan = plan(for: item), plan.usesFecalSampleInstead {
-            return "Abgegeben"
+            return String(localized: "Abgegeben")
         }
-        return "Gegeben"
+        return String(localized: "Gegeben")
     }
 
     private func primaryActionSymbol(for item: DueItem) -> String {
@@ -556,19 +559,19 @@ private struct DashboardContent: View {
         var actions: [RowAction] = []
         switch item.category {
         case .cycleForecast:
-            actions.append(RowAction(title: "Tag 1 erfassen", symbol: "drop") {
+            actions.append(RowAction(title: String(localized: "Tag 1 erfassen"), symbol: "drop") {
                 appState.present(.startCyclePeriod(petID: pet.id))
             })
         case .vetAppointment, .restock:
             break
         case .medication, .protectionExpiry, .dose, .criticalDays:
-            actions.append(RowAction(title: "Mit anderem Datum erfassen", symbol: "calendar") {
+            actions.append(RowAction(title: String(localized: "Mit anderem Datum erfassen"), symbol: "calendar") {
                 appState.present(.quickLogMedication(petID: pet.id, planID: plan(for: item)?.id))
             })
         }
         if isPreventive(item), let plan = plan(for: item) {
-            actions.append(RowAction(title: "Auslassen", symbol: "forward") { skip(plan) })
-            actions.append(RowAction(title: "Zurückstellen", symbol: "moon.zzz") {
+            actions.append(RowAction(title: String(localized: "Auslassen"), symbol: "forward") { skip(plan) })
+            actions.append(RowAction(title: String(localized: "Zurückstellen"), symbol: "moon.zzz") {
                 appState.present(.deferMedication(planID: plan.id))
             })
         }
@@ -603,16 +606,16 @@ private struct DashboardContent: View {
     /// Fälligkeitszeile einer offenen Aufgabe.
     private func dueText(for item: DueItem) -> String {
         if item.category == .restock {
-            let reach = item.stock.flatMap(MedicationDisplay.reachText) ?? "reicht bis \(Format.shortDate(item.dueOn))"
+            let reach = item.stock.flatMap(MedicationDisplay.reachText) ?? String(localized: "reicht bis \(Format.shortDate(item.dueOn))")
             return reach.prefix(1).uppercased() + reach.dropFirst()
         }
         if item.category == .vetAppointment {
             return isPastAppointment(item)
-                ? "War \(Format.dateTime(item.dueOn))"
+                ? String(localized: "War \(Format.dateTime(item.dueOn))")
                 : "\(Format.relativeDue(days: item.daysUntilDue)), \(Format.time(item.dueOn))"
         }
         if let deferredUntil = item.deferredUntil {
-            return "zurückgestellt bis \(Format.date(deferredUntil))"
+            return String(localized: "zurückgestellt bis \(Format.date(deferredUntil))")
         }
         // „Noch nie gegeben" liefert die Engine als `.overdue` mit
         // `daysUntilDue == 0`. Daneben „Heute" zu schreiben wäre eine
@@ -620,19 +623,19 @@ private struct DashboardContent: View {
         let due = item.urgency == .overdue && item.daysUntilDue == 0
             ? Format.date(item.dueOn)
             : "\(Format.relativeDue(days: item.daysUntilDue)) · \(Format.date(item.dueOn))"
-        return item.needsVetAppointment ? "Tierarzttermin vereinbaren · \(due)" : due
+        return item.needsVetAppointment ? String(localized: "Tierarzttermin vereinbaren · \(due)") : due
     }
 
     /// Kurzwert für „Später geplant".
     private func laterValue(for item: DueItem) -> String {
         if item.category == .restock {
-            return item.stock.flatMap(MedicationDisplay.reachText) ?? "Vorrat bis \(Format.shortDate(item.dueOn))"
+            return item.stock.flatMap(MedicationDisplay.reachText) ?? String(localized: "Vorrat bis \(Format.shortDate(item.dueOn))")
         }
         if item.category == .vetAppointment {
             return Format.dateTime(item.dueOn)
         }
         if let deferredUntil = item.deferredUntil {
-            return "zurückgestellt bis \(Format.shortDate(deferredUntil))"
+            return String(localized: "zurückgestellt bis \(Format.shortDate(deferredUntil))")
         }
         return Format.relativeDue(days: item.daysUntilDue)
     }
@@ -683,7 +686,7 @@ private struct DashboardContent: View {
     // MARK: Anzeige-Helfer
 
     private var petName: String {
-        pet.name.isEmpty ? "Unbenannt" : pet.name
+        pet.name.isEmpty ? String(localized: "Unbenannt") : pet.name
     }
 
     private var ageText: String? {
@@ -692,12 +695,12 @@ private struct DashboardContent: View {
         }
         var pieces: [String] = []
         if parts.years > 0 {
-            pieces.append(parts.years == 1 ? "1 Jahr" : "\(parts.years) Jahre")
+            pieces.append(String(localized: "\(parts.years) Jahre"))
         }
         if parts.months > 0 {
-            pieces.append(parts.months == 1 ? "1 Monat" : "\(parts.months) Monate")
+            pieces.append(String(localized: "\(parts.months) Monate"))
         }
-        return pieces.isEmpty ? "unter 1 Monat" : pieces.joined(separator: ", ")
+        return pieces.isEmpty ? String(localized: "unter 1 Monat") : pieces.joined(separator: ", ")
     }
 }
 
@@ -982,11 +985,20 @@ private struct DoseRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(productName), \(Format.time(slot.scheduledAt))")
-        .accessibilityValue(slot.isSkipped ? "ausgelassen" : (slot.isTaken ? "gegeben" : "offen"))
-        .accessibilityHint(
-            slot.isSkipped ? "Doppeltippen, um die Auslassung zurückzunehmen"
-                : (slot.isTaken ? "Doppeltippen, um den Haken zurückzunehmen" : "Doppeltippen, um die Gabe einzutragen")
-        )
+        .accessibilityValue(accessibilityStateText)
+        .accessibilityHint(accessibilityHintText)
+    }
+
+    private var accessibilityStateText: String {
+        if slot.isSkipped { return String(localized: "ausgelassen") }
+        return slot.isTaken ? String(localized: "gegeben") : String(localized: "offen")
+    }
+
+    private var accessibilityHintText: String {
+        if slot.isSkipped { return String(localized: "Doppeltippen, um die Auslassung zurückzunehmen") }
+        return slot.isTaken
+            ? String(localized: "Doppeltippen, um den Haken zurückzunehmen")
+            : String(localized: "Doppeltippen, um die Gabe einzutragen")
     }
 
     private var productName: String {
@@ -1000,7 +1012,8 @@ private struct DoseRow: View {
         let dose = slot.plan.doseLabel.trimmingCharacters(in: .whitespacesAndNewlines)
         if !dose.isEmpty { pieces.append(dose) }
         if let log = slot.existingLog {
-            pieces.append("\(log.wasSkipped ? "ausgelassen" : "abgehakt") \(Format.time(log.takenAt))")
+            let time = Format.time(log.takenAt)
+            pieces.append(log.wasSkipped ? String(localized: "ausgelassen \(time)") : String(localized: "abgehakt \(time)"))
         }
         return pieces.joined(separator: " · ")
     }

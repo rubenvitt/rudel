@@ -15,13 +15,13 @@ enum VetVisitReason: String, Codable, CaseIterable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .checkup: return "Vorsorge-Check"
-        case .vaccination: return "Impfung"
-        case .illness: return "Krankheit"
-        case .followUp: return "Kontrolle"
-        case .surgery: return "Operation"
-        case .dental: return "Zähne"
-        case .other: return "Sonstiges"
+        case .checkup: return String(localized: "Vorsorge-Check", comment: "Reason of a vet visit")
+        case .vaccination: return String(localized: "Impfung")
+        case .illness: return String(localized: "Krankheit", comment: "Reason of a vet visit: illness")
+        case .followUp: return String(localized: "Kontrolle", comment: "Reason of a vet visit: follow-up check")
+        case .surgery: return String(localized: "Operation", comment: "Reason of a vet visit: surgery")
+        case .dental: return String(localized: "Zähne", comment: "Reason of a vet visit: dental")
+        case .other: return String(localized: "Sonstiges", comment: "Reason of a vet visit: other")
         }
     }
 
@@ -45,9 +45,9 @@ enum AppointmentStatus: String, Codable, CaseIterable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .planned: return "Geplant"
-        case .done: return "Erledigt"
-        case .cancelled: return "Abgesagt"
+        case .planned: return String(localized: "Geplant", comment: "Status of a vet appointment")
+        case .done: return String(localized: "Erledigt", comment: "Status of a vet appointment")
+        case .cancelled: return String(localized: "Abgesagt", comment: "Status of a vet appointment")
         }
     }
 }

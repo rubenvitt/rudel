@@ -9,7 +9,7 @@ import SwiftUI
 /// Tab, damit die Tab-Leiste für jedes Tier gleich bleibt.
 struct HealthView: View {
     var body: some View {
-        PetScope(title: "Gesundheit") { pet in
+        PetScope(title: String(localized: "Gesundheit")) { pet in
             HealthOverview(pet: pet)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -75,7 +75,7 @@ private struct HealthOverview: View {
                         CycleOverviewPage(pet: pet)
                     } label: {
                         HealthAreaRow(
-                            title: "Zyklus",
+                            title: String(localized: "Zyklus"),
                             detail: cycleDetail,
                             symbol: "circle.hexagonpath"
                         )
@@ -84,24 +84,24 @@ private struct HealthOverview: View {
                 }
                 NavigationLink {
                     SymptomHistorySection(pet: pet)
-                        .healthPage(title: "Symptome") {
-                            AddButton(title: "Symptom erfassen", sheet: .logSymptom(petID: pet.id))
+                        .healthPage(title: String(localized: "Symptome")) {
+                            AddButton(title: String(localized: "Symptom erfassen"), sheet: .logSymptom(petID: pet.id))
                         }
                 } label: {
-                    HealthAreaRow(title: "Symptome", detail: symptomDetail, symbol: "heart.text.square")
+                    HealthAreaRow(title: String(localized: "Symptome"), detail: symptomDetail, symbol: "heart.text.square")
                 }
                 .accessibilityIdentifier("health-symptoms")
                 NavigationLink {
                     WeightHistorySection(pet: pet)
-                        .healthPage(title: "Gewicht") {
-                            AddButton(title: "Gewicht erfassen", sheet: .logWeight(petID: pet.id))
+                        .healthPage(title: String(localized: "Gewicht")) {
+                            AddButton(title: String(localized: "Gewicht erfassen"), sheet: .logWeight(petID: pet.id))
                         }
                 } label: {
-                    HealthAreaRow(title: "Gewicht", detail: weightDetail, symbol: "scalemass")
+                    HealthAreaRow(title: String(localized: "Gewicht"), detail: weightDetail, symbol: "scalemass")
                 }
                 .accessibilityIdentifier("health-weight")
             } header: {
-                RudelSectionHeading(title: "Bereiche")
+                RudelSectionHeading(title: String(localized: "Bereiche"))
             } footer: {
                 Text("Tierarzttermine, Praxen und die Notfallkarte findest du im Tab Tierarzt.")
             }
@@ -110,19 +110,25 @@ private struct HealthOverview: View {
     }
 
     private var cycleDetail: String {
-        guard let latest = periods.first else { return "Noch keine Läufigkeit erfasst" }
-        return "Letzte Läufigkeit ab \(Format.date(latest.day1Date))"
+        guard let latest = periods.first else { return String(localized: "Noch keine Läufigkeit erfasst") }
+        return String(localized: "Letzte Läufigkeit ab \(Format.date(latest.day1Date))")
     }
 
     private var symptomDetail: String {
-        guard let latest = symptoms.first else { return "Noch nichts erfasst" }
-        let count = symptoms.count == 1 ? "1 Eintrag" : "\(symptoms.count) Einträge"
-        return "\(count) · zuletzt \(Format.date(latest.date))"
+        guard let latest = symptoms.first else { return String(localized: "Noch nichts erfasst") }
+        let count = String(localized: "\(symptoms.count) Einträge", comment: "Anzahl Symptom-Einträge")
+        return String(
+            localized: "\(count) · zuletzt \(Format.date(latest.date))",
+            comment: "Symptom-Übersicht: Anzahl Einträge (z. B. „3 Einträge“) und Datum des letzten"
+        )
     }
 
     private var weightDetail: String {
-        guard let latest = weights.first else { return "Noch nicht gewogen" }
-        return "\(Format.weight(latest.valueKg)) am \(Format.date(latest.date))"
+        guard let latest = weights.first else { return String(localized: "Noch nicht gewogen") }
+        return String(
+            localized: "\(Format.weight(latest.valueKg)) am \(Format.date(latest.date))",
+            comment: "Letztes Gewicht und Datum der Messung, z. B. „24,5 kg am 3. Mai 2026“"
+        )
     }
 }
 

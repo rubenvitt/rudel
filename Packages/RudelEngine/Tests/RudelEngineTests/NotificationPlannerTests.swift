@@ -69,6 +69,7 @@ private extension Array where Element == NotificationPlanner.PlannedNotification
 
 @Suite("NotificationPlanner")
 struct NotificationPlannerTests {
+    init() { useGermanEngineTexts() }
 
     private let planner = NotificationPlanner(dayMath: .utc)
 

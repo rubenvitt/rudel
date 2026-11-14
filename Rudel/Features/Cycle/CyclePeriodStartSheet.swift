@@ -74,11 +74,12 @@ struct CyclePeriodStartSheet: View {
         else { return nil }
 
         if nearest.distance == 0 {
-            return "Für den \(Format.date(nearest.period.day1Date)) ist bereits eine Läufigkeit erfasst."
+            return String(localized: "Für den \(Format.date(nearest.period.day1Date)) ist bereits eine Läufigkeit erfasst.")
         }
-        return "Nur \(Format.dayCount(nearest.distance)) Abstand zu Tag 1 am \(Format.date(nearest.period.day1Date)). "
-            + "Unter \(StudyConstants.day1ToDay1IntervalMinDays) Tagen ist der Abstand biologisch unplausibel — "
-            + "meist ein Tippfehler. Speichern ist trotzdem möglich."
+        return String(
+            localized: "Nur \(Format.dayCount(nearest.distance)) Abstand zu Tag 1 am \(Format.date(nearest.period.day1Date)). Unter \(StudyConstants.day1ToDay1IntervalMinDays) Tagen ist der Abstand biologisch unplausibel — meist ein Tippfehler. Speichern ist trotzdem möglich.",
+            comment: "1: Abstand in Tagen (z. B. „12 Tage“), 2: Datum von Tag 1, 3: Untergrenze in Tagen (135)"
+        )
     }
 
     private var firstSignals: PhaseSignals {
@@ -130,17 +131,11 @@ struct CyclePeriodStartSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Was ist Tag 1?", systemImage: "info.circle")
                         .font(.subheadline.weight(.semibold))
-                    Text(
-                        "Der erste Tag, an dem die Läufigkeit erkennbar war — Schwellung, Ausfluss, "
-                            + "vermehrtes Belecken oder häufigeres Urinieren, je nachdem was zuerst auffiel."
-                    )
+                    Text("Der erste Tag, an dem die Läufigkeit erkennbar war — Schwellung, Ausfluss, vermehrtes Belecken oder häufigeres Urinieren, je nachdem was zuerst auffiel.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    Text(
-                        "Unsicher, ob es gestern schon angefangen hat? Dann den früheren Tag nehmen — "
-                            + "ein zu spät gesetzter Anker verschiebt jede Phase nach hinten."
-                    )
+                    Text("Unsicher, ob es gestern schon angefangen hat? Dann den früheren Tag nehmen — ein zu spät gesetzter Anker verschiebt jede Phase nach hinten.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -193,10 +188,7 @@ struct CyclePeriodStartSheet: View {
             } header: {
                 Text("Erste Beobachtung (optional)")
             } footer: {
-                Text(
-                    "Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar nicht "
-                        + "gespeichert — nicht „nein“. Beobachtungen lassen sich jederzeit nachtragen."
-                )
+                Text("Nichts ausfüllen ist in Ordnung: leer heißt „nicht beobachtet“ und wird gar nicht gespeichert — nicht „nein“. Beobachtungen lassen sich jederzeit nachtragen.")
             }
 
             Section("Notiz") {
@@ -214,7 +206,7 @@ struct CyclePeriodStartSheet: View {
         }
     }
 
-    private func quickDateButton(_ title: String, daysBack: Int) -> some View {
+    private func quickDateButton(_ title: LocalizedStringKey, daysBack: Int) -> some View {
         Button(title) {
             day1 = dayMath.adding(days: -daysBack, to: Date())
         }

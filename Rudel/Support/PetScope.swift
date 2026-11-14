@@ -109,7 +109,7 @@ struct PetSwitcher: View {
         } label: {
             HStack(spacing: 6) {
                 PetAvatar(pet: selected, size: 28)
-                Text(selected.map(displayName) ?? "Tier")
+                Text(selected.map(displayName) ?? String(localized: "Tier"))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                     .frame(maxWidth: 130, alignment: .leading)
@@ -118,12 +118,12 @@ struct PetSwitcher: View {
             }
             .foregroundStyle(RudelTheme.ink)
         }
-        .accessibilityLabel("Tier: \(selected.map(displayName) ?? "keins"). Wechseln")
+        .accessibilityLabel("Tier: \(selected.map(displayName) ?? String(localized: "keins", comment: "Kein Tier gewählt")). Wechseln")
         .accessibilityIdentifier("pet-switcher")
     }
 
     private func displayName(_ pet: Pet) -> String {
-        pet.name.isEmpty ? "Unbenannt" : pet.name
+        pet.name.isEmpty ? String(localized: "Unbenannt", comment: "Tier ohne Namen") : pet.name
     }
 }
 
@@ -163,8 +163,8 @@ extension Species {
 
     var label: String {
         switch self {
-        case .dog: return "Hund"
-        case .cat: return "Katze"
+        case .dog: return String(localized: "Hund")
+        case .cat: return String(localized: "Katze")
         }
     }
 }

@@ -43,7 +43,7 @@ enum VetReportRenderer {
 
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = [
-            kCGPDFContextTitle as String: "Tierarzt-Bericht \(content.pet.name)",
+            kCGPDFContextTitle as String: String(localized: "Tierarzt-Bericht \(content.pet.name)"),
             kCGPDFContextCreator as String: "Rudel",
         ]
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize), format: format)
@@ -66,7 +66,7 @@ enum VetReportRenderer {
             .font: serifFont(size: 13, weight: .semibold),
             .foregroundColor: Palette.ink,
         ])
-        let right = NSAttributedString(string: "Tierarzt-Bericht · \(Format.date(content.generatedAt))", attributes: [
+        let right = NSAttributedString(string: String(localized: "Tierarzt-Bericht · \(Format.date(content.generatedAt))"), attributes: [
             .font: UIFont.systemFont(ofSize: 9),
             .foregroundColor: Palette.muted,
         ])
@@ -83,13 +83,13 @@ enum VetReportRenderer {
     }
 
     private static func drawFooter(page: Int, of count: Int) {
-        let text = NSAttributedString(string: "Seite \(page) von \(count)", attributes: [
+        let text = NSAttributedString(string: String(localized: "Seite \(page) von \(count)"), attributes: [
             .font: UIFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
             .foregroundColor: Palette.muted,
         ])
         let size = text.size()
         text.draw(at: CGPoint(x: (pageSize.width - size.width) / 2, y: pageSize.height - margin - size.height))
-        let note = NSAttributedString(string: "Erstellt mit Rudel aus eigenen Aufzeichnungen", attributes: [
+        let note = NSAttributedString(string: String(localized: "Erstellt mit Rudel aus eigenen Aufzeichnungen"), attributes: [
             .font: UIFont.systemFont(ofSize: 8),
             .foregroundColor: Palette.muted,
         ])
@@ -101,12 +101,12 @@ enum VetReportRenderer {
     private static func body(for content: VetReportContent) -> NSAttributedString {
         let text = NSMutableAttributedString()
 
-        text.append(NSAttributedString(string: "Tierarzt-Bericht für \(content.pet.name)\n", attributes: [
+        text.append(NSAttributedString(string: String(localized: "Tierarzt-Bericht für \(content.pet.name)") + "\n", attributes: [
             .font: serifFont(size: 22, weight: .medium),
             .foregroundColor: Palette.forest,
             .paragraphStyle: paragraph(spacingAfter: 4),
         ]))
-        text.append(NSAttributedString(string: "Stand \(Format.dateTime(content.generatedAt))\n", attributes: [
+        text.append(NSAttributedString(string: String(localized: "Stand \(Format.dateTime(content.generatedAt))", comment: "Report timestamp: as of <date and time>") + "\n", attributes: [
             .font: UIFont.systemFont(ofSize: 10),
             .foregroundColor: Palette.muted,
             .paragraphStyle: paragraph(spacingAfter: 6),

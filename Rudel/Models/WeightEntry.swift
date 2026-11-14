@@ -11,11 +11,11 @@ enum BodyConditionScore: Int, Codable, CaseIterable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .veryThin: return "Stark untergewichtig (1/9)"
-        case .underweight: return "Untergewichtig (3/9)"
-        case .ideal: return "Idealgewicht (5/9)"
-        case .overweight: return "Übergewichtig (7/9)"
-        case .obese: return "Stark übergewichtig (9/9)"
+        case .veryThin: return String(localized: "Stark untergewichtig (1/9)")
+        case .underweight: return String(localized: "Untergewichtig (3/9)")
+        case .ideal: return String(localized: "Idealgewicht (5/9)")
+        case .overweight: return String(localized: "Übergewichtig (7/9)")
+        case .obese: return String(localized: "Stark übergewichtig (9/9)")
         }
     }
 }

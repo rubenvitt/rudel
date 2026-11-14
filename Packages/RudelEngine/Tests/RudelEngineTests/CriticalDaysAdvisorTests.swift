@@ -15,6 +15,7 @@ private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
 
 @Suite("CriticalDaysAdvisor — kritische Tage der Läufigkeit")
 struct CriticalDaysAdvisorTests {
+    init() { useGermanEngineTexts() }
 
     private let dayMath = DayMath.utc
     private let advisor = CriticalDaysAdvisor(dayMath: .utc)

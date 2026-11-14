@@ -104,8 +104,7 @@ final class DesignTests: XCTestCase {
 
     @MainActor
     private func launch() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
+        let app = XCUIApplication.german()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         return app
@@ -166,11 +165,17 @@ final class DesignTests: XCTestCase {
     @MainActor
     private func selectTab(_ name: String, in app: XCUIApplication) {
         let tab = app.buttons[name].firstMatch
-        // iPadOS stellt die Tabs oben dar und paginiert sie auf dem iPad mini.
+        // iPadOS stellt die Tabs oben dar und paginiert sie, wenn sie nicht
+        // passen (iPad mini, sehr große Schrift). Die Blätter-Knöpfe beschriftet
+        // das System in der App-Sprache — seit die App lokalisiert ist, also
+        // auf Deutsch.
         if !tab.exists {
-            for page in ["Next Page", "Previous Page"] {
-                let next = app.buttons[page].firstMatch
-                if next.exists { next.tap() }
+            let pagers = app.buttons.matching(NSPredicate(
+                format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", "Seite", "Page"
+            ))
+            for index in 0..<min(pagers.count, 2) {
+                let pager = pagers.element(boundBy: index)
+                if pager.exists { pager.tap() }
                 if tab.exists { break }
             }
         }

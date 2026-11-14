@@ -23,21 +23,21 @@ public enum VaccineType: String, Sendable, Codable, CaseIterable, Hashable {
     /// Freitext im Produktnamen des Plans.
     case other
 
-    /// Deutscher Anzeigename. In der Engine, weil Dashboard-Titel und
-    /// Mitteilungen ihn brauchen.
+    /// Anzeigename in der Engine-Sprache (`EngineLocalization`). In der Engine,
+    /// weil Dashboard-Titel und Mitteilungen ihn brauchen.
     public var displayName: String {
         switch self {
-        case .distemperHepatitisParvo: return "Staupe, Hepatitis, Parvovirose (SHP)"
-        case .dogCombination: return "Kombiimpfung SHPPi + L"
-        case .leptospirosis: return "Leptospirose"
-        case .kennelCough: return "Zwingerhusten (Parainfluenza)"
-        case .lymeDisease: return "Borreliose"
-        case .leishmaniasis: return "Leishmaniose"
-        case .panleukopenia: return "Katzenseuche (Panleukopenie)"
-        case .catFlu: return "Katzenschnupfen"
-        case .catCombination: return "Kombiimpfung RCP"
-        case .felineLeukemia: return "Leukose (FeLV)"
-        case .other: return "Andere Impfung"
+        case .distemperHepatitisParvo: return L10n.string("vaccine.distemperHepatitisParvo")
+        case .dogCombination: return L10n.string("vaccine.dogCombination")
+        case .leptospirosis: return L10n.string("vaccine.leptospirosis")
+        case .kennelCough: return L10n.string("vaccine.kennelCough")
+        case .lymeDisease: return L10n.string("vaccine.lymeDisease")
+        case .leishmaniasis: return L10n.string("vaccine.leishmaniasis")
+        case .panleukopenia: return L10n.string("vaccine.panleukopenia")
+        case .catFlu: return L10n.string("vaccine.catFlu")
+        case .catCombination: return L10n.string("vaccine.catCombination")
+        case .felineLeukemia: return L10n.string("vaccine.felineLeukemia")
+        case .other: return L10n.string("vaccine.other")
         }
     }
 

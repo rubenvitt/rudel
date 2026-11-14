@@ -366,12 +366,12 @@ public struct NotificationPlanner: Sendable {
         // Ohne geplanten Termin ist der nächste Schritt der Anruf in der Praxis,
         // nicht die Gabe — das muss schon in der Überschrift stehen.
         let title = item.needsVetAppointment
-            ? headline(petName: item.petName, subject: "Tierarzttermin vereinbaren")
+            ? headline(petName: item.petName, subject: L10n.string("notification.subject.scheduleVetAppointment"))
             : headline(petName: item.petName, subject: subject(for: item))
 
         return fireDates.map { fireDate in
             var text = body(for: item, firingAt: fireDate)
-            if item.needsVetAppointment { text += " Termin beim Tierarzt vereinbaren." }
+            if item.needsVetAppointment { text += L10n.string("notification.body.scheduleVetAppointment") }
             return PlannedNotification(
                 id: notificationID(sourceID: item.sourceID, category: item.category, fireDate: fireDate),
                 fireDate: fireDate,
@@ -410,7 +410,7 @@ public struct NotificationPlanner: Sendable {
                 PlannedNotification(
                     id: notificationID(sourceID: item.sourceID, category: .vetAppointment, fireDate: fireDate),
                     fireDate: fireDate,
-                    title: headline(petName: item.petName, subject: "Tierarzttermin"),
+                    title: headline(petName: item.petName, subject: L10n.string("notification.subject.vetAppointment")),
                     body: appointmentBody(for: item, firingAt: fireDate),
                     petID: item.petID,
                     category: .vetAppointment,
@@ -453,12 +453,11 @@ public struct NotificationPlanner: Sendable {
         let days = dayMath.days(from: fireDate, to: item.dueOn)
         var text: String
         switch days {
-        case ..<1: text = "Reicht nicht mehr für die nächste Gabe."
-        case 1: text = "Reicht noch etwa 1 Tag."
-        default: text = "Reicht noch etwa \(days) Tage."
+        case ..<1: text = L10n.string("notification.restock.notEnough")
+        default: text = L10n.string("notification.restock.daysLeft", days)
         }
         if item.stock?.needsPrescription == true {
-            text += " Rezept beim Tierarzt anfordern."
+            text += L10n.string("notification.restock.requestPrescription")
         }
         return text
     }
@@ -469,16 +468,23 @@ public struct NotificationPlanner: Sendable {
     /// der Vorabend.
     private func appointmentBody(for item: DueItem, firingAt fireDate: Date) -> String {
         let days = dayMath.days(from: fireDate, to: item.dueOn)
-        let dayWord: String
+        let time = timeText(item.dueOn)
+        let when: String
         switch days {
-        case 0: dayWord = "Heute"
-        case 1: dayWord = "Morgen"
-        default: dayWord = "Am \(dateText(item.dueOn))"
+        case 0: when = L10n.string("notification.appointment.today", time)
+        case 1: when = L10n.string("notification.appointment.tomorrow", time)
+        default: when = L10n.string("notification.appointment.onDate", dateText(item.dueOn), time)
         }
 
-        var parts = ["\(dayWord) um \(timeText(item.dueOn))"]
+        var parts = [when]
         // Der Titel steht nur im Text, wenn er mehr sagt als die Überschrift.
-        if let title = trimmed(item.title), title != "Tierarzttermin" { parts.append(title) }
+        // Der deutsche Vergleich bleibt, falls die App-Schicht den deutschen
+        // Standardtitel durchreicht.
+        if let title = trimmed(item.title),
+           title != L10n.string("notification.subject.vetAppointment"),
+           title != "Tierarzttermin" {
+            parts.append(title)
+        }
         if let detail = trimmed(item.detail) { parts.append(detail) }
         return sentence(parts.joined(separator: " · "))
     }
@@ -498,13 +504,13 @@ public struct NotificationPlanner: Sendable {
         guard dayMath.days(from: asOf, to: fireDate) <= settings.horizonDays else { return nil }
 
         let base = baseSubject(for: item)
-        var text = "\(base): Gabe um \(timeText(fireDate))"
+        var text = L10n.string("notification.dose.body", base, timeText(fireDate))
         if let detail = trimmed(item.detail) { text += " — \(detail)" }
 
         return PlannedNotification(
             id: notificationID(sourceID: item.sourceID, category: .dose, fireDate: fireDate),
             fireDate: fireDate,
-            title: headline(petName: item.petName, subject: appending("geben", to: base)),
+            title: headline(petName: item.petName, subject: appending(.give, to: base)),
             body: sentence(text),
             petID: item.petID,
             category: .dose,
@@ -523,14 +529,14 @@ public struct NotificationPlanner: Sendable {
         guard reminder.dueAt >= asOf else { return nil }
         guard dayMath.days(from: asOf, to: reminder.dueAt) <= settings.horizonDays else { return nil }
 
-        let base = trimmed(reminder.title) ?? "Medikament"
-        var text = "\(base): Gabe um \(timeText(reminder.dueAt))"
+        let base = trimmed(reminder.title) ?? L10n.string("notification.subject.medication")
+        var text = L10n.string("notification.dose.body", base, timeText(reminder.dueAt))
         if let detail = trimmed(reminder.detail) { text += " — \(detail)" }
 
         return PlannedNotification(
             id: reminder.id,
             fireDate: reminder.dueAt,
-            title: headline(petName: reminder.petName, subject: appending("geben", to: base)),
+            title: headline(petName: reminder.petName, subject: appending(.give, to: base)),
             body: sentence(text),
             petID: reminder.petID,
             category: .dose,
@@ -652,13 +658,13 @@ public struct NotificationPlanner: Sendable {
     private func baseSubject(for item: DueItem) -> String {
         if let title = trimmed(item.title) { return title }
         switch item.category {
-        case .medication: return "Behandlung"
-        case .protectionExpiry: return "Schutz"
-        case .dose: return "Medikament"
-        case .cycleForecast: return "Läufigkeit"
-        case .criticalDays: return "Kritische Tage"
-        case .vetAppointment: return "Tierarzttermin"
-        case .restock: return "Vorrat"
+        case .medication: return L10n.string("notification.subject.treatment")
+        case .protectionExpiry: return L10n.string("notification.subject.protection")
+        case .dose: return L10n.string("notification.subject.medication")
+        case .cycleForecast: return L10n.string("notification.subject.heat")
+        case .criticalDays: return L10n.string("notification.subject.criticalDays")
+        case .vetAppointment: return L10n.string("notification.subject.vetAppointment")
+        case .restock: return L10n.string("notification.subject.supply")
         }
     }
 
@@ -676,11 +682,11 @@ public struct NotificationPlanner: Sendable {
     private func subject(for item: DueItem) -> String {
         let base = baseSubject(for: item)
         switch item.category {
-        case .medication: return appending("fällig", to: base)
+        case .medication: return appending(.due, to: base)
         case .protectionExpiry:
-            return appending(dueOnIsProtectionEnd(item) ? "läuft ab" : "fällig", to: base)
-        case .dose: return appending("geben", to: base)
-        case .cycleForecast: return appending("erwartet", to: base)
+            return appending(dueOnIsProtectionEnd(item) ? .expires : .due, to: base)
+        case .dose: return appending(.give, to: base)
+        case .cycleForecast: return appending(.expected, to: base)
         // Kein Verb: „Kritische Tage" beschreibt einen Zustand, keine Fälligkeit.
         case .criticalDays: return base
         // Kein Verb: ein Termin ist weder fällig noch läuft er ab.
@@ -693,8 +699,22 @@ public struct NotificationPlanner: Sendable {
     /// ist normalerweise das nackte Substantiv („Wurmkur"), aber manche Titel
     /// formulieren die Fälligkeit bereits mit („Läufigkeit erwartet") — dann wäre
     /// die Wiederholung im Titel peinlich.
-    private func appending(_ verb: String, to title: String) -> String {
-        title.lowercased().contains(verb.lowercased()) ? title : "\(title) \(verb)"
+    private func appending(_ verb: SubjectVerb, to title: String) -> String {
+        let word = L10n.string("notification.verb.\(verb.rawValue)")
+        return title.lowercased().contains(word.lowercased())
+            ? title
+            : L10n.string("notification.subject.\(verb.rawValue)", title)
+    }
+
+    /// Verben der Überschrift. Je Verb gibt es zwei Schlüssel: das nackte Wort
+    /// (`notification.verb.*`) für die Prüfung, ob der Titel es schon trägt, und
+    /// das Format (`notification.subject.*`), das es an den Titel hängt — die
+    /// Wortstellung ist sprachabhängig („Give %@" / „%@ geben").
+    private enum SubjectVerb: String {
+        case due
+        case expires
+        case give
+        case expected
     }
 
     private func body(for item: DueItem, firingAt fireDate: Date) -> String {
@@ -706,26 +726,35 @@ public struct NotificationPlanner: Sendable {
         var text: String
 
         if item.isForecast || item.category == .cycleForecast {
-            text = "\(base): erwartet ab \(dateText(item.dueOn)) (\(relativeDayText(days)))."
-                + " Prognose, keine Gewissheit — bitte auf erste Anzeichen achten"
+            text = L10n.string(
+                "notification.body.forecast",
+                base,
+                dateText(item.dueOn),
+                relativeDayText(days)
+            )
         } else {
             switch item.category {
             case .protectionExpiry where !dueOnIsProtectionEnd(item):
-                text = "\(base) \(duenessPhrase(days: days, dueOn: item.dueOn))"
+                text = duenessSentence(base: base, days: days, dueOn: item.dueOn)
             case .protectionExpiry:
-                text = "\(base): \(protectionPhrase(days: days, expiresOn: item.dueOn))"
+                text = protectionSentence(base: base, days: days, expiresOn: item.dueOn)
             case .criticalDays:
-                // Zustand statt Termin — `duenessPhrase` („in 3 Tagen fällig")
+                // Zustand statt Termin — `duenessSentence` („in 3 Tagen fällig")
                 // wäre hier sprachlich falsch.
-                text = "\(base): \(relativeDayText(days))"
+                text = L10n.string("notification.body.state", base, relativeDayText(days))
             case .medication, .dose, .cycleForecast:
-                text = "\(base) \(duenessPhrase(days: days, dueOn: item.dueOn))"
+                text = duenessSentence(base: base, days: days, dueOn: item.dueOn)
             case .vetAppointment:
                 // Unerreichbar über `plan`: Termine texten in `appointmentBody`.
-                text = "\(base) \(relativeDayText(days)) um \(timeText(item.dueOn))"
+                text = L10n.string(
+                    "notification.body.appointmentFallback",
+                    base,
+                    relativeDayText(days),
+                    timeText(item.dueOn)
+                )
             case .restock:
                 // Unerreichbar über `plan`: Vorrat textet in `restockBody`.
-                text = "\(base) reicht bis \(dateText(item.dueOn))"
+                text = L10n.string("notification.body.restockFallback", base, dateText(item.dueOn))
             }
         }
 
@@ -736,59 +765,79 @@ public struct NotificationPlanner: Sendable {
     /// Schließt den Satz ab, ohne einen Punkt zu verdoppeln — `DueItem.detail`
     /// kommt aus der App-Schicht und bringt manchmal schon einen mit.
     private func sentence(_ text: String) -> String {
-        text.hasSuffix(".") || text.hasSuffix("!") || text.hasSuffix("?") ? text : text + "."
+        let terminators = [".", "!", "?", "。", "！", "？"]
+        return terminators.contains(where: { text.hasSuffix($0) })
+            ? text
+            : text + L10n.string("notification.punctuation.period")
     }
 
-    private func duenessPhrase(days: Int, dueOn: Date) -> String {
+    /// „Wurmkur ist in 3 Tagen fällig (04.08.2026)" — ganzer Satz pro Fall,
+    /// damit jede Sprache ihre eigene Wortstellung hat.
+    private func duenessSentence(base: String, days: Int, dueOn: Date) -> String {
         switch days {
         case ..<0:
-            return "war am \(dateText(dueOn)) fällig — \(overdueText(-days))"
+            return L10n.string("notification.due.overdue", base, dateText(dueOn), overdueText(-days))
         case 0:
-            return "ist heute fällig"
+            return L10n.string("notification.due.today", base)
         case 1:
-            return "ist morgen fällig (\(dateText(dueOn)))"
+            return L10n.string("notification.due.tomorrow", base, dateText(dueOn))
         default:
-            return "ist in \(days) Tagen fällig (\(dateText(dueOn)))"
+            return L10n.string("notification.due.inDays", base, relativeDayText(days), dateText(dueOn))
         }
     }
 
-    private func protectionPhrase(days: Int, expiresOn: Date) -> String {
+    /// „Zeckenschutz: der Schutz läuft in 3 Tagen ab (04.08.2026)".
+    private func protectionSentence(base: String, days: Int, expiresOn: Date) -> String {
         switch days {
         case ..<0:
-            return "der Schutz ist am \(dateText(expiresOn)) abgelaufen — \(overdueText(-days))"
+            return L10n.string(
+                "notification.protection.expired",
+                base,
+                dateText(expiresOn),
+                overdueText(-days)
+            )
         case 0:
-            return "der Schutz läuft heute ab"
+            return L10n.string("notification.protection.today", base)
         case 1:
-            return "der Schutz läuft morgen ab (\(dateText(expiresOn)))"
+            return L10n.string("notification.protection.tomorrow", base, dateText(expiresOn))
         default:
-            return "der Schutz läuft in \(days) Tagen ab (\(dateText(expiresOn)))"
+            return L10n.string(
+                "notification.protection.inDays",
+                base,
+                relativeDayText(days),
+                dateText(expiresOn)
+            )
         }
     }
 
+    /// „seit 3 Tagen überfällig" — Plural über `Localizable.stringsdict`.
     private func overdueText(_ days: Int) -> String {
-        days == 1 ? "seit 1 Tag überfällig" : "seit \(days) Tagen überfällig"
+        L10n.string("notification.relative.overdue", days)
     }
 
     private func relativeDayText(_ days: Int) -> String {
         switch days {
-        case ..<(-1): return "seit \(-days) Tagen"
-        case -1: return "seit gestern"
-        case 0: return "heute"
-        case 1: return "morgen"
-        default: return "in \(days) Tagen"
+        case ..<(-1): return L10n.string("notification.relative.daysAgo", -days)
+        case -1: return L10n.string("notification.relative.yesterday")
+        case 0: return L10n.string("notification.relative.today")
+        case 1: return L10n.string("notification.relative.tomorrow")
+        default: return L10n.string("notification.relative.inDays", days)
         }
     }
 
-    /// Bewusst von Hand statt mit `DateFormatter`: die Engine soll unabhängig
-    /// von der Locale des Geräts immer das deutsche Format liefern — und Tests
-    /// sollen auf jeder Maschine denselben String sehen.
+    /// Auf Deutsch bewusst von Hand statt mit `DateFormatter`: unabhängig von
+    /// der Locale des Geräts immer `01.03.2026` — und Tests sehen auf jeder
+    /// Maschine denselben String. Andere Sprachen nutzen das mittlere
+    /// Datumsformat ihrer Locale.
     private func dateText(_ date: Date) -> String {
+        guard L10n.isGerman else { return L10n.dateText(date, calendar: dayMath.calendar) }
         let parts = dayMath.calendar.dateComponents([.day, .month, .year], from: date)
         guard let day = parts.day, let month = parts.month, let year = parts.year else { return "" }
         return String(format: "%02d.%02d.%04d", day, month, year)
     }
 
     private func timeText(_ date: Date) -> String {
+        guard L10n.isGerman else { return L10n.timeText(date, calendar: dayMath.calendar) }
         let parts = dayMath.calendar.dateComponents([.hour, .minute], from: date)
         return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
     }

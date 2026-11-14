@@ -1,0 +1,26 @@
+Rudel er helseboka for hunden eller katten din. Så du slipper å lure på om tabletten allerede er gitt i dag.
+
+GLEM ALDRI EN DOSE IGJEN
+Rudel minner deg på i tide, med en ekte alarm hvis du vil. Først når du bekrefter dosen, regnes den som gitt. Ormekur og flåttbeskyttelse kommer som et rolig varsel, og du ser når beholdningen begynner å ta slutt.
+
+ALT TIL VETERINÆREN
+Veterinærtimer, vaksinasjonskort og den faste klinikken din samlet på ett sted. Før besøket lager Rudel en kort rapport som PDF med medisiner, vekt og det du har lagt merke til.
+
+HOLD ØYE MED LØPETIDEN
+For tisper viser Rudel omtrent når neste løpetid kommer, og hvilke dager hun bør holdes i bånd. Alltid som et tidsrom, aldri som et falskt løfte.
+
+HVORDAN HAR DYRET DITT DET?
+Symptomer med bilde, vekt som kurve. Slik ser du endringer før de blir et problem.
+
+DITT DYR, DIN FARGE
+Hvert dyr får sitt eget bilde og sin egen farge. Har du flere dyr, ser du med en gang hvem det gjelder.
+
+PRIVAT
+Ingen konto, ingen reklame, ingen sporing. Alt blir værende på iPhonen din.
+
+Rudel er helt gratis: så mange dyr du vil, veterinærrapporten og alle farger, uten abonnement og uten kjøp i appen.
+
+Rudel er ikke medisinsk utstyr og erstatter ikke veterinæren.
+
+Bruksvilkår (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Personvern: https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md

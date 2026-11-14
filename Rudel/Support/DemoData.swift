@@ -34,7 +34,7 @@ enum DemoData {
         zola.colorValue = .rust
         context.insert(zola)
 
-        let mia = Pet(name: "Mia", species: .cat, breed: "Europäisch Kurzhaar", isNeutered: true, createdAt: day(-300))
+        let mia = Pet(name: "Mia", species: .cat, breed: String(localized: "Europäisch Kurzhaar"), isNeutered: true, createdAt: day(-300))
         mia.colorValue = .plum
         context.insert(mia)
 
@@ -46,42 +46,42 @@ enum DemoData {
 
         let joint = MedicationPlan(
             kind: .ongoing,
-            productName: "Gelenktabletten",
+            productName: String(localized: "Gelenktabletten"),
             doseTimesMinutes: [8 * 60, 19 * 60],
             doseStartDate: day(-20),
-            doseLabel: "1 Tablette",
+            doseLabel: String(localized: "1 Tablette"),
             createdAt: day(-20)
         )
         context.insert(joint)
         joint.pet = zola
         joint.stockAmount = 9
-        joint.stockUnit = "Tabletten"
+        joint.stockUnit = String(localized: "Tabletten")
         joint.packageSize = 60
         joint.stockCountedAt = today
 
-        let worm = MedicationPlan(kind: .dewormer, productName: "Wurmkur", intervalDays: 90, createdAt: day(-200))
+        let worm = MedicationPlan(kind: .dewormer, productName: String(localized: "Wurmkur"), intervalDays: 90, createdAt: day(-200))
         context.insert(worm)
         worm.pet = zola
         let lastWorm = MedicationEvent(givenOn: day(-84))
         context.insert(lastWorm)
         lastWorm.plan = worm
 
-        let ticks = MedicationPlan(kind: .tickProtection, productName: "Zeckenschutz", intervalDays: 84, effectiveDays: 84, createdAt: day(-200))
+        let ticks = MedicationPlan(kind: .tickProtection, productName: String(localized: "Zeckenschutz"), intervalDays: 84, effectiveDays: 84, createdAt: day(-200))
         context.insert(ticks)
         ticks.pet = zola
         let lastTicks = MedicationEvent(givenOn: day(-30))
         context.insert(lastTicks)
         lastTicks.plan = ticks
 
-        let practice = VetPractice(name: "Tierarztpraxis am Park", veterinarian: "Dr. Lange", phone: "040 123456")
+        let practice = VetPractice(name: String(localized: "Tierarztpraxis am Park"), veterinarian: "Dr. Lange", phone: "040 123456")
         context.insert(practice)
         zola.primaryPractice = practice
-        let checkup = VetAppointment(date: calendar.date(byAdding: .hour, value: 10, to: day(5))!, reason: .checkup, title: "Jahrescheck")
+        let checkup = VetAppointment(date: calendar.date(byAdding: .hour, value: 10, to: day(5))!, reason: .checkup, title: String(localized: "Jahrescheck"))
         context.insert(checkup)
         checkup.pet = zola
         checkup.practice = practice
 
-        let symptom = SymptomEntry(date: day(-6), type: .itching, note: "Kratzt sich am linken Ohr")
+        let symptom = SymptomEntry(date: day(-6), type: .itching, note: String(localized: "Kratzt sich am linken Ohr"))
         context.insert(symptom)
         symptom.pet = zola
 

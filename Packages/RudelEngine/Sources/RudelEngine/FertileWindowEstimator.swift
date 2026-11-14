@@ -24,15 +24,12 @@ import Foundation
 public struct FertileWindowEstimator: Sendable {
     public let dayMath: DayMath
 
-    /// Text, den die UI bei jeder Anzeige mitführen muss.
-    public static let progesteroneCaveat =
-        "Aus Progesteronwerten geschätzt. Für eine Deckplanung den Verlauf tierärztlich begleiten lassen."
-    public static let lateProgesteroneCaveat =
-        "Der erste Messwert lag bereits über der Ovulationsschwelle — der LH-Peak war vor Messbeginn. Der Eisprung lässt sich damit nur grob eingrenzen."
-    public static let behaviourCaveat =
-        "Nur aus dem Verhalten geschätzt — mehrere Tage Unsicherheit. Zuverlässig ist allein ein Progesterontest."
-    public static let populationCaveat =
-        "Reiner Populationswert ohne eigene Beobachtungen. Nicht für eine Deckplanung geeignet — dafür ist ein Progesterontest nötig."
+    /// Text, den die UI bei jeder Anzeige mitführen muss. In der Sprache von
+    /// `EngineLocalization.currentLanguage`.
+    public static var progesteroneCaveat: String { L10n.string("fertile.caveat.progesterone") }
+    public static var lateProgesteroneCaveat: String { L10n.string("fertile.caveat.lateProgesterone") }
+    public static var behaviourCaveat: String { L10n.string("fertile.caveat.behaviour") }
+    public static var populationCaveat: String { L10n.string("fertile.caveat.population") }
 
     public init(dayMath: DayMath = .utc) {
         self.dayMath = dayMath

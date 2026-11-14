@@ -200,13 +200,15 @@ struct CycleObservationLogSheet: View {
             Section {
                 DatePicker("Datum", selection: $date, in: allowedDates, displayedComponents: .date)
                 if let day = dayInCycle {
-                    LabeledValueRow(label: "Tag im Zyklus", value: "Tag \(day)", systemImage: "number")
+                    LabeledValueRow(
+                        label: String(localized: "Tag im Zyklus"),
+                        value: String(localized: "Tag \(day)", comment: "Tag im Läufigkeitszyklus, gezählt ab Tag 1"),
+                        systemImage: "number"
+                    )
                 }
                 if sameDayCount > 0 {
                     CycleNoticeRow(
-                        text: sameDayCount == 1
-                            ? "Für diesen Tag gibt es schon eine Beobachtung. Diese kommt dazu."
-                            : "Für diesen Tag gibt es schon \(sameDayCount) Beobachtungen. Diese kommt dazu.",
+                        text: String(localized: "Für diesen Tag gibt es schon \(sameDayCount) Beobachtungen. Diese kommt dazu."),
                         systemImage: "info.circle.fill",
                         tint: .secondary
                     )
@@ -216,10 +218,11 @@ struct CycleObservationLogSheet: View {
             } footer: {
                 if let previous = previousObservation {
                     let parts = CycleLabel.observationSummary(previous)
-                    Text(
-                        "Zuletzt am \(Format.shortDate(previous.date))"
-                            + (parts.isEmpty ? "." : ": \(parts.joined(separator: " · "))")
-                    )
+                    if parts.isEmpty {
+                        Text("Zuletzt am \(Format.shortDate(previous.date)).")
+                    } else {
+                        Text("Zuletzt am \(Format.shortDate(previous.date)): \(parts.joined(separator: " · "))")
+                    }
                 }
             }
 

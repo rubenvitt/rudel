@@ -25,7 +25,7 @@ final class SmokeTests: XCTestCase {
 
     @MainActor
     func testMedicationReminderSettingsAndConfirmationRoute() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
         createPetIfNeeded(in: app, named: "Zola", breed: "Rhodesian Ridgeback")
@@ -49,7 +49,7 @@ final class SmokeTests: XCTestCase {
 
     @MainActor
     func testOngoingMedicationQuickLogSelectsAConcreteDose() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         let productName = "UI-Präparat \(UUID().uuidString.prefix(6))"
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
@@ -90,7 +90,7 @@ final class SmokeTests: XCTestCase {
     /// Der Durchstich: vom leeren Zustand bis durch alle Tabs.
     @MainActor
     func testCreatePetAndVisitEveryTab() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         app.launch()
 
         XCTAssertTrue(
@@ -131,7 +131,7 @@ final class SmokeTests: XCTestCase {
     /// abschließen — und die Notfallkarte im Tierarzt-Tab.
     @MainActor
     func testVetPracticeAndAppointmentLifecycle() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         // Der Simulator-Store überlebt den Testlauf: eindeutige Namen, damit
         // Einträge früherer Läufe nicht verwechselt werden.
         let suffix = UUID().uuidString.prefix(6)
@@ -223,7 +223,7 @@ final class SmokeTests: XCTestCase {
     /// Systemansichten: geprüft wird, dass sie erscheinen, dann abbrechen.
     @MainActor
     func testAppointmentInlinePracticeReportAndCalendar() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         let suffix = UUID().uuidString.prefix(6)
         let practiceName = "Inline-Praxis \(suffix)"
         let appointmentTitle = "Bericht UI-\(suffix)"
@@ -297,7 +297,7 @@ final class SmokeTests: XCTestCase {
     /// dieses Target schließen soll.
     @MainActor
     func testCycleScreensRenderWithARunningHeat() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
 
@@ -353,7 +353,7 @@ final class SmokeTests: XCTestCase {
     /// meisten Bindings und damit die wahrscheinlichste Absturzstelle.
     @MainActor
     func testEverySheetOpens() throws {
-        let app = XCUIApplication()
+        let app = XCUIApplication.german()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 20))
 

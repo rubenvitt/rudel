@@ -48,6 +48,7 @@ private let populationBandHalfWidth = Double(
 
 @Suite("CycleIntervalPredictor.intervals")
 struct CycleIntervalPredictorIntervalsTests {
+    init() { useGermanEngineTexts() }
 
     @Test("Leere Ankerliste ergibt keine Intervalle")
     func emptyAnchors() {
@@ -109,6 +110,7 @@ struct CycleIntervalPredictorIntervalsTests {
 
 @Suite("CycleIntervalPredictor.prediction")
 struct CycleIntervalPredictorPredictionTests {
+    init() { useGermanEngineTexts() }
 
     let asOf = day(2025, 6, 15)
 
@@ -310,6 +312,7 @@ struct CycleIntervalPredictorPredictionTests {
 
 @Suite("CycleIntervalPredictor.invariants")
 struct CycleIntervalPredictorInvariantTests {
+    init() { useGermanEngineTexts() }
 
     let asOf = day(2025, 6, 15)
 

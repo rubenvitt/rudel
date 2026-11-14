@@ -242,7 +242,7 @@ struct RudelPetHero<Detail: View>: View {
                     if let introduction {
                         Text(introduction).font(RudelTheme.display(.title2))
                     }
-                    Text(pet.name.isEmpty ? "Dein Tier" : pet.name)
+                    Text(pet.name.isEmpty ? String(localized: "Dein Tier") : pet.name)
                         .font(.system(size: nameSize, weight: .medium, design: .serif))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("pet-hero-name")

@@ -5,6 +5,7 @@ import RudelEngine
 
 @Suite("MedicationCalculator")
 struct MedicationCalculatorTests {
+    init() { useGermanEngineTexts() }
     private let calculator = MedicationCalculator(dayMath: .utc)
 
     /// Realistische Wirkdauern und Intervalle. `StudyConstants` enthält

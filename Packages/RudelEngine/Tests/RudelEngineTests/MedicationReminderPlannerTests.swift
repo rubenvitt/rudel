@@ -4,6 +4,7 @@ import Testing
 
 @Suite("MedicationReminderPlanner")
 struct MedicationReminderPlannerTests {
+    init() { useGermanEngineTexts() }
     private let planner = MedicationReminderPlanner(dayMath: .utc)
 
     private func moment(

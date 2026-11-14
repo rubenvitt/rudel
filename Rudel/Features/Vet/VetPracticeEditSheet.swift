@@ -135,7 +135,9 @@ struct VetPracticeEditSheet: View {
             if offersPrimary, let petForPrimary {
                 Section {
                     Toggle(
-                        "Haustierarzt von \(petForPrimary.name.isEmpty ? "deinem Tier" : petForPrimary.name)",
+                        petForPrimary.name.isEmpty
+                            ? String(localized: "Haustierarzt von deinem Tier")
+                            : String(localized: "Haustierarzt von \(petForPrimary.name)"),
                         isOn: $setsAsPrimary
                     )
                     .accessibilityIdentifier("practice-set-primary")
@@ -172,9 +174,8 @@ struct VetPracticeEditSheet: View {
 
     private func makeDeletionMessage() -> String {
         let count = practice?.appointments.count ?? 0
-        guard count > 0 else { return "Das lässt sich nicht rückgängig machen." }
-        let terms = count == 1 ? "Der Termin bleibt" : "Die \(count) Termine bleiben"
-        return "\(terms) im Verlauf erhalten, nur ohne Praxisangabe."
+        guard count > 0 else { return String(localized: "Das lässt sich nicht rückgängig machen.") }
+        return String(localized: "Die \(count) Termine bleiben im Verlauf erhalten, nur ohne Praxisangabe.")
     }
 
     // MARK: - Laden und Speichern

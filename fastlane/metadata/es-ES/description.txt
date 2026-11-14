@@ -1,0 +1,26 @@
+Rudel es la cartilla de salud de tu perro o tu gato. Para que no tengas que pensar si hoy ya le has dado la pastilla.
+
+NUNCA MÁS OLVIDES UNA TOMA
+Rudel te avisa puntualmente y, si quieres, con una alarma de verdad. La toma solo cuenta como hecha cuando la confirmas. La desparasitación y la protección antigarrapatas te avisan con una notificación discreta, y ves cuándo se están acabando las existencias.
+
+TODO PARA EL VETERINARIO
+Citas, cartilla de vacunación y tu clínica habitual en un solo lugar. Antes de la visita, Rudel crea un breve informe en PDF con medicamentos, peso y todo lo que te haya llamado la atención.
+
+EL CELO BAJO CONTROL
+Para las perras, Rudel muestra cuándo llegará aproximadamente el próximo celo y qué días es mejor que vaya con correa. Siempre como un intervalo, nunca como una falsa promesa.
+
+¿CÓMO ESTÁ TU MASCOTA?
+Síntomas con foto y el peso en una gráfica. Así detectas los cambios antes de que se conviertan en un problema.
+
+TU MASCOTA, TU COLOR
+Cada mascota tiene su foto y su color. Si tienes varias, ves al instante de quién se trata.
+
+PRIVADO
+Sin cuenta, sin anuncios, sin rastreo. Todo se queda en tu iPhone.
+
+Rudel es totalmente gratis: todas las mascotas que quieras, el informe veterinario y todos los colores, sin suscripción ni compras dentro de la app.
+
+Rudel no es un producto sanitario y no sustituye al veterinario.
+
+Condiciones de uso (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacidad: https://github.com/rubenvitt/rudel/blob/main/PRIVACY.md

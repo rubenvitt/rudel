@@ -1,4 +1,4 @@
-Rudel is the health record for your dog or cat. Please note: the app is in German.
+Rudel is the health record for your dog or cat, so you never have to wonder whether today's pill was already given.
 
 Never miss a dose: on-time reminders, real alarms if you want them, and a dose only counts once you confirm it. Deworming and tick protection get gentle notifications, and you see when supplies run low.
 

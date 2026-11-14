@@ -14,7 +14,7 @@ struct VetCalendarDraft: Equatable {
     static let duration: TimeInterval = 60 * 60
 
     init(petName: String, appointmentTitle: String, start: Date, practice: VetPractice?, questions: String) {
-        title = "Tierarzt: \(petName) – \(appointmentTitle)"
+        title = String(localized: "Tierarzt: \(petName) – \(appointmentTitle)", comment: "Calendar event title; pet name, appointment title")
         self.start = start
 
         let place = practice.map { practice in
@@ -28,10 +28,10 @@ struct VetCalendarDraft: Equatable {
         var noteParts: [String] = []
         let trimmedQuestions = questions.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedQuestions.isEmpty {
-            noteParts.append("Fragen an die Praxis:\n\(trimmedQuestions)")
+            noteParts.append(String(localized: "Fragen an die Praxis:\n\(trimmedQuestions)"))
         }
         if let phone = practice?.phone.trimmingCharacters(in: .whitespacesAndNewlines), !phone.isEmpty {
-            noteParts.append("Telefon: \(phone)")
+            noteParts.append(String(localized: "Telefon: \(phone)"))
         }
         notes = noteParts.isEmpty ? nil : noteParts.joined(separator: "\n\n")
     }

@@ -28,14 +28,12 @@ struct VetSection: View {
         petAppointments.filter { !$0.isOpen }.sorted { $0.date > $1.date }
     }
 
-    private var petName: String { pet.name.isEmpty ? "dein Tier" : pet.name }
-
     var body: some View {
         List {
             Section {
                 RudelFeatureHeading(
-                    eyebrow: "TIERARZT",
-                    title: "Termine & Praxen",
+                    eyebrow: String(localized: "TIERARZT", comment: "Eyebrow above the vet tab heading, uppercase"),
+                    title: String(localized: "Termine & Praxen"),
                     detail: headingDetail,
                     symbol: "stethoscope"
                 )
@@ -59,11 +57,15 @@ struct VetSection: View {
     private var headingDetail: String {
         let now = Date()
         if let next = upcoming.first(where: { $0.date >= now }) {
-            return "Nächster Termin: \(Format.dateTime(next.date))"
+            return String(localized: "Nächster Termin: \(Format.dateTime(next.date))")
         }
         let unfinished = upcoming.count
-        guard unfinished > 0 else { return "Kein Termin geplant für \(petName)" }
-        return unfinished == 1 ? "1 Termin abzuschließen" : "\(unfinished) Termine abzuschließen"
+        guard unfinished > 0 else {
+            return pet.name.isEmpty
+                ? String(localized: "Kein Termin geplant für dein Tier")
+                : String(localized: "Kein Termin geplant für \(pet.name)")
+        }
+        return String(localized: "\(unfinished) Termine abzuschließen")
     }
 
     // MARK: - Abschnitte
@@ -88,7 +90,7 @@ struct VetSection: View {
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Anstehend")
+            RudelSectionHeading(title: String(localized: "Anstehend", comment: "Section heading: upcoming vet appointments"))
         }
     }
 
@@ -104,7 +106,7 @@ struct VetSection: View {
                 .accessibilityIdentifier("past-appointment")
             }
         } header: {
-            RudelSectionHeading(title: "Verlauf")
+            RudelSectionHeading(title: String(localized: "Verlauf", comment: "Section heading: past vet appointments"))
         } footer: {
             if let costLine {
                 Text(costLine)
@@ -121,7 +123,7 @@ struct VetSection: View {
             .filter { $0.statusValue == .done && calendar.component(.year, from: $0.date) == year }
             .reduce(0) { $0 + $1.costEuro }
         guard total > 0 else { return nil }
-        return "Erfasste Kosten \(year): \(VetDisplay.euro(total))"
+        return String(localized: "Erfasste Kosten \(year): \(VetDisplay.euro(total))", comment: "Vet costs this calendar year; year, amount")
     }
 
     private var practicesSection: some View {
@@ -143,7 +145,7 @@ struct VetSection: View {
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Praxen")
+            RudelSectionHeading(title: String(localized: "Praxen"))
         }
     }
 }
@@ -257,7 +259,7 @@ private struct VetPracticeRow: View {
 
             VetCallButton(
                 number: practice.phone,
-                accessibilityName: "\(VetDisplay.practiceName(practice)) anrufen"
+                accessibilityName: String(localized: "\(VetDisplay.practiceName(practice)) anrufen", comment: "VoiceOver label of a call button; argument is the practice name")
             )
         }
         .padding(.vertical, 4)
@@ -275,10 +277,10 @@ private struct VetPracticeRow: View {
         if isPrimary || practice.isEmergencyClinic {
             HStack(spacing: 6) {
                 if isPrimary {
-                    VetTag(title: "Haustierarzt", symbol: "house.fill")
+                    VetTag(title: String(localized: "Haustierarzt"), symbol: "house.fill")
                 }
                 if practice.isEmergencyClinic {
-                    VetTag(title: "Notdienst", symbol: "cross.case.fill")
+                    VetTag(title: String(localized: "Notdienst", comment: "Role of an emergency clinic on the emergency card"), symbol: "cross.case.fill")
                 }
             }
         }

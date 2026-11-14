@@ -150,7 +150,7 @@ public struct CriticalDaysAdvisor: Sendable {
         let criticalStart = min(criticalStartDay(anchor: anchor, signals: signals), criticalEnd)
         let subsidingEnd = criticalEnd + Self.subsidingBufferDays
 
-        let name = petName.isEmpty ? "Dein Tier" : petName
+        let name = petName.isEmpty ? L10n.string("pet.fallbackName") : petName
         var result: [CriticalDayNotice] = []
 
         for offset in 0...max(0, dayMath.days(from: windowStart, to: windowEnd)) {
@@ -278,11 +278,15 @@ public struct CriticalDaysAdvisor: Sendable {
     private func title(for risk: HeatRiskLevel, name: String, isTransition: Bool) -> String {
         switch risk {
         case .elevated:
-            return isTransition ? "\(name) ist läufig" : "\(name) — Läufigkeit"
+            return isTransition
+                ? L10n.string("critical.title.elevated.start", name)
+                : L10n.string("critical.title.elevated", name)
         case .critical:
-            return isTransition ? "\(name) — kritische Tage beginnen" : "\(name) — kritische Tage"
+            return isTransition
+                ? L10n.string("critical.title.critical.start", name)
+                : L10n.string("critical.title.critical", name)
         case .subsiding:
-            return "\(name) — kritische Tage klingen ab"
+            return L10n.string("critical.title.subsiding", name)
         }
     }
 
@@ -294,8 +298,6 @@ public struct CriticalDaysAdvisor: Sendable {
         criticalEnd: Int,
         hasRecordedEnd: Bool
     ) -> String {
-        let day = "Tag \(dayInCycle)"
-
         switch risk {
         case .elevated:
             // Ab dem Tag, an dem der Östrus frühestens beginnen kann, darf hier
@@ -306,32 +308,34 @@ public struct CriticalDaysAdvisor: Sendable {
             // kritisch und die Abstufung wertlos. Also bleibt die Stufe, und der
             // Text hört auf, mehr zu versprechen, als er halten kann.
             if dayInCycle > StudyConstants.proestrusMinDays {
-                var text = "\(day). Rüden zeigen Interesse. Eine Deckung ist jetzt unwahrscheinlich, "
-                    + "aber nicht ausgeschlossen — der Östrus kann frühestens an Tag "
-                    + "\(StudyConstants.proestrusMinDays + 1) beginnen. Nicht unbeaufsichtigt laufen lassen."
+                var text = L10n.string(
+                    "critical.body.elevated.late",
+                    dayInCycle,
+                    StudyConstants.proestrusMinDays + 1
+                )
                 if !hasObservations {
-                    text += " Duldung oder Flagging zu prüfen macht die Einschätzung deutlich genauer."
+                    text += L10n.string("critical.body.elevated.checkSignals")
                 }
                 return text
             }
-            return "\(day). Rüden zeigen Interesse, gedeckt werden kann sie noch nicht — unbeaufsichtigt trotzdem nicht laufen lassen."
+            return L10n.string("critical.body.elevated.early", dayInCycle)
 
         case .critical:
             var text = isTransition
-                ? "\(day). Ab jetzt ist eine Deckung möglich: an der Leine führen, Rüden konsequent fernhalten."
-                : "\(day). Deckung möglich — an der Leine führen, Rüden fernhalten."
+                ? L10n.string("critical.body.critical.start", dayInCycle)
+                : L10n.string("critical.body.critical", dayInCycle)
             if !hasObservations {
                 // Ohne eigene Beobachtungen steht hier ein Populationswert. Das
                 // gehört in die Meldung, nicht in eine Fußnote, die keiner liest.
-                text += " Geschätzt aus Erfahrungswerten — Beobachtungen erfassen macht die Einschätzung genauer."
+                text += L10n.string("critical.body.critical.estimated")
             }
             if !hasRecordedEnd, dayInCycle >= criticalEnd - 2 {
-                text += " Ist die Hitze vorbei? Dann das Ende erfassen, dann verstummt die Erinnerung."
+                text += L10n.string("critical.body.critical.recordEnd")
             }
             return text
 
         case .subsiding:
-            return "\(day). Die Duldung klingt ab, ein Restrisiko bleibt noch wenige Tage. Danach ist der kritische Zeitraum vorbei."
+            return L10n.string("critical.body.subsiding", dayInCycle)
         }
     }
 }

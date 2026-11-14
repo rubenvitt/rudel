@@ -25,20 +25,20 @@ struct EmergencyCardSection: View {
 
             ForEach(emergencyClinics) { clinic in
                 EmergencyPracticeRow(
-                    role: "Notdienst",
+                    role: String(localized: "Notdienst", comment: "Role of an emergency clinic on the emergency card"),
                     practice: clinic,
                     number: clinic.emergencyPhone.isEmpty ? clinic.phone : clinic.emergencyPhone
                 )
             }
 
             emergencyValueRow(
-                label: "Chipnummer",
+                label: String(localized: "Chipnummer"),
                 value: pet.microchipNumber,
                 systemImage: "wave.3.right",
                 monospaced: true
             )
-            emergencyValueRow(label: "Allergien", value: pet.allergies, systemImage: "allergens")
-            emergencyValueRow(label: "Versicherung", value: pet.insuranceInfo, systemImage: "doc.text")
+            emergencyValueRow(label: String(localized: "Allergien"), value: pet.allergies, systemImage: "allergens")
+            emergencyValueRow(label: String(localized: "Versicherung"), value: pet.insuranceInfo, systemImage: "doc.text")
 
             if hasMissingEmergencyData {
                 Button {
@@ -48,29 +48,29 @@ struct EmergencyCardSection: View {
                 }
             }
         } header: {
-            RudelSectionHeading(title: "Notfall")
+            RudelSectionHeading(title: String(localized: "Notfall", comment: "Section heading of the emergency card"))
         }
     }
 
     @ViewBuilder
     private var primaryPracticeRow: some View {
         if let practice = pet.primaryPractice {
-            EmergencyPracticeRow(role: "Haustierarzt", practice: practice, number: practice.phone)
+            EmergencyPracticeRow(role: String(localized: "Haustierarzt"), practice: practice, number: practice.phone)
             if !practice.emergencyPhone.isEmpty {
                 HStack {
                     LabeledValueRow(
-                        label: "Notfallnummer",
+                        label: String(localized: "Notfallnummer"),
                         value: practice.emergencyPhone,
                         systemImage: "phone.badge.waveform"
                     )
                     VetCallButton(
                         number: practice.emergencyPhone,
-                        accessibilityName: "Notfallnummer von \(VetDisplay.practiceName(practice)) anrufen"
+                        accessibilityName: String(localized: "Notfallnummer von \(VetDisplay.practiceName(practice)) anrufen")
                     )
                 }
             }
         } else {
-            LabeledValueRow(label: "Haustierarzt", value: "Nicht hinterlegt", systemImage: "stethoscope")
+            LabeledValueRow(label: String(localized: "Haustierarzt"), value: String(localized: "Nicht hinterlegt"), systemImage: "stethoscope")
         }
     }
 
@@ -142,7 +142,7 @@ struct EmergencyPracticeRow: View {
             Spacer(minLength: 8)
             VetCallButton(
                 number: number,
-                accessibilityName: "\(VetDisplay.practiceName(practice)) anrufen"
+                accessibilityName: String(localized: "\(VetDisplay.practiceName(practice)) anrufen", comment: "VoiceOver label of a call button; argument is the practice name")
             )
         }
         .padding(.vertical, 2)

@@ -6,11 +6,11 @@ import SwiftUI
 extension Urgency {
     var label: String {
         switch self {
-        case .overdue: return "Überfällig"
-        case .dueToday: return "Heute"
-        case .dueSoon: return "Bald"
-        case .upcoming: return "Ansteht"
-        case .scheduled: return "Geplant"
+        case .overdue: return String(localized: "Überfällig")
+        case .dueToday: return String(localized: "Heute")
+        case .dueSoon: return String(localized: "Bald", comment: "Dringlichkeit: bald fällig")
+        case .upcoming: return String(localized: "Ansteht", comment: "Dringlichkeit: steht demnächst an")
+        case .scheduled: return String(localized: "Geplant", comment: "Dringlichkeit: eingeplant, noch nicht dringend")
         }
     }
 
@@ -96,11 +96,12 @@ struct ProtectionBar: View {
         if status.isExpired {
             let days = abs(status.remainingDays)
             return days == 0
-                ? "Heute abgelaufen"
-                : "Seit \(days) \(days == 1 ? "Tag" : "Tagen") abgelaufen"
+                ? String(localized: "Heute abgelaufen", comment: "Schutzwirkung")
+                : String(localized: "Seit \(days) Tagen abgelaufen", comment: "Schutzwirkung")
         }
-        let percent = Int((status.remainingFraction * 100).rounded())
-        return "\(percent) % · noch \(status.remainingDays) \(status.remainingDays == 1 ? "Tag" : "Tage")"
+        let percent = Int((status.remainingFraction * 100).rounded()).formatted(.percent)
+        let remaining = String(localized: "noch \(status.remainingDays) Tage", comment: "Restwirkung des Schutzes")
+        return "\(percent) · \(remaining)"
     }
 }
 
@@ -109,9 +110,9 @@ struct ProtectionBar: View {
 extension Confidence {
     var label: String {
         switch self {
-        case .low: return "niedrig"
-        case .moderate: return "mittel"
-        case .high: return "hoch"
+        case .low: return String(localized: "niedrig", comment: "Konfidenz einer Prognose")
+        case .moderate: return String(localized: "mittel", comment: "Konfidenz einer Prognose")
+        case .high: return String(localized: "hoch", comment: "Konfidenz einer Prognose")
         }
     }
 

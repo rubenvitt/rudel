@@ -365,7 +365,8 @@ private extension DueItemBuilder {
             petName: medication.petName,
             category: usesProtection ? .protectionExpiry : .medication,
             title: title(for: medication),
-            detail: detail(for: medication).map { "\($0) · noch nie gegeben" } ?? "Noch nie gegeben",
+            detail: detail(for: medication).map { L10n.string("due.detail.neverGiven.withProduct", $0) }
+                ?? L10n.string("due.detail.neverGiven"),
             dueOn: today,
             daysUntilDue: 0,
             urgency: .overdue,
@@ -485,8 +486,8 @@ private extension DueItemBuilder {
             petID: cycle.petID,
             petName: cycle.petName,
             category: .cycleForecast,
-            title: "Läufigkeit erwartet",
-            detail: "Prognosefenster ± \(halfWidth) \(halfWidth == 1 ? "Tag" : "Tage")",
+            title: L10n.string("due.title.cycleForecast"),
+            detail: L10n.string("due.detail.forecastWindow", halfWidth),
             dueOn: bandStart,
             daysUntilDue: daysUntilDue,
             urgency: Urgency(daysUntilDue: daysUntilDue),
@@ -506,11 +507,11 @@ private extension DueItemBuilder {
 
     func title(for kind: MedicationKind) -> String {
         switch kind {
-        case .dewormer: return "Wurmkur"
-        case .tickProtection: return "Zeckenschutz"
-        case .ongoing: return "Laufendes Medikament"
-        case .rabiesVaccination: return "Tollwut-Impfung"
-        case .vaccination: return "Impfung"
+        case .dewormer: return L10n.string("medication.kind.dewormer")
+        case .tickProtection: return L10n.string("medication.kind.tickProtection")
+        case .ongoing: return L10n.string("medication.kind.ongoing")
+        case .rabiesVaccination: return L10n.string("medication.kind.rabiesVaccination")
+        case .vaccination: return L10n.string("medication.kind.vaccination")
         }
     }
 
@@ -740,11 +741,17 @@ extension DueItemBuilder {
 
         let name = stockName(for: medication)
 
-        var detail = projection.remainingAmount > 0
-            ? "Noch \(Self.amountText(projection.remainingAmount))"
-                + (projection.unit.isEmpty ? "" : " \(projection.unit)")
-            : "Vorrat aufgebraucht"
-        if projection.needsPrescription { detail += " · Rezept nötig" }
+        var detail: String
+        if projection.remainingAmount > 0 {
+            let amount = Self.amountText(projection.remainingAmount)
+            let quantity = projection.unit.isEmpty ? amount : "\(amount) \(projection.unit)"
+            detail = L10n.string("restock.detail.remaining", quantity)
+        } else {
+            detail = L10n.string("restock.detail.depleted")
+        }
+        if projection.needsPrescription {
+            detail = L10n.string("restock.detail.withPrescription", detail)
+        }
 
         return DueItem(
             id: "restock:\(medication.sourceID)",
@@ -752,7 +759,7 @@ extension DueItemBuilder {
             petID: medication.petID,
             petName: medication.petName,
             category: .restock,
-            title: "Vorrat \(name)",
+            title: L10n.string("restock.title", name),
             detail: detail,
             dueOn: runsOutOn,
             daysUntilDue: daysOfSupply,
@@ -767,13 +774,15 @@ extension DueItemBuilder {
         return product.isEmpty ? title(for: medication) : product
     }
 
-    /// „12", „1,5" — locale-unabhängig deutsch, wie die übrigen Engine-Texte.
+    /// „12", „1,5" — auf Deutsch locale-unabhängig wie bisher, in anderen
+    /// Sprachen mit dem Dezimaltrennzeichen der Anzeige-Locale.
     static func amountText(_ value: Double) -> String {
-        guard value.isFinite, abs(value) < 1e12 else { return "sehr viele" }
+        guard value.isFinite, abs(value) < 1e12 else { return L10n.string("amount.veryMany") }
         let rounded = (value * 100).rounded() / 100
         if rounded == rounded.rounded() { return String(Int(rounded)) }
         var text = String(format: "%.2f", rounded)
         while text.hasSuffix("0") { text.removeLast() }
-        return text.replacingOccurrences(of: ".", with: ",")
+        let separator = L10n.isGerman ? "," : (L10n.displayLocale.decimalSeparator ?? ".")
+        return text.replacingOccurrences(of: ".", with: separator)
     }
 }
