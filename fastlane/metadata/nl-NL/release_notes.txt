@@ -1,2 +1,2 @@
-- Rudel is nu helemaal gratis: zoveel dieren als je wilt, het dierenartsrapport en alle kleuren voor iedereen.
-- Rudel Plus bestaat niet meer. Had je een abonnement, dan kun je het in het tabblad Rudel opzeggen via „Eerder abonnement beheren”.
+- Rudel is nu beschikbaar in 13 talen: Duits, Engels, Nederlands, Frans, Spaans, Italiaans, Portugees, Zweeds, Noors, Deens, Fins, Japans en Koreaans. De app volgt de taal van je apparaat.
+- Datum, tijd en getallen volgen je regio-instellingen.

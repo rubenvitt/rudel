@@ -1,2 +1,2 @@
-- Rudel ist jetzt komplett kostenlos: beliebig viele Tiere, Tierarzt-Bericht und alle Farben für alle.
-- Rudel Plus gibt es nicht mehr. Falls du es abonniert hast, kannst du das Abo im Rudel-Tab unter „Früheres Abo verwalten“ kündigen.
+- Rudel spricht jetzt 13 Sprachen: Deutsch, Englisch, Niederländisch, Französisch, Spanisch, Italienisch, Portugiesisch, Schwedisch, Norwegisch, Dänisch, Finnisch, Japanisch und Koreanisch. Die App folgt der Sprache deines Geräts.
+- Datum, Uhrzeit und Zahlen richten sich nach deinen Regionseinstellungen.

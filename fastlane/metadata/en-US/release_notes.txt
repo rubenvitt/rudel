@@ -1,2 +1,2 @@
-- Rudel is now completely free: any number of pets, the vet report and all colors for everyone.
-- Rudel Plus is gone. If you subscribed, you can cancel it in the Rudel tab under "Manage previous subscription".
+- Rudel now speaks 13 languages: German, English, Dutch, French, Spanish, Italian, Portuguese, Swedish, Norwegian, Danish, Finnish, Japanese and Korean. The app follows your device language.
+- Dates, times and numbers follow your region settings.
