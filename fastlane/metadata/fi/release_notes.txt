@@ -1,2 +1,2 @@
-- Rudel on nyt täysin ilmainen: niin monta lemmikkiä kuin haluat, eläinlääkäriraportti ja kaikki värit kaikille.
-- Rudel Plussaa ei enää ole. Jos tilasit sen, voit perua tilauksen Rudel-välilehdellä kohdassa ”Hallitse aiempaa tilausta”.
+- Rudel on nyt saatavilla 13 kielellä: saksa, englanti, hollanti, ranska, espanja, italia, portugali, ruotsi, norja, tanska, suomi, japani ja korea. Sovellus käyttää laitteesi kieltä.
+- Päivämäärät, kellonajat ja numerot noudattavat alueasetuksiasi.

@@ -1,2 +1,2 @@
-- Rudel är nu helt gratis: hur många djur du vill, veterinärrapporten och alla färger för alla.
-- Rudel Plus finns inte längre. Om du prenumererade kan du säga upp prenumerationen på fliken Rudel under ”Hantera tidigare prenumeration”.
+- Rudel finns nu på 13 språk: tyska, engelska, nederländska, franska, spanska, italienska, portugisiska, svenska, norska, danska, finska, japanska och koreanska. Appen följer språket på din enhet.
+- Datum, tider och siffror följer dina regionsinställningar.

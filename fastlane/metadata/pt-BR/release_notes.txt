@@ -1,2 +1,2 @@
-- O Rudel agora é totalmente gratuito: quantos pets você quiser, o relatório veterinário e todas as cores para todos.
-- O Rudel Plus não existe mais. Se você assinou, pode cancelar a assinatura na aba Rudel, em “Gerenciar assinatura anterior”.
+- O Rudel agora está disponível em 13 idiomas: alemão, inglês, holandês, francês, espanhol, italiano, português, sueco, norueguês, dinamarquês, finlandês, japonês e coreano. O app segue o idioma do seu aparelho.
+- Datas, horários e números seguem os ajustes de região.
