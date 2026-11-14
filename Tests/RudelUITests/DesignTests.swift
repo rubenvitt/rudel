@@ -165,22 +165,41 @@ final class DesignTests: XCTestCase {
     @MainActor
     private func selectTab(_ name: String, in app: XCUIApplication) {
         let tab = app.buttons[name].firstMatch
-        // iPadOS stellt die Tabs oben dar und paginiert sie, wenn sie nicht
-        // passen (iPad mini, sehr große Schrift). Die Blätter-Knöpfe beschriftet
-        // das System in der App-Sprache — seit die App lokalisiert ist, also
-        // auf Deutsch.
-        if !tab.exists {
-            let pagers = app.buttons.matching(NSPredicate(
-                format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", "Seite", "Page"
-            ))
-            for index in 0..<min(pagers.count, 2) {
-                let pager = pagers.element(boundBy: index)
-                if pager.exists { pager.tap() }
-                if tab.exists { break }
+        if tab.waitForExistence(timeout: 2) {
+            tab.tap()
+            return
+        }
+        // Bei sehr großer Schrift passen auf dem iPad nicht alle Tabs in die
+        // schwebende Leiste. iPadOS blättert dann (iPad mini) oder bietet nur
+        // noch die Seitenleiste an. Die Blätter-Knöpfe beschriftet das System
+        // in der App-Sprache, die Seitenleiste erkennt man an ihrer Kennung.
+        for label in ["Nächste Seite", "Vorherige Seite", "Next Page", "Previous Page"] {
+            let pager = app.buttons[label].firstMatch
+            guard pager.exists else { continue }
+            pager.tap()
+            if tab.waitForExistence(timeout: 1) {
+                tab.tap()
+                return
             }
         }
-        XCTAssertTrue(tab.waitForExistence(timeout: 5))
-        tab.tap()
+        let sidebarToggle = app.buttons["ToggleSideBar"].firstMatch
+        if sidebarToggle.exists {
+            sidebarToggle.tap()
+            let candidates = [
+                app.buttons[name].firstMatch,
+                app.cells[name].firstMatch,
+                app.cells.containing(.staticText, identifier: name).firstMatch,
+            ]
+            for candidate in candidates where candidate.waitForExistence(timeout: 2) && candidate.isHittable {
+                candidate.tap()
+                // Die Seitenleiste wieder schließen, falls sie den Inhalt überdeckt.
+                if sidebarToggle.exists, sidebarToggle.isHittable, app.cells[name].exists {
+                    sidebarToggle.tap()
+                }
+                return
+            }
+        }
+        XCTFail("Tab \(name) nicht gefunden:\n\(app.debugDescription)")
     }
 
     @MainActor
