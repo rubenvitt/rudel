@@ -48,6 +48,8 @@ jobs:
             echo "No $DEVICE simulator available" >&2
             exit 1
           fi
+          # Boot first: on a cold simulator the UI test runner can stall before the first test and crash
+          xcrun simctl bootstatus "$UDID" -b
           xcodebuild test -scheme Rudel -destination "id=$UDID" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO
 
   # The main ruleset requires a check named "app"; it passes only when every device passed.
